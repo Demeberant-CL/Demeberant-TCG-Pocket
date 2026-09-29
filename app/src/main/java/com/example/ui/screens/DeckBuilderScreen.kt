@@ -7,11 +7,13 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,14 +27,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,23 +48,31 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
 import com.example.ui.theme.PocketGold
+import com.example.ui.theme.PocketRed
 import com.example.ui.theme.PocketSurface
 import com.example.ui.theme.PocketTextPrimary
 import com.example.ui.theme.PocketTextSecondary
@@ -72,7 +88,10 @@ fun DeckBuilderScreen(
   val deckPrompt by viewModel.deckBuildPrompt.collectAsStateWithLifecycle()
   val onlyFromInventory by viewModel.onlyFromInventoryDeck.collectAsStateWithLifecycle()
   val isGenerating by viewModel.isGeneratingDeck.collectAsStateWithLifecycle()
-  val metaAnalysis by viewModel.metaAnalysis.collectAsStateWithLifecycle()
+  val savedDecks by viewModel.savedDecks.collectAsStateWithLifecycle()
+
+  var showSaveDialog by remember { mutableStateOf(false) }
+  var customDeckNameInput by remember { mutableStateOf("") }
 
   LazyColumn(
     modifier = modifier
@@ -99,7 +118,7 @@ fun DeckBuilderScreen(
             Text(
               text = "Creador de Mazos Inteligente",
               style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.Bold,
+              fontWeight = FontWeight.Black,
               color = PocketTextPrimary
             )
           }
@@ -110,7 +129,7 @@ fun DeckBuilderScreen(
             value = deckPrompt,
             onValueChange = { viewModel.setDeckPrompt(it) },
             label = { Text("Estrategia o Arquetipo") },
-            placeholder = { Text("Ej: Pikachu ex agresivo, Charizard control...") },
+            placeholder = { Text("Ej: Pikachu ex turbo, Charizard llamas, Mewtwo control...") },
             modifier = Modifier
               .fillMaxWidth()
               .testTag("deck_prompt_input"),
@@ -123,7 +142,7 @@ fun DeckBuilderScreen(
 
           Spacer(modifier = Modifier.height(10.dp))
 
-          // Filter by inventory toggle
+          // Filter strictly by inventory switch
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -131,13 +150,13 @@ fun DeckBuilderScreen(
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(
-                text = "Usar solo cartas de mi colección (x1+)",
+                text = "Usar solo cartas en posesión (Cantidad ≥ 1)",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = PocketTextPrimary
               )
               Text(
-                text = "Filtra estrictamente cartas con Cantidad >= 1 importadas de tu CSV",
+                text = "Filtra estrictamente cartas importadas de tu CSV",
                 style = MaterialTheme.typography.bodySmall,
                 color = PocketTextSecondary
               )
@@ -159,12 +178,17 @@ fun DeckBuilderScreen(
           Text(text = "Sugerencias del Meta:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PocketTextSecondary)
           Spacer(modifier = Modifier.height(6.dp))
           LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(listOf("Pikachu ex Turbo", "Charizard ex Llamas", "Mewtwo ex Gardevoir", "Starmie ex Tempo", "Marowak ex Lucha")) { arch ->
+            val suggestions = listOf("Pikachu ex Turbo", "Charizard ex Llamas", "Mewtwo ex Gardevoir", "Starmie ex Tempo", "Marowak ex Lucha")
+            items(suggestions) { arch ->
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(12.dp))
                   .background(PocketBackground)
                   .border(1.dp, PocketBorder, RoundedCornerShape(12.dp))
+                  .clickable {
+                    viewModel.setDeckPrompt(arch)
+                    viewModel.generateDeck(arch)
+                  }
                   .padding(horizontal = 8.dp, vertical = 4.dp)
               ) {
                 Text(
@@ -265,20 +289,59 @@ fun DeckBuilderScreen(
               Row(verticalAlignment = Alignment.Top) {
                 Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = deck.strategy, fontSize = 11.sp, color = PocketTextSecondary)
+                Text(text = deck.strategy, fontSize = 11.sp, color = PocketTextSecondary, lineHeight = 16.sp)
               }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(text = "Lista del Mazo:", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = "Composición del Mazo (Visual):", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // Visual Card Preview Row
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              items(deck.cards) { entry ->
+                Box(
+                  modifier = Modifier
+                    .width(70.dp)
+                    .aspectRatio(0.714f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, PocketBorder, RoundedCornerShape(8.dp))
+                    .background(PocketSurface)
+                ) {
+                  AsyncImage(
+                    model = TcgdexHelper.getCardImageUrl(entry.card.id),
+                    contentDescription = entry.card.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                  )
+                  Box(
+                    modifier = Modifier
+                      .align(Alignment.TopEnd)
+                      .padding(2.dp)
+                      .clip(RoundedCornerShape(4.dp))
+                      .background(PocketGold)
+                      .padding(horizontal = 4.dp, vertical = 1.dp)
+                  ) {
+                    Text(
+                      text = "x${entry.count}",
+                      fontSize = 9.sp,
+                      fontWeight = FontWeight.Black,
+                      color = Color(0xFF78350F)
+                    )
+                  }
+                }
+              }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Text listing
             deck.cards.forEach { entry ->
               Row(
                 modifier = Modifier
                   .fillMaxWidth()
-                  .padding(vertical = 3.dp),
+                  .padding(vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -306,11 +369,28 @@ fun DeckBuilderScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Export Actions
+            // Actions: Save to Room DB, Copy, Share
             Row(
               modifier = Modifier.fillMaxWidth(),
               horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+              Button(
+                onClick = {
+                  customDeckNameInput = deck.name
+                  showSaveDialog = true
+                },
+                modifier = Modifier
+                  .weight(1f)
+                  .height(38.dp)
+                  .testTag("save_deck_db_btn"),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+              ) {
+                Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Guardar", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              }
+
               OutlinedButton(
                 onClick = {
                   val text = deck.toExportText()
@@ -321,13 +401,12 @@ fun DeckBuilderScreen(
                 },
                 modifier = Modifier
                   .weight(1f)
-                  .height(38.dp)
-                  .testTag("copy_deck_btn"),
+                  .height(38.dp),
                 shape = RoundedCornerShape(10.dp)
               ) {
-                Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Copiar Lista", fontSize = 11.sp)
+                Text("Copiar", fontSize = 11.sp)
               }
 
               Button(
@@ -342,12 +421,11 @@ fun DeckBuilderScreen(
                 },
                 modifier = Modifier
                   .weight(1f)
-                  .height(38.dp)
-                  .testTag("share_deck_btn"),
+                  .height(38.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
               ) {
-                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Compartir", fontSize = 11.sp)
               }
@@ -357,87 +435,114 @@ fun DeckBuilderScreen(
       }
     }
 
-    // Meta Analyzer Recommendations Card
-    metaAnalysis?.let { analysis ->
-      item {
-        Card(
-          modifier = Modifier
-            .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(16.dp), clip = false)
-            .testTag("meta_analysis_card"),
-          shape = RoundedCornerShape(16.dp),
-          colors = CardDefaults.cardColors(containerColor = PocketSurface),
-          border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
-        ) {
-          Column(modifier = Modifier.padding(16.dp)) {
+    // Saved Decks in Room DB Section
+    item {
+      Card(
+        modifier = Modifier
+          .fillMaxWidth()
+          .shadow(2.dp, RoundedCornerShape(16.dp), clip = false)
+          .testTag("saved_decks_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PocketSurface),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
+      ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Bookmark, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Análisis del Meta & Recomendación de Sobre",
+              text = "Mazos Guardados Localmente (${savedDecks.size})",
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold,
               color = PocketTextPrimary
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = analysis.overview, fontSize = 11.sp, color = PocketTextSecondary)
+          }
 
-            Spacer(modifier = Modifier.height(10.dp))
+          Spacer(modifier = Modifier.height(10.dp))
 
-            // Recommended pack highlighted box
-            Box(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFFEF3C7))
-                .border(1.dp, PocketGold.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                .padding(10.dp)
-            ) {
-              Column {
-                Text(
-                  text = "Sobre Recomendado: ${analysis.bestPackToOpenNext}",
-                  fontSize = 12.sp,
-                  fontWeight = FontWeight.Black,
-                  color = Color(0xFFB45309)
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = analysis.packReasoning, fontSize = 11.sp, color = Color(0xFF78350F))
-              }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            analysis.deckInsights.forEach { deckInsight ->
-              Column(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(vertical = 4.dp)
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(Color(0xFFF8FAFC))
-                  .padding(8.dp)
-              ) {
+          if (savedDecks.isEmpty()) {
+            Text(
+              text = "No tienes mazos guardados en tu base de datos local. Genera uno y pulsa 'Guardar'.",
+              fontSize = 11.sp,
+              color = PocketTextSecondary
+            )
+          } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              savedDecks.forEach { saved ->
                 Row(
-                  modifier = Modifier.fillMaxWidth(),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(PocketBackground)
+                    .border(1.dp, PocketBorder, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Text(
-                    text = "${deckInsight.deckName} (${deckInsight.tier})",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = PocketTextPrimary
-                  )
-                  Text(
-                    text = "${deckInsight.completionRatePercent}% poseído",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    color = PocketBluePrimary
-                  )
+                  Column(modifier = Modifier.weight(1f)) {
+                    Text(text = saved.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+                    Text(text = "${saved.archetype} • ${saved.totalCards} cartas", fontSize = 10.sp, color = PocketTextSecondary)
+                  }
+
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                      onClick = { viewModel.loadSavedDeck(saved) },
+                      modifier = Modifier.size(32.dp)
+                    ) {
+                      Icon(Icons.Filled.PlayArrow, contentDescription = "Cargar mazo", tint = PocketBluePrimary, modifier = Modifier.size(18.dp))
+                    }
+
+                    IconButton(
+                      onClick = { viewModel.deleteSavedDeck(saved.id) },
+                      modifier = Modifier.size(32.dp)
+                    ) {
+                      Icon(Icons.Filled.Delete, contentDescription = "Eliminar mazo", tint = PocketRed, modifier = Modifier.size(18.dp))
+                    }
+                  }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = deckInsight.aiRecommendation, fontSize = 10.sp, color = PocketTextSecondary)
               }
             }
           }
         }
       }
     }
+  }
+
+  // Save Deck Modal Dialog
+  if (showSaveDialog) {
+    AlertDialog(
+      onDismissRequest = { showSaveDialog = false },
+      title = { Text("Guardar Mazo", fontWeight = FontWeight.Bold) },
+      text = {
+        Column {
+          Text("Ingresa un nombre para almacenar este mazo en tu base de datos local:", fontSize = 12.sp, color = PocketTextSecondary)
+          Spacer(modifier = Modifier.height(8.dp))
+          OutlinedTextField(
+            value = customDeckNameInput,
+            onValueChange = { customDeckNameInput = it },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            if (customDeckNameInput.isNotBlank()) {
+              viewModel.saveCurrentDeck(customDeckNameInput.trim())
+              showSaveDialog = false
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
+        ) {
+          Text("Guardar Mazo")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showSaveDialog = false }) {
+          Text("Cancelar")
+        }
+      }
+    )
   }
 }

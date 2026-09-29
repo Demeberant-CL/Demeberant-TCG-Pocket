@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.BoosterPack
+import com.example.data.util.ErrorLogManager
 import com.example.ui.components.CardItemView
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
@@ -103,9 +104,8 @@ fun CollectionScreen(
   var showSettingsDialog by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
 
-  // Preferences
-  var selectedLanguage by remember { mutableStateOf("Español Neutro") }
-  var selectedTheme by remember { mutableStateOf("Azul Pokémon Clásico") }
+  // Preferences from DataStore
+  val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
 
   // File Picker Launcher for CSV files
   val csvPickerLauncher = rememberLauncherForActivityResult(
@@ -502,24 +502,28 @@ fun CollectionScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(Icons.Filled.Translate, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Idioma Principal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+              Text("Idioma Principal (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             }
             Spacer(modifier = Modifier.height(6.dp))
-            listOf("Español Neutro", "English", "日本語").forEach { lang ->
+            listOf(
+              "es" to "Español Neutro",
+              "en" to "English",
+              "ja" to "日本語"
+            ).forEach { (code, label) ->
               Row(
                 modifier = Modifier
                   .fillMaxWidth()
                   .clip(RoundedCornerShape(8.dp))
-                  .clickable { selectedLanguage = lang }
+                  .clickable { viewModel.setLanguage(code) }
                   .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 RadioButton(
-                  selected = selectedLanguage == lang,
-                  onClick = { selectedLanguage = lang }
+                  selected = userPreferences.language == code,
+                  onClick = { viewModel.setLanguage(code) }
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(lang, fontSize = 13.sp, color = PocketTextPrimary)
+                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
               }
             }
           }
@@ -529,25 +533,48 @@ fun CollectionScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(Icons.Filled.Palette, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Tema Visual", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+              Text("Tema Visual & Modo Oscuro (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             }
             Spacer(modifier = Modifier.height(6.dp))
-            listOf("Azul Pokémon Clásico", "Neón Oscuro", "Modo Claro").forEach { theme ->
+            listOf(
+              "dark" to "Neón Oscuro (Por Defecto)",
+              "blue" to "Azul Pokémon Clásico",
+              "light" to "Modo Claro"
+            ).forEach { (themeKey, label) ->
               Row(
                 modifier = Modifier
                   .fillMaxWidth()
                   .clip(RoundedCornerShape(8.dp))
-                  .clickable { selectedTheme = theme }
+                  .clickable { viewModel.setThemeName(themeKey) }
                   .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 RadioButton(
-                  selected = selectedTheme == theme,
-                  onClick = { selectedTheme = theme }
+                  selected = userPreferences.themeName == themeKey,
+                  onClick = { viewModel.setThemeName(themeKey) }
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(theme, fontSize = 13.sp, color = PocketTextPrimary)
+                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
               }
+            }
+          }
+
+          // Error Logging Export Section
+          Column {
+            Text("Diagnóstico & Registro de Errores", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(
+              onClick = {
+                ErrorLogManager.exportErrorLogs(context)
+              },
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
+              shape = RoundedCornerShape(8.dp)
+            ) {
+              Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Exportar Log de Errores", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -556,11 +583,10 @@ fun CollectionScreen(
         Button(
           onClick = {
             showSettingsDialog = false
-            Toast.makeText(context, "Preferencias guardadas: $selectedLanguage • $selectedTheme", Toast.LENGTH_SHORT).show()
           },
           colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
         ) {
-          Text("Guardar")
+          Text("Listo")
         }
       },
       dismissButton = {

@@ -1,7 +1,12 @@
 package com.example.data.repository
 
+import com.example.data.local.AppDatabase
 import com.example.data.local.InventoryCardEntity
 import com.example.data.local.InventoryDao
+import com.example.data.local.SavedDeckDao
+import com.example.data.local.SavedDeckEntity
+import com.example.data.local.UserCardDao
+import com.example.data.local.UserCardEntity
 import com.example.data.model.PokemonCard
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -12,11 +17,34 @@ data class CardWithInventory(
   val isWishlist: Boolean
 )
 
-class InventoryRepository(private val dao: InventoryDao) {
+data class ParsedCsvCard(
+  val setCode: String,
+  val cardNumber: String,
+  val name: String,
+  val rarity: String,
+  val quantity: Int,
+  val isRegistered: Boolean
+)
 
-  val inventoryFlow: Flow<List<CardWithInventory>> = dao.getAllCardsFlow().map { entities ->
+class InventoryRepository(
+  private val inventoryDao: InventoryDao,
+  private val savedDeckDao: SavedDeckDao,
+  private val userCardDao: UserCardDao
+) {
+
+  val inventoryFlow: Flow<List<CardWithInventory>> = inventoryDao.getAllCardsFlow().map { entities ->
     val entityMap = entities.associateBy { it.cardId.uppercase() }
-    CardCatalog.ALL_CARDS.map { card ->
+
+    // Merge static and dynamic registered cards
+    val allKnownCards = (CardCatalog.ALL_CARDS + entities.map { entity ->
+      CardCatalog.getCardById(entity.cardId) ?: CardCatalog.registerCard(
+        id = entity.cardId,
+        name = entity.cardName,
+        raritySymbol = entity.rarity
+      )
+    }).distinctBy { it.id.uppercase() }
+
+    allKnownCards.map { card ->
       val ent = entityMap[card.id.uppercase()]
       CardWithInventory(
         card = card,
@@ -26,11 +54,21 @@ class InventoryRepository(private val dao: InventoryDao) {
     }
   }
 
+  val savedDecksFlow: Flow<List<SavedDeckEntity>> = savedDeckDao.getAllSavedDecksFlow()
+
+  suspend fun saveDeck(deck: SavedDeckEntity): Long {
+    return savedDeckDao.insertDeck(deck)
+  }
+
+  suspend fun deleteDeck(deckId: Long) {
+    savedDeckDao.deleteDeckById(deckId)
+  }
+
   suspend fun toggleWishlist(cardId: String) {
-    val existing = dao.getCardById(cardId)
+    val existing = inventoryDao.getCardById(cardId)
     val card = CardCatalog.getCardById(cardId) ?: return
     if (existing == null) {
-      dao.insertCard(
+      inventoryDao.insertCard(
         InventoryCardEntity(
           cardId = card.id,
           cardName = card.name,
@@ -41,45 +79,66 @@ class InventoryRepository(private val dao: InventoryDao) {
         )
       )
     } else {
-      dao.updateCard(existing.copy(isWishlist = !existing.isWishlist))
+      inventoryDao.updateCard(existing.copy(isWishlist = !existing.isWishlist))
     }
   }
 
-  suspend fun setQuantitiesBatch(quantities: Map<String, Int>) {
-    val entities = mutableListOf<InventoryCardEntity>()
-    quantities.forEach { (rawId, qty) ->
-      val card = CardCatalog.getCardById(rawId)
-        ?: CardCatalog.ALL_CARDS.find { it.id.endsWith(rawId, ignoreCase = true) }
-        ?: CardCatalog.ALL_CARDS.find { it.name.equals(rawId, ignoreCase = true) }
+  suspend fun processParsedCsvCards(csvCards: List<ParsedCsvCard>) {
+    val inventoryEntities = mutableListOf<InventoryCardEntity>()
+    val userCardEntities = mutableListOf<UserCardEntity>()
 
-      if (card != null) {
-        val existing = dao.getCardById(card.id)
-        entities.add(
-          InventoryCardEntity(
-            cardId = card.id,
-            cardName = card.name,
-            packName = card.pack.displayName,
-            rarity = card.rarity.displayName,
-            quantity = qty,
-            isWishlist = existing?.isWishlist ?: false
-          )
+    csvCards.forEach { parsed ->
+      val formattedId = "${parsed.setCode}-${parsed.cardNumber}"
+
+      // Register with CardCatalog with actual CSV name!
+      val registeredCard = CardCatalog.registerCard(
+        id = formattedId,
+        name = parsed.name,
+        raritySymbol = parsed.rarity
+      )
+
+      val existing = inventoryDao.getCardById(registeredCard.id)
+
+      inventoryEntities.add(
+        InventoryCardEntity(
+          cardId = registeredCard.id,
+          cardName = registeredCard.name,
+          packName = registeredCard.pack.displayName,
+          rarity = registeredCard.rarity.displayName,
+          quantity = parsed.quantity,
+          isWishlist = existing?.isWishlist ?: false
         )
-      } else {
-        val existing = dao.getCardById(rawId)
-        entities.add(
-          InventoryCardEntity(
-            cardId = rawId,
-            cardName = "Carta $rawId",
-            packName = "Expansión Genética",
-            rarity = "Común",
-            quantity = qty,
-            isWishlist = existing?.isWishlist ?: false
-          )
+      )
+
+      userCardEntities.add(
+        UserCardEntity(
+          cardId = registeredCard.id,
+          setCode = parsed.setCode,
+          cardNumber = parsed.cardNumber,
+          name = registeredCard.name,
+          rarity = parsed.rarity,
+          quantity = parsed.quantity,
+          isRegistered = parsed.isRegistered,
+          isFavorite = existing?.isWishlist ?: false
         )
-      }
+      )
     }
-    if (entities.isNotEmpty()) {
-      dao.insertCards(entities)
+
+    if (inventoryEntities.isNotEmpty()) {
+      inventoryDao.insertCards(inventoryEntities)
+    }
+    if (userCardEntities.isNotEmpty()) {
+      userCardDao.insertUserCards(userCardEntities)
+    }
+  }
+
+  companion object {
+    fun fromDatabase(db: AppDatabase): InventoryRepository {
+      return InventoryRepository(
+        inventoryDao = db.inventoryDao(),
+        savedDeckDao = db.savedDeckDao(),
+        userCardDao = db.userCardDao()
+      )
     }
   }
 }
