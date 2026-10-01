@@ -11,8 +11,8 @@ Aplicación Android y web para gestionar una colección de Pokémon TCG Pocket.
 - Editor manual de mazos: hasta 20 cartas, dos copias por nombre, hasta tres energías, notas,
   borradores, mazos guardados y lista para compartir. Los mazos antiguos siguen siendo legibles.
 - Android conserva plantillas históricas A1, identificadas como históricas.
-- Canjes: reserva de una o dos copias y listas para ofrecer/buscar. La web compara otro CSV
-  y muestra propuestas recíprocas por rareza sin modificar ninguna colección.
+- Canjes: reserva de una o dos copias y listas para ofrecer/buscar. Android y web comparan otro CSV
+  y muestran propuestas recíprocas por rareza sin modificar ninguna colección.
 - Análisis de sobres por faltantes, deseos y objetivos (Android), sin tasas no verificadas.
 - Calculadora con tasa total por sobre introducida por el usuario y robo sin reemplazo.
 - Respaldo JSON compatible entre Android y web: colección, deseos, mazos y preferencias.

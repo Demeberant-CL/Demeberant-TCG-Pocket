@@ -126,13 +126,13 @@ function renderTrades(){
   const mine=cards(),offering=mine.filter(c=>c.quantity>reserve),wishes=mine.filter(c=>c.wishlist),tools=toolbar(app);
   tools.append(button('Copiar lista de ofertas',async()=>{await navigator.clipboard.writeText(offering.map(c=>c.id+' · '+c.name+' x'+(c.quantity-reserve)).join('\n'));notice('Lista copiada.');}),
     button('Comparar otro CSV',()=>pick('peer')));
-  if(peer){const theirs=new Map(peer.map(c=>[c.id,c])),give=offering.filter(c=>!(theirs.get(c.id)?.quantity||0)),receive=mine.filter(c=>!c.quantity&&(theirs.get(c.id)?.quantity||0)>reserve);
+  if(peer){const theirs=new Map(peer.map(c=>[c.id,c])),give=offering.filter(c=>theirs.get(c.id)?.quantity===0),receive=mine.filter(c=>!c.quantity&&(theirs.get(c.id)?.quantity||0)>reserve);
     const proposals=panel(app);proposals.append(el('h2','Propuestas por rareza'));
     let found=0;
     rarities.forEach(r=>{const out=give.filter(c=>c.rarity===r),incoming=receive.filter(c=>c.rarity===r);
       if(out.length&&incoming.length){found++;text(proposals,'Rareza '+r);text(proposals,'Puedes ofrecer: '+out.slice(0,15).map(c=>c.id+' '+c.name).join(', '));text(proposals,'Puedes pedir: '+incoming.slice(0,15).map(c=>c.id+' '+c.name).join(', '));}});
     if(!found)text(proposals,'No hay propuestas recíprocas con la misma rareza y esta reserva.');
-    text(proposals,'Se comparan cantidades del CSV, sin ejecutar canjes. El CSV de la otra persona no se guarda en tu colección.','muted');
+    text(proposals,'Se requiere un cero explícito para afirmar que al otro usuario le falta una carta. Se comparan cantidades del CSV, sin ejecutar canjes. El CSV de la otra persona no se guarda en tu colección.','muted');
   }
   const list=panel(app);list.append(el('h2','Para ofrecer'));if(!offering.length)text(list,'No hay copias sobrantes.');
   offering.slice(0,150).forEach(c=>text(list,c.id+' · '+c.name+' · '+(c.quantity-reserve)+' disponibles'));
@@ -193,5 +193,9 @@ try{
   if(rawStorage){const saved=JSON.parse(rawStorage);const checked=validateBackup(JSON.stringify({format:'demeberant-tcg-pocket-backup',version:1,inventory:Object.values(saved.inventory),decks:saved.decks,preferences:saved.preferences}));state={inventory:Object.fromEntries(checked.inventory.map(c=>[c.id,c])),decks:checked.decks,preferences:checked.preferences};}
 }catch(error){storageBlocked=true;notice('No se pudo leer el almacenamiento. Abre Ajustes para recuperar una copia.',true);}
 applyTheme();
+async function loadCatalog(){
 try{const response=await fetch(import.meta.env.BASE_URL+'pocket-catalog.json');if(!response.ok)throw new Error('Catálogo no disponible');const data=await response.json();catalog=data.cards;render();}
 catch(error){app.replaceChildren();heading(app,'Catálogo no disponible');text(app,'Vuelve a cargar la página. Tus datos guardados se conservan.');notice(error.message,true);}
+
+}
+loadCatalog();

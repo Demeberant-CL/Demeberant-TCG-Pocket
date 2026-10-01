@@ -109,6 +109,19 @@ class CompleteAppTest {
     assertTrue(CollectionInsights.coverage(listOf(CardWithInventory(card, 1, true))).all { it.score == 0 })
   }
 
+  @Test fun tradeComparisonRequiresExplicitMissingCardsAndKeepsReserve() {
+    val bulbasaur = CardCatalog.getCardById("A1-001")!!
+    val caterpie = CardCatalog.getCardById("A1-005")!!
+    val mine = listOf(CardWithInventory(bulbasaur, 3, false), CardWithInventory(caterpie, 0, true))
+    val peer = CollectionCsv.parse("Set,ID,Nombre,Rareza,Cantidad\nA1,1,Bulbasaur,♦,0\nA1,5,Caterpie,♦,3")
+    val proposals = TradePlanner.compare(mine, peer, 2)
+    assertEquals(1, proposals.size)
+    assertEquals(bulbasaur.id, proposals.single().offer.single().card.id)
+    assertEquals(caterpie.id, proposals.single().request.single().card.id)
+    assertTrue(TradePlanner.compare(mine, peer.drop(1), 2).isEmpty())
+    assertTrue(TradePlanner.compare(mine.map { it.copy(ownedCount = if (it.card.id == bulbasaur.id) 2 else 0) }, peer, 2).isEmpty())
+  }
+
   @Test fun probabilityModelsMatchExactBoundaryAndDrawCases() {
     assertEquals(0.19, CollectionInsights.cumulativeChance(0.1, 2), 1e-10)
     assertEquals(0.0, CollectionInsights.cumulativeChance(1.0, 0), 0.0)

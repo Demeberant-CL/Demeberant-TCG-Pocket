@@ -3,6 +3,16 @@ package com.example.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.example.data.util.CollectionCsv
+import com.example.data.util.TradePlanner
+import com.example.data.util.readBytesBounded
+import com.example.data.repository.ParsedCsvCard
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -59,7 +69,24 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
   var reserveTwo by rememberSaveable { mutableStateOf(true) }
   var copied by remember { mutableStateOf(false) }
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+  var peer by remember { mutableStateOf<List<ParsedCsvCard>?>(null) }
+  var comparisonError by remember { mutableStateOf<String?>(null) }
+  val peerPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    if (uri != null) scope.launch {
+      try {
+        peer = withContext(Dispatchers.IO) {
+          val text = context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
+            ?: error("No se pudo abrir el CSV.")
+          CollectionCsv.parse(text)
+        }
+        comparisonError = null
+      } catch (e: CancellationException) { throw e }
+      catch (e: Exception) { comparisonError = "No se pudo comparar: ${e.localizedMessage}" }
+    }
+  }
   val reserve = if (reserveTwo) 2 else 1
+  val proposals = remember(inventory, peer, reserve) { peer?.let { TradePlanner.compare(inventory, it, reserve) } ?: emptyList() }
   val cards = if (section == 0) inventory.filter { it.ownedCount > reserve }
     else inventory.filter { it.isWishlist }
   val title = if (section == 0) "Disponibles para ofrecer" else "Cartas que busco"
@@ -89,6 +116,25 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
             .setPrimaryClip(ClipData.newPlainText(title, text))
           copied = true
         }) { Text(if (copied) "Lista copiada" else "Copiar lista") }
+      }
+      if (section == 0) item {
+        OutlinedButton(onClick = { peerPicker.launch("*/*") }) { Text("Comparar otro CSV") }
+        comparisonError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        peer?.let { other ->
+          Text("Comparación de ${other.size} registros. El CSV ajeno no se guarda en tu colección.")
+          Text("Se proponen cartas de la misma rareza. Solo se considera faltante del otro usuario una cantidad cero explícita. Comprueba la elegibilidad y coste en el juego.")
+          if (proposals.isEmpty()) Text("No hay propuestas recíprocas con esta reserva.")
+        }
+      }
+      if (section == 0) items(proposals, key = { it.rarity.name }) { proposal ->
+        Card(Modifier.fillMaxWidth()) {
+          Column(Modifier.padding(14.dp)) {
+            Text("Rareza ${proposal.rarity.symbol}", style = MaterialTheme.typography.titleMedium)
+            Text("Puedes ofrecer: " + proposal.offer.take(15).joinToString { "${it.card.id} ${it.card.name}" })
+            Text("Puedes pedir: " + proposal.request.take(15).joinToString { "${it.card.id} ${it.card.name}" })
+            if (proposal.offer.size > 15 || proposal.request.size > 15) Text("Se muestran hasta 15 cartas por lado.")
+          }
+        }
       }
       if (cards.isEmpty()) item {
         Text(if (section == 0) "No tienes copias sobrantes con esta reserva."
