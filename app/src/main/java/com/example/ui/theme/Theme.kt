@@ -8,19 +8,20 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-  primary = PocketBluePrimary,
+  primary = Color(0xFF0284C7),
   onPrimary = Color.White,
-  primaryContainer = PocketBlueLight,
-  onPrimaryContainer = PocketBlueDark,
+  primaryContainer = Color(0xFFE0F2FE),
+  onPrimaryContainer = Color(0xFF0369A1),
   secondary = PocketGold,
-  background = PocketBackground,
-  surface = PocketSurface,
-  onBackground = PocketTextPrimary,
-  onSurface = PocketTextPrimary
+  background = Color(0xFFF8FAFC),
+  surface = Color.White,
+  onBackground = Color(0xFF0F172A),
+  onSurface = Color(0xFF0F172A)
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -66,7 +67,8 @@ fun PocketAppTheme(
       val window = (view.context as? Activity)?.window
       if (window != null) {
         val windowInsetsController = WindowCompat.getInsetsController(window, view)
-        windowInsetsController.isAppearanceLightStatusBars = (themeName == "light" || (!isDarkMode && themeName == "blue"))
+        windowInsetsController.isAppearanceLightStatusBars = colorScheme.surface.luminance() > 0.5f
+        windowInsetsController.isAppearanceLightNavigationBars = colorScheme.surface.luminance() > 0.5f
       }
     }
   }

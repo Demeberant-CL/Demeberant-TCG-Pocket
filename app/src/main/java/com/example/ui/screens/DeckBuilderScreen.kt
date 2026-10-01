@@ -84,6 +84,7 @@ fun DeckBuilderScreen(
   modifier: Modifier = Modifier
 ) {
   val context = LocalContext.current
+  val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
   val generatedDeck by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val deckPrompt by viewModel.deckBuildPrompt.collectAsStateWithLifecycle()
   val onlyFromInventory by viewModel.onlyFromInventoryDeck.collectAsStateWithLifecycle()
@@ -216,7 +217,7 @@ fun DeckBuilderScreen(
             if (isGenerating) {
               CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
               Spacer(modifier = Modifier.width(8.dp))
-              Text("Generando baraja legal...", fontSize = 12.sp)
+              Text("Generando propuesta...", fontSize = 12.sp)
             } else {
               Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
@@ -275,6 +276,9 @@ fun DeckBuilderScreen(
               }
             }
 
+            deck.validationWarnings.forEach { warning ->
+              Text(warning, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
             Spacer(modifier = Modifier.height(10.dp))
 
             // Strategy box
@@ -282,8 +286,8 @@ fun DeckBuilderScreen(
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFF8FAFC))
-                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(10.dp))
                 .padding(10.dp)
             ) {
               Row(verticalAlignment = Alignment.Top) {
@@ -310,7 +314,7 @@ fun DeckBuilderScreen(
                     .background(PocketSurface)
                 ) {
                   AsyncImage(
-                    model = TcgdexHelper.getCardImageUrl(entry.card.id),
+                    model = TcgdexHelper.getCardImageUrl(entry.card.id, userPreferences.language),
                     contentDescription = entry.card.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -384,7 +388,8 @@ fun DeckBuilderScreen(
                   .height(38.dp)
                   .testTag("save_deck_db_btn"),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                enabled = deck.validationWarnings.isEmpty()
               ) {
                 Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))

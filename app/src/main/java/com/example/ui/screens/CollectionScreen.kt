@@ -58,6 +58,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -85,6 +86,9 @@ import com.example.ui.theme.PocketTextMuted
 import com.example.ui.theme.PocketTextPrimary
 import com.example.ui.theme.PocketTextSecondary
 import com.example.ui.viewmodel.TcgViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun CollectionScreen(
@@ -92,6 +96,7 @@ fun CollectionScreen(
   modifier: Modifier = Modifier
 ) {
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -111,17 +116,31 @@ fun CollectionScreen(
   val csvPickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
   ) { uri: Uri? ->
-    if (uri != null) {
+    if (uri != null) scope.launch {
       try {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val text = inputStream?.bufferedReader()?.use { it.readText() }
-        if (!text.isNullOrBlank()) {
-          viewModel.importCsv(text)
-        } else {
-          Toast.makeText(context, "El archivo CSV está vacío.", Toast.LENGTH_SHORT).show()
+        val text = withContext(Dispatchers.IO) {
+          context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
         }
+        if (!text.isNullOrBlank()) viewModel.importCsv(text)
+        else Toast.makeText(context, "El archivo CSV está vacío.", Toast.LENGTH_SHORT).show()
       } catch (e: Exception) {
         Toast.makeText(context, "Error al leer archivo: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+      }
+    }
+  }
+
+  val csvExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+    if (uri != null) scope.launch {
+      try {
+        val content = viewModel.generateCsvContent()
+        withContext(Dispatchers.IO) {
+          val output = context.contentResolver.openOutputStream(uri)
+            ?: error("No se pudo abrir el destino.")
+          output.bufferedWriter().use { it.write(content) }
+        }
+        Toast.makeText(context, "CSV guardado.", Toast.LENGTH_SHORT).show()
+      } catch (e: Exception) {
+        Toast.makeText(context, "Error al exportar: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
       }
     }
   }
@@ -214,7 +233,7 @@ fun CollectionScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Text(
-            text = "Álbum: $totalOwned / $totalCatalog registradas",
+            text = "Catálogo: $totalOwned / $totalCatalog registradas",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = PocketTextSecondary
@@ -236,7 +255,7 @@ fun CollectionScreen(
             .height(7.dp)
             .clip(RoundedCornerShape(4.dp)),
           color = PocketBluePrimary,
-          trackColor = Color(0xFFE2E8F0)
+          trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -279,21 +298,7 @@ fun CollectionScreen(
 
           Button(
             onClick = {
-              val csvContent = viewModel.generateCsvContent()
-              val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-              val clip = ClipData.newPlainText("Demeberant TCG Pocket CSV", csvContent)
-              clipboard.setPrimaryClip(clip)
-
-              val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, csvContent)
-                type = "text/csv"
-              }
-              try {
-                context.startActivity(Intent.createChooser(sendIntent, "Exportar Colección CSV"))
-              } catch (_: Exception) {
-                Toast.makeText(context, "CSV copiado al portapapeles con éxito", Toast.LENGTH_SHORT).show()
-              }
+              csvExportLauncher.launch("coleccion-pokemon.csv")
             },
             modifier = Modifier
               .weight(1f)
@@ -477,7 +482,8 @@ fun CollectionScreen(
             card = item.card,
             ownedCount = item.ownedCount,
             isWishlist = item.isWishlist,
-            onToggleWishlist = { viewModel.toggleWishlist(item.card.id) }
+            onToggleWishlist = { viewModel.toggleWishlist(item.card.id) },
+            imageLanguage = userPreferences.language
           )
         }
       }
@@ -502,7 +508,7 @@ fun CollectionScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(Icons.Filled.Translate, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Idioma Principal (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+              Text("Idioma de imágenes (interfaz en español)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             }
             Spacer(modifier = Modifier.height(6.dp))
             listOf(
@@ -533,7 +539,7 @@ fun CollectionScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(Icons.Filled.Palette, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Tema Visual & Modo Oscuro (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+              Text("Tema visual", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             }
             Spacer(modifier = Modifier.height(6.dp))
             listOf(

@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,10 +71,9 @@ fun PackRecommenderScreen(
   var recommendationResult by remember { mutableStateOf<PackRecommendation?>(null) }
 
   // Initial calculation based on inventory
-  remember(inventory) {
+  LaunchedEffect(inventory) {
     val initialTargets = targetCardsInput.split(",").map { it.trim() }.filter { it.isNotBlank() }
     recommendationResult = TcgProbabilityEngine.recommendPack(initialTargets, inventory)
-    true
   }
 
   LazyColumn(
@@ -99,7 +99,7 @@ fun PackRecommenderScreen(
             Icon(Icons.Filled.CardGiftcard, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Recomendador de Sobres Óptimo",
+              text = "Recomendador orientativo de sobres",
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Black,
               color = PocketTextPrimary
@@ -109,7 +109,7 @@ fun PackRecommenderScreen(
           Spacer(modifier = Modifier.height(8.dp))
 
           Text(
-            text = "Calcula matemáticamente qué sobre abrir para maximizar la probabilidad de conseguir cartas objetivo o completar tu colección.",
+            text = "Compara cartas objetivo y faltantes del catálogo A1. Las cartas sin sobre verificado se excluyen del puntaje.",
             fontSize = 11.sp,
             color = PocketTextSecondary,
             lineHeight = 16.sp
@@ -179,7 +179,7 @@ fun PackRecommenderScreen(
           ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("Calcular Recomendación Óptima", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("Comparar sobres", fontSize = 12.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -192,6 +192,7 @@ fun PackRecommenderScreen(
           BoosterPack.CHARIZARD -> Color(0xFFEA580C)
           BoosterPack.MEWTWO -> Color(0xFF9333EA)
           BoosterPack.PIKACHU -> Color(0xFFCA8A04)
+          BoosterPack.UNKNOWN -> Color(0xFF64748B)
         }
 
         Card(
@@ -247,8 +248,8 @@ fun PackRecommenderScreen(
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFF8FAFC))
-                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(10.dp))
                 .padding(10.dp)
             ) {
               Row(verticalAlignment = Alignment.Top) {
@@ -271,18 +272,18 @@ fun PackRecommenderScreen(
                 modifier = Modifier
                   .weight(1f)
                   .clip(RoundedCornerShape(10.dp))
-                  .background(Color(0xFFF1F5F9))
+                  .background(MaterialTheme.colorScheme.surfaceContainer)
                   .padding(10.dp)
               ) {
                 Column {
                   Text("Probabilidad Slot 5", fontSize = 10.sp, color = PocketTextSecondary)
                   Text(
-                    text = "${(rec.successProbabilitySlot5 * 100).toInt()}%",
+                    text = rec.successProbabilitySlot5?.let { "${(it * 100).toInt()}%" } ?: "Sin datos",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                     color = PocketBluePrimary
                   )
-                  Text("Rarezas altas", fontSize = 9.sp, color = PocketTextSecondary)
+                  Text("Tasas sin verificar", fontSize = 9.sp, color = PocketTextSecondary)
                 }
               }
 
@@ -290,7 +291,7 @@ fun PackRecommenderScreen(
                 modifier = Modifier
                   .weight(1f)
                   .clip(RoundedCornerShape(10.dp))
-                  .background(Color(0xFFF1F5F9))
+                  .background(MaterialTheme.colorScheme.surfaceContainer)
                   .padding(10.dp)
               ) {
                 Column {

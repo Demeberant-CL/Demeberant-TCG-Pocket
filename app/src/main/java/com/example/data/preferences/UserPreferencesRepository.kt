@@ -9,6 +9,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
+import java.io.IOException
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
@@ -26,7 +28,9 @@ class UserPreferencesRepository(private val context: Context) {
     val THEME_NAME = stringPreferencesKey("theme_name")
   }
 
-  val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
+  val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.catch { error ->
+    if (error is IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw error
+  }.map { preferences ->
     val isDark = preferences[Keys.IS_DARK_MODE] ?: true
     val lang = preferences[Keys.LANGUAGE] ?: "es"
     val theme = preferences[Keys.THEME_NAME] ?: "dark"
@@ -48,7 +52,7 @@ class UserPreferencesRepository(private val context: Context) {
   suspend fun setThemeName(themeName: String) {
     context.dataStore.edit { preferences ->
       preferences[Keys.THEME_NAME] = themeName
-      preferences[Keys.IS_DARK_MODE] = themeName != "light"
+      preferences[Keys.IS_DARK_MODE] = themeName == "dark"
     }
   }
 }

@@ -14,12 +14,17 @@ import java.util.Locale
 object ErrorLogManager {
 
   private const val FILE_NAME = "error_logs.txt"
+  private val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+  private val fileLock = Any()
+  private const val MAX_LOG_BYTES = 1024 * 1024
   private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
   fun init(context: Context) {
+    if (!initialized.compareAndSet(false, true)) return
+    val appContext = context.applicationContext
     val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-      logError(context, "FATAL_CRASH", "Excepción no capturada en hilo ${thread.name}: ${throwable.localizedMessage}", throwable)
+      logError(appContext, "FATAL_CRASH", "Excepción no capturada en hilo ${thread.name}: ${throwable.localizedMessage}", throwable)
       defaultHandler?.uncaughtException(thread, throwable)
     }
   }
@@ -36,7 +41,10 @@ object ErrorLogManager {
     try {
       Log.e("TcgPocket-$tag", message, throwable)
       val file = File(context.filesDir, FILE_NAME)
-      file.appendText(logEntry)
+      synchronized(fileLock) {
+        if (file.length() > MAX_LOG_BYTES) file.writeText(file.readText().takeLast(MAX_LOG_BYTES / 4))
+        file.appendText(logEntry)
+      }
     } catch (e: Exception) {
       Log.e("ErrorLogManager", "Fallo al escribir en log de errores", e)
     }

@@ -85,7 +85,7 @@ fun ProbabilityCalculatorScreen(
             Icon(Icons.Filled.Calculate, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Calculadora Oficial de Probabilidades",
+              text = "Calculadora orientativa de probabilidades",
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Black,
               color = PocketTextPrimary
@@ -95,7 +95,7 @@ fun ProbabilityCalculatorScreen(
           Spacer(modifier = Modifier.height(6.dp))
 
           Text(
-            text = "Basada en los índices de aparición oficiales de Pokémon TCG Pocket (Exactamente 5 cartas por sobre de expansión).",
+            text = "Modelo ilustrativo de sobres de cinco cartas. Las tasas heredadas no están verificadas para las expansiones actuales.",
             fontSize = 11.sp,
             color = PocketTextSecondary
           )
@@ -201,7 +201,7 @@ fun ProbabilityCalculatorScreen(
             value = packsSliderValue,
             onValueChange = { packsSliderValue = it },
             valueRange = 1f..150f,
-            steps = 149,
+            steps = 148,
             colors = SliderDefaults.colors(
               thumbColor = PocketBluePrimary,
               activeTrackColor = PocketBluePrimary
@@ -236,7 +236,7 @@ fun ProbabilityCalculatorScreen(
               modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFF1F5F9))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(12.dp)
             ) {
               Column {
@@ -247,7 +247,7 @@ fun ProbabilityCalculatorScreen(
                   fontWeight = FontWeight.Black,
                   color = PocketBluePrimary
                 )
-                Text("Para 1 garantizada", fontSize = 9.sp, color = PocketTextSecondary)
+                Text("Promedio; no es garantía", fontSize = 9.sp, color = PocketTextSecondary)
               }
             }
           }
@@ -259,11 +259,11 @@ fun ProbabilityCalculatorScreen(
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFF8FAFC))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(10.dp)
             ) {
               Column {
-                Text("Desglose Oficial por Ranura:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+                Text("Modelo orientativo por ranura:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("• Ranura 4: ${String.format("%.3f%%", data.slot4Probability * 100)}", fontSize = 10.sp, color = PocketTextSecondary)
                 Text("• Ranura 5: ${String.format("%.3f%%", data.slot5Probability * 100)}", fontSize = 10.sp, color = PocketTextSecondary)

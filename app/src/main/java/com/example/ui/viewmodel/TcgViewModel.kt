@@ -23,9 +23,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import com.example.data.util.CollectionCsv
+import com.example.data.util.CardId
 
 class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,16 +46,28 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     preferencesRepository = UserPreferencesRepository(application)
   }
 
+  private val initialization = kotlinx.coroutines.CompletableDeferred<Unit>()
+
   // Preferences DataStore Flow
   val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences())
 
   // Collection inventory Flow
   val inventoryList: StateFlow<List<CardWithInventory>> = repository.inventoryFlow
+    .catch { error ->
+      _csvStatusMessage.value = "No se puede leer la colección: ${error.localizedMessage}"
+      ErrorLogManager.logError(getApplication(), "INVENTORY_READ", "Error al leer la colección", error)
+      emit(emptyList())
+    }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   // Saved Decks Flow
   val savedDecks: StateFlow<List<SavedDeckEntity>> = repository.savedDecksFlow
+    .catch { error ->
+      _csvStatusMessage.value = "No se pueden leer los mazos: ${error.localizedMessage}"
+      ErrorLogManager.logError(getApplication(), "DECKS_READ", "Error al leer mazos", error)
+      emit(emptyList())
+    }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   private val _searchQuery = MutableStateFlow("")
@@ -105,23 +124,32 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
       matchesQuery && matchesPack && matchesWishlist && matchesMissing
     }
-  }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+  }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   init {
     viewModelScope.launch {
       try {
-        val existing = repository.inventoryFlow.first()
-        if (existing.all { it.ownedCount == 0 }) {
-          val assetCsv = getApplication<Application>().assets.open("coleccion-pokemon-2026-09-29.csv")
-            .bufferedReader().use { it.readText() }
-          importCsv(assetCsv)
+        if (repository.isInventoryEmpty()) {
+          val assetCsv = withContext(Dispatchers.IO) {
+            getApplication<Application>().assets.open("coleccion-pokemon-2026-09-29.csv")
+              .bufferedReader().use { it.readText() }
+          }
+          val parsed = withContext(Dispatchers.Default) { CollectionCsv.parse(assetCsv) }
+          repository.processParsedCsvCards(parsed)
         }
+        // Ensure persisted card names and rarities have been hydrated before generation.
+        repository.inventoryFlow.first()
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
-        ErrorLogManager.logError(getApplication(), "INIT_ASSET_LOAD", "Error al pre-cargar coleccion-pokemon-2026-09-29.csv", e)
+        _csvStatusMessage.value = "No se pudo cargar la colección: ${e.localizedMessage}"
+        ErrorLogManager.logError(getApplication(), "INIT_ASSET_LOAD", "Error al cargar la colección", e)
+      } finally {
+        initialization.complete(Unit)
       }
+      runGeminiMetaAnalysis()
+      generateDeck("Pikachu ex Turbo")
     }
-    runGeminiMetaAnalysis()
-    generateDeck("Pikachu ex Turbo")
   }
 
   // Preferences Actions
@@ -164,6 +192,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       try {
         repository.toggleWishlist(cardId)
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         ErrorLogManager.logError(getApplication(), "TOGGLE_WISHLIST", "Error al alternar wishlist para $cardId", e)
       }
@@ -177,76 +207,25 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   fun importCsv(csvText: String) {
     viewModelScope.launch {
       try {
-        val lines = csvText.lines().map { it.trim() }.filter { it.isNotBlank() }
-        if (lines.isEmpty()) {
-          _csvStatusMessage.value = "Error: El archivo CSV está vacío."
-          ErrorLogManager.logError(getApplication(), "CSV_IMPORT", "El archivo CSV proporcionado está vacío.")
-          return@launch
-        }
-
-        val firstLine = lines[0]
-        val delimiter = if (firstLine.contains(";")) ";" else ","
-        val headers = lines[0].split(delimiter).map { it.trim().lowercase().removeSurrounding("\"") }
-
-        val setIndex = headers.indexOfFirst { it == "set" || it.contains("expansion") || it.contains("coleccion") }
-        val idIndex = headers.indexOfFirst { it == "id" || it.contains("card_id") || it.contains("código") || it.contains("numero") }
-        val nameIndex = headers.indexOfFirst { it.contains("nombre") || it.contains("name") }
-        val rarityIndex = headers.indexOfFirst { it.contains("rare") || it.contains("rarity") }
-        val qtyIndex = headers.indexOfFirst { it.contains("cantidad") || it.contains("quantity") || it.contains("count") || it.contains("copias") }
-
-        val parsedCards = mutableListOf<ParsedCsvCard>()
-        val startIndex = if (headers.any { it.contains("id") || it.contains("set") || it.contains("nombre") }) 1 else 0
-
-        for (i in startIndex until lines.size) {
-          val rawParts = lines[i].split(delimiter).map { it.trim().removeSurrounding("\"") }
-          if (rawParts.size >= 2) {
-            val setCode = if (setIndex != -1 && rawParts.size > setIndex) rawParts[setIndex].uppercase() else "A1"
-            val cardNumber = if (idIndex != -1 && rawParts.size > idIndex) rawParts[idIndex] else i.toString()
-            val name = if (nameIndex != -1 && rawParts.size > nameIndex) rawParts[nameIndex] else "Pokémon $cardNumber"
-            val rarity = if (rarityIndex != -1 && rawParts.size > rarityIndex) rawParts[rarityIndex] else "♦"
-            val qty = if (qtyIndex != -1 && rawParts.size > qtyIndex) rawParts[qtyIndex].toIntOrNull() ?: 1 else 1
-
-            parsedCards.add(
-              ParsedCsvCard(
-                setCode = setCode,
-                cardNumber = cardNumber,
-                name = name,
-                rarity = rarity,
-                quantity = qty,
-                isRegistered = qty > 0
-              )
-            )
-          }
-        }
-
-        repository.processParsedCsvCards(parsedCards)
-        _csvStatusMessage.value = "¡Importación exitosa! Se procesaron ${parsedCards.size} cartas con sus nombres e imágenes reales."
+        initialization.await()
+        val parsed = withContext(Dispatchers.Default) { CollectionCsv.parse(csvText) }
+        repository.processParsedCsvCards(parsed)
+        _csvStatusMessage.value = "Importación exitosa: ${parsed.size} cartas procesadas."
         runGeminiMetaAnalysis()
+        generateDeck()
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
-        val err = "Error al procesar CSV: ${e.localizedMessage}"
-        _csvStatusMessage.value = err
-        ErrorLogManager.logError(getApplication(), "CSV_IMPORT", err, e)
+        _csvStatusMessage.value = "Error al procesar CSV: ${e.localizedMessage}"
+        ErrorLogManager.logError(getApplication(), "CSV_IMPORT", "Error al importar CSV", e)
       }
     }
   }
 
-  fun generateCsvContent(): String {
-    return try {
-      val sb = StringBuilder()
-      sb.appendLine("\"Set\",\"ID\",\"Nombre\",\"Rareza\",\"Cantidad\",\"Registrada\"")
-      val current = inventoryList.value
-      current.forEach { item ->
-        val parts = item.card.id.split("-")
-        val setVal = if (parts.size > 1) parts[0] else "A1"
-        val idVal = if (parts.size > 1) parts[1].trimStart('0').ifEmpty { "0" } else item.card.id
-        val isReg = if (item.ownedCount > 0) "sí" else "no"
-        sb.appendLine("\"$setVal\",\"$idVal\",\"${item.card.name}\",\"${item.card.rarity.symbol}\",\"${item.ownedCount}\",\"$isReg\"")
-      }
-      sb.toString().trimEnd()
-    } catch (e: Exception) {
-      ErrorLogManager.logError(getApplication(), "CSV_EXPORT", "Error al serializar colección a CSV", e)
-      ""
-    }
+  suspend fun generateCsvContent(): String {
+    initialization.await()
+    val cards = repository.inventoryFlow.first()
+    return withContext(Dispatchers.Default) { CollectionCsv.export(cards) }
   }
 
   // Deck Builder Actions
@@ -263,14 +242,18 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       try {
         _isGeneratingDeck.value = true
         val prompt = customPrompt ?: _deckBuildPrompt.value
-        val ownedMap = inventoryList.value.associate { it.card.id.uppercase() to it.ownedCount }
+        initialization.await()
+        val inventory = repository.inventoryFlow.first()
+        val ownedMap = inventory.associate { it.card.id to it.ownedCount }
 
-        val deck = DeckBuilderEngine.buildArchetypeDeck(
+        val deck = withContext(Dispatchers.Default) { DeckBuilderEngine.buildArchetypeDeck(
           userPrompt = prompt,
           onlyFromInventory = _onlyFromInventoryDeck.value,
           ownedMap = ownedMap
-        )
+        ) }
         _generatedDeck.value = deck
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         ErrorLogManager.logError(getApplication(), "DECK_BUILDER", "Fallo al generar mazo con prompt: $customPrompt", e)
       } finally {
@@ -283,6 +266,10 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   fun saveCurrentDeck(customName: String? = null) {
     viewModelScope.launch {
       val deck = _generatedDeck.value ?: return@launch
+      if (deck.validationWarnings.isNotEmpty()) {
+        _csvStatusMessage.value = "El mazo necesita correcciones antes de guardarse: ${deck.validationWarnings.joinToString(" ")}"
+        return@launch
+      }
       try {
         val serializedCards = deck.cards.joinToString(";") { "${it.card.id}:${it.count}" }
         val entity = SavedDeckEntity(
@@ -294,6 +281,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         )
         repository.saveDeck(entity)
         _csvStatusMessage.value = "¡Mazo '${entity.name}' guardado correctamente en tu base de datos!"
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         ErrorLogManager.logError(getApplication(), "SAVE_DECK", "Error al guardar mazo en base de datos", e)
       }
@@ -307,9 +296,10 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       parts.forEach { part ->
         val pair = part.split(":")
         if (pair.size == 2) {
-          val cardId = pair[0]
+          val cardId = CardId.normalize(pair[0])
           val count = pair[1].toIntOrNull() ?: 1
-          val card = CardCatalog.getCardById(cardId) ?: CardCatalog.registerCard(cardId, cardId)
+          val card = CardCatalog.getCardById(cardId)
+            ?: throw IllegalArgumentException("Carta $cardId no disponible en la colección.")
           cardEntries.add(DeckCardEntry(card, count))
         }
       }
@@ -318,7 +308,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         archetype = savedDeck.archetype,
         strategy = savedDeck.strategy,
         cards = cardEntries,
-        totalCardCount = savedDeck.totalCards
+        totalCardCount = cardEntries.sumOf { it.count },
+        validationWarnings = DeckBuilderEngine.validate(cardEntries)
       )
       _deckBuildPrompt.value = savedDeck.name
     } catch (e: Exception) {
@@ -330,6 +321,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       try {
         repository.deleteDeck(deckId)
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         ErrorLogManager.logError(getApplication(), "DELETE_DECK", "Error al eliminar mazo $deckId", e)
       }
@@ -340,9 +333,12 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       try {
         _isAnalyzingMeta.value = true
-        val currentInventory = inventoryList.value
-        val result = GeminiDeckAnalyzer.computeLocalMetaAnalysis(currentInventory)
+        initialization.await()
+        val currentInventory = repository.inventoryFlow.first()
+        val result = withContext(Dispatchers.Default) { GeminiDeckAnalyzer.computeLocalMetaAnalysis(currentInventory) }
         _metaAnalysis.value = result
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         ErrorLogManager.logError(getApplication(), "META_ANALYSIS", "Error al computar análisis del meta", e)
       } finally {

@@ -66,10 +66,11 @@ fun CardItemView(
   ownedCount: Int,
   isWishlist: Boolean,
   onToggleWishlist: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  imageLanguage: String = "es"
 ) {
   val isOwned = ownedCount > 0
-  var imageFailed by remember { mutableStateOf(false) }
+  var imageFailed by remember(card.id, imageLanguage) { mutableStateOf(false) }
 
   val grayscaleMatrix = remember {
     ColorMatrix().apply { setToSaturation(0f) }
@@ -96,18 +97,18 @@ fun CardItemView(
       .testTag("card_item_${card.id}"),
     shape = RoundedCornerShape(12.dp),
     colors = CardDefaults.cardColors(
-      containerColor = if (isOwned) PocketSurface else Color(0xFFE2E8F0)
+      containerColor = if (isOwned) PocketSurface else MaterialTheme.colorScheme.surfaceContainerHigh
     ),
     border = CardDefaults.outlinedCardBorder().copy(
       brush = androidx.compose.ui.graphics.SolidColor(
-        if (isOwned) PocketBorder else Color(0xFFCBD5E1)
+        if (isOwned) PocketBorder else MaterialTheme.colorScheme.outlineVariant
       )
     )
   ) {
     Box(modifier = Modifier.fillMaxSize()) {
       if (!imageFailed) {
         AsyncImage(
-          model = TcgdexHelper.getCardImageUrl(card.id),
+          model = TcgdexHelper.getCardImageUrl(card.id, imageLanguage),
           contentDescription = card.name,
           contentScale = ContentScale.Crop,
           colorFilter = if (!isOwned) ColorFilter.colorMatrix(grayscaleMatrix) else null,
@@ -125,7 +126,7 @@ fun CardItemView(
           modifier = Modifier
             .fillMaxSize()
             .alpha(if (isOwned) 1.0f else 0.5f)
-            .background(if (isOwned) Color(0xFFF8FAFC) else Color(0xFFE2E8F0))
+            .background(if (isOwned) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(6.dp),
           verticalArrangement = Arrangement.SpaceBetween
         ) {

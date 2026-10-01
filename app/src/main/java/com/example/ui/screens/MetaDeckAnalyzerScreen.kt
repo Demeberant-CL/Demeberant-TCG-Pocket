@@ -83,7 +83,7 @@ fun MetaDeckAnalyzerScreen(
             Icon(Icons.Filled.Insights, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Análisis de Meta TCG Pocket",
+              text = "Plantillas A1 y colección",
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Black,
               color = PocketTextPrimary
@@ -93,7 +93,7 @@ fun MetaDeckAnalyzerScreen(
           Spacer(modifier = Modifier.height(8.dp))
 
           Text(
-            text = metaAnalysis?.overview ?: "Evaluación en tiempo real de los arquetipos dominantes en el formato de 20 cartas y compatibilidad con tu colección.",
+            text = metaAnalysis?.overview ?: "Cargando el análisis local de plantillas A1 y tu colección.",
             fontSize = 12.sp,
             color = PocketTextSecondary,
             lineHeight = 17.sp
@@ -244,7 +244,7 @@ private fun MetaDeckInsightCard(
           .height(6.dp)
           .clip(RoundedCornerShape(3.dp)),
         color = if (insight.completionRatePercent >= 75) Color(0xFF10B981) else PocketBluePrimary,
-        trackColor = Color(0xFFE2E8F0)
+        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
       )
 
       Spacer(modifier = Modifier.height(8.dp))

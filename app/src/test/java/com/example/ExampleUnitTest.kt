@@ -37,7 +37,7 @@ class ExampleUnitTest {
     assertEquals(CardRarity.FOUR_DIAMONDS, charizard?.rarity)
 
     // Dynamic expansion card resolution
-    val dynamicCard = CardCatalog.getCardById("A2-110")
+    val dynamicCard = CardCatalog.registerCard("A2-110", "Carta importada de prueba")
     assertNotNull(dynamicCard)
     assertTrue(dynamicCard?.name?.isNotBlank() == true)
   }

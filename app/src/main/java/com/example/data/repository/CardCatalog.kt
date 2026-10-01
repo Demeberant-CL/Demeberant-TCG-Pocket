@@ -139,92 +139,41 @@ object CardCatalog {
   )
 
   val ALL_CARDS: List<PokemonCard>
-    get() = (STATIC_CARDS + dynamicCards.values.toList()).distinctBy { it.id.uppercase() }
+    get() = (STATIC_CARDS + dynamicCards.values.toList()).distinctBy { it.id }
 
   fun registerCard(
     id: String,
     name: String,
     raritySymbol: String = "♦",
-    pack: BoosterPack = BoosterPack.CHARIZARD,
-    type: String = "Normal"
+    pack: BoosterPack = BoosterPack.UNKNOWN,
+    type: String = "Sin verificar"
   ): PokemonCard {
-    val cleanId = id.trim().uppercase()
-    val existing = STATIC_CARDS.find { it.id.equals(cleanId, ignoreCase = true) } ?: dynamicCards[cleanId]
-    if (existing != null && !existing.name.startsWith("Carta ")) {
-      return existing
-    }
-
+    val cleanId = com.example.data.util.CardId.normalize(id)
+    STATIC_CARDS.find { it.id == cleanId }?.let { return it }
     val rarity = CardRarity.fromSymbol(raritySymbol)
-    val isEx = name.lowercase().contains(" ex")
-    val isStar = raritySymbol.contains("★")
-    val isCrown = raritySymbol.contains("♛")
-
     val newCard = PokemonCard(
       id = cleanId,
-      name = name.ifBlank { "Pokémon $cleanId" },
+      name = name.ifBlank { "Carta $cleanId" },
       pack = pack,
       rarity = rarity,
-      hp = if (isEx) 150 else 80,
-      type = inferType(name, type),
-      attackName = if (isEx) "Ataque Especial" else "Ataque Rápido",
-      attackDamage = if (isEx) "100" else "40",
-      isEx = isEx,
-      isFullArt = isStar,
-      isSecretRare = isCrown,
+      hp = 0,
+      type = type,
+      attackName = "",
+      attackDamage = "",
+      isEx = name.endsWith(" ex", ignoreCase = true),
+      isFullArt = rarity in listOf(CardRarity.ONE_STAR, CardRarity.TWO_STARS),
+      isSecretRare = rarity == CardRarity.CROWN,
       isImmersive = rarity == CardRarity.THREE_STARS
     )
     dynamicCards[cleanId] = newCard
     return newCard
   }
 
+  /** A lookup never fabricates a card or mutates the catalog. */
   fun getCardById(id: String): PokemonCard? {
-    val clean = id.trim().uppercase()
-    STATIC_CARDS.find { it.id.equals(clean, ignoreCase = true) }?.let { return it }
-    dynamicCards[clean]?.let { return it }
-
-    // If card ID follows format "SET-NUM" (e.g. A1A-5, A2-110, B4A-21)
-    val parts = clean.split("-")
-    if (parts.size >= 2) {
-      val setCode = parts[0]
-      val num = parts[1]
-      val dynamicName = deriveDynamicCardTitle(setCode, num)
-      val created = registerCard(clean, dynamicName, "♦", inferPack(setCode))
-      return created
-    }
-    return null
+    val clean = runCatching { com.example.data.util.CardId.normalize(id) }.getOrNull() ?: return null
+    return STATIC_CARDS.find { it.id == clean } ?: dynamicCards[clean]
   }
 
-  fun getCardsByPack(pack: BoosterPack): List<PokemonCard> {
-    return ALL_CARDS.filter { it.pack == pack }
-  }
-
-  private fun inferPack(setCode: String): BoosterPack {
-    return when {
-      setCode.contains("PIKACHU", ignoreCase = true) -> BoosterPack.PIKACHU
-      setCode.contains("MEWTWO", ignoreCase = true) -> BoosterPack.MEWTWO
-      else -> BoosterPack.CHARIZARD
-    }
-  }
-
-  private fun inferType(name: String, fallback: String): String {
-    val n = name.lowercase()
-    return when {
-      n.contains("charizard") || n.contains("fire") || n.contains("fuego") || n.contains("moltres") || n.contains("vulpix") || n.contains("magmar") || n.contains("ponyta") -> "Fuego"
-      n.contains("blastoise") || n.contains("water") || n.contains("agua") || n.contains("starmie") || n.contains("articuno") || n.contains("suicune") || n.contains("squirtle") -> "Agua"
-      n.contains("pikachu") || n.contains("raichu") || n.contains("zapdos") || n.contains("rayo") || n.contains("electric") || n.contains("electabuzz") -> "Rayo"
-      n.contains("mewtwo") || n.contains("gardevoir") || n.contains("psíquico") || n.contains("psychic") || n.contains("alakazam") || n.contains("gengar") -> "Psíquico"
-      n.contains("machamp") || n.contains("marowak") || n.contains("lucha") || n.contains("fighting") || n.contains("hitmon") -> "Lucha"
-      n.contains("dark") || n.contains("oscuridad") || n.contains("darkrai") || n.contains("weavile") -> "Oscuridad"
-      n.contains("metal") || n.contains("steel") || n.contains("scizor") || n.contains("meltan") -> "Metal"
-      n.contains("dragon") || n.contains("dratini") || n.contains("dragonite") -> "Dragón"
-      n.contains("bulba") || n.contains("venusaur") || n.contains("planta") || n.contains("grass") -> "Planta"
-      fallback.isNotBlank() && fallback != "Normal" -> fallback
-      else -> "Incoloro"
-    }
-  }
-
-  private fun deriveDynamicCardTitle(setCode: String, number: String): String {
-    val cleanNum = number.trimStart('0').ifEmpty { "1" }
-    return "$setCode #$cleanNum"
-  }
+  fun getCardsByPack(pack: BoosterPack): List<PokemonCard> = ALL_CARDS.filter { it.pack == pack }
 }

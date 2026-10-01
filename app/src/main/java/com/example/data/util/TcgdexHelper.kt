@@ -1,23 +1,21 @@
 package com.example.data.util
 
 object TcgdexHelper {
-  /**
-   * Genera la URL pública de la imagen de la carta en la API / CDN de TCGdex.
-   * Por defecto intenta en idioma español ('es') según la especificación Neutral Spanish First.
-   */
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {
-    val parts = cardFullId.split("-")
-    val rawSet = if (parts.size > 1) parts[0] else "A1"
-    val rawNum = if (parts.size > 1) parts[1] else cardFullId
-    val cleanNum = rawNum.replace(Regex("^[^0-9]*"), "").trimStart('0').ifEmpty { "1" }
-    val cleanSet = rawSet.lowercase()
-
-    return "https://assets.tcgdex.net/$lang/tcgp/$cleanSet/$cleanNum/high.png"
+    val (set, number) = CardId.split(cardFullId)
+    return getCardImageUrl(set, number, lang)
   }
 
   fun getCardImageUrl(setId: String, cardNum: String, lang: String = "es"): String {
-    val cleanSet = setId.lowercase().trim()
-    val cleanNum = cardNum.replace(Regex("^[^0-9]*"), "").trimStart('0').ifEmpty { "1" }
-    return "https://assets.tcgdex.net/$lang/tcgp/$cleanSet/$cleanNum/high.png"
+    val (set, number) = CardId.split("$setId-$cardNum")
+    val language = lang.takeIf { it in setOf("es", "en", "ja") } ?: "es"
+    val assetSet = when (set) {
+      "PROMO-A" -> "P-A"
+      "PROMO-B" -> "P-B"
+      else -> Regex("^([AB][0-9]+)([A-Z]+)$").matchEntire(set)?.let {
+        it.groupValues[1] + it.groupValues[2].lowercase(java.util.Locale.ROOT)
+      } ?: set
+    }
+    return "https://assets.tcgdex.net/$language/tcgp/$assetSet/$number/low.webp"
   }
 }
