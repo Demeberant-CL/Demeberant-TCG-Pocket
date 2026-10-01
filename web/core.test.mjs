@@ -50,6 +50,7 @@ test('coverage prioritizes only missing cards and excludes promos',()=>{
 test('bundled catalogue has unique canonical cards and no placeholder health',async()=>{
  const data=JSON.parse(await readFile(new URL('../public/pocket-catalog.json',import.meta.url),'utf8'));
  assert.equal(data.cards.length,4317);assert.equal(new Set(data.cards.map(c=>c.id)).size,4317);
+ assert.equal(new Set(data.cards.map(c=>c.id.slice(0,c.id.lastIndexOf("-")))).size,24);
  assert.ok(data.cards.every(c=>canonical(c.id)===c.id&&!('hp'in c)));
  assert.ok(data.cards.some(c=>c.id==='B4B-001'));
 });

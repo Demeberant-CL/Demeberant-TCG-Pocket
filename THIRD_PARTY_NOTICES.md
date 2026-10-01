@@ -1,6 +1,6 @@
 # Fuentes de datos
 
-Catálogo comunitario de 4317 cartas y 23 expansiones, consultado el 1 de octubre de 2026.
+Catálogo comunitario de 4317 cartas y 24 colecciones (incluidas promociones), consultado el 1 de octubre de 2026.
 Fuente: https://github.com/flibustier/pokemon-tcg-pocket-database
 Revisión: 68dcb17474ecff17f1ecd791975c4e4f0babb0be
 

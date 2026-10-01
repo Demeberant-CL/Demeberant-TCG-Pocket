@@ -26,6 +26,7 @@ class CompleteAppTest {
     val cards = CardCatalog.ALL_CARDS.filter { it.source.startsWith("Catálogo comunitario") }
     assertEquals(4317, cards.size)
     assertEquals(4317, cards.map { it.id }.distinct().size)
+    assertEquals(24, cards.map { CardId.split(it.id).first }.distinct().size)
     assertTrue(cards.all { it.hp == 0 && it.attackDamage.isBlank() })
     assertNotNull(CardCatalog.getCardById("B4B-001"))
     assertEquals("Gardevoir", CardCatalog.getCardById("A1-132")!!.name)

@@ -4,7 +4,7 @@ Aplicación Android y web para gestionar una colección de Pokémon TCG Pocket.
 
 ## Funciones
 
-- Catálogo comunitario local de 4317 cartas y 23 expansiones, revisión del 01-10-2026.
+- Catálogo comunitario local de 4317 cartas y 24 colecciones (incluidas promociones), revisión del 01-10-2026.
 - Colección: búsqueda, expansión y rareza; Todas, Tengo, Faltan, Deseos y repetidas.
 - Edición de cantidades al tocar una carta, deseos, importación y exportación de CSV.
 - Detalles de TCGdex con caché Android; se muestran solo datos recibidos, sin PS o daño inventados.
