@@ -73,6 +73,13 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   private val _searchQuery = MutableStateFlow("")
   val searchQuery = _searchQuery.asStateFlow()
 
+  private val _expansionFilter = MutableStateFlow<String?>(null)
+  val expansionFilter = _expansionFilter.asStateFlow()
+  private val _rarityFilter = MutableStateFlow<com.example.data.model.CardRarity?>(null)
+  val rarityFilter = _rarityFilter.asStateFlow()
+  fun setExpansionFilter(value: String?) { _expansionFilter.value = value }
+  fun setRarityFilter(value: com.example.data.model.CardRarity?) { _rarityFilter.value = value }
+
   private val _collectionFilter = MutableStateFlow(com.example.data.util.CollectionFilter.ALL)
   val collectionFilter = _collectionFilter.asStateFlow()
 
@@ -102,15 +109,19 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   val filteredCards: StateFlow<List<CardWithInventory>> = combine(
     inventoryList,
     _searchQuery,
-    _collectionFilter
-  ) { list, query, filter ->
+    _collectionFilter,
+    _expansionFilter,
+    _rarityFilter
+  ) { list, query, filter, expansion, rarity ->
     list.filter { item ->
       val matchesQuery = query.isBlank() ||
         item.card.name.contains(query, ignoreCase = true) ||
         item.card.id.contains(query, ignoreCase = true) ||
         item.card.type.contains(query, ignoreCase = true)
 
-      matchesQuery && filter.matches(item)
+      matchesQuery && filter.matches(item) &&
+        (expansion == null || CardId.split(item.card.id).first == expansion) &&
+        (rarity == null || item.card.rarity == rarity)
     }
   }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

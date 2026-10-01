@@ -81,7 +81,9 @@ import com.example.ui.viewmodel.TcgViewModel
 @Composable
 fun DeckBuilderScreen(
   viewModel: TcgViewModel,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  savedOnly: Boolean = false,
+  onOpenSavedDeck: () -> Unit = {}
 ) {
   val context = LocalContext.current
   val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
@@ -101,6 +103,7 @@ fun DeckBuilderScreen(
       .padding(14.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
+    if (!savedOnly) {
     // Top Prompt & Generation Card
     item {
       Card(
@@ -440,8 +443,9 @@ fun DeckBuilderScreen(
       }
     }
 
+    }
     // Saved Decks in Room DB Section
-    item {
+    if (savedOnly) item {
       Card(
         modifier = Modifier
           .fillMaxWidth()
@@ -456,7 +460,7 @@ fun DeckBuilderScreen(
             Icon(Icons.Filled.Bookmark, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Mazos Guardados Localmente (${savedDecks.size})",
+              text = "Mis mazos (${savedDecks.size})",
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold,
               color = PocketTextPrimary
@@ -467,7 +471,7 @@ fun DeckBuilderScreen(
 
           if (savedDecks.isEmpty()) {
             Text(
-              text = "No tienes mazos guardados en tu base de datos local. Genera uno y pulsa 'Guardar'.",
+              text = "No tienes mazos guardados. Abre Crear para preparar uno y guardarlo.",
               fontSize = 11.sp,
               color = PocketTextSecondary
             )
@@ -491,7 +495,7 @@ fun DeckBuilderScreen(
 
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                      onClick = { viewModel.loadSavedDeck(saved) },
+                      onClick = { viewModel.loadSavedDeck(saved); onOpenSavedDeck() },
                       modifier = Modifier.size(32.dp)
                     ) {
                       Icon(Icons.Filled.PlayArrow, contentDescription = "Cargar mazo", tint = PocketBluePrimary, modifier = Modifier.size(18.dp))

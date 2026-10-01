@@ -57,106 +57,43 @@ class MainActivity : ComponentActivity() {
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
+        val labels = listOf("Colección", "Mazos", "Canjes", "Análisis")
+        val icons = listOf(Icons.Filled.Collections, Icons.Filled.AutoAwesome,
+          Icons.Filled.CardGiftcard, Icons.Filled.Insights)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
-            NavigationBar(
-              containerColor = PocketSurface,
-              tonalElevation = 6.dp,
-              modifier = Modifier.testTag("main_bottom_nav")
-            ) {
-              NavigationBarItem(
-                selected = selectedTabIndex == 0,
-                onClick = { selectedTabIndex = 0 },
-                icon = { Icon(Icons.Filled.Collections, contentDescription = "Colección") },
-                label = { Text("Colección", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                  unselectedIconColor = PocketTextSecondary,
-                  unselectedTextColor = PocketTextSecondary
-                ),
-                modifier = Modifier.testTag("nav_item_collection")
-              )
-
-              NavigationBarItem(
-                selected = selectedTabIndex == 1,
-                onClick = { selectedTabIndex = 1 },
-                icon = { Icon(Icons.Filled.AutoAwesome, contentDescription = "Mazos") },
-                label = { Text("Mazos", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                  unselectedIconColor = PocketTextSecondary,
-                  unselectedTextColor = PocketTextSecondary
-                ),
-                modifier = Modifier.testTag("nav_item_deck")
-              )
-
-              NavigationBarItem(
-                selected = selectedTabIndex == 2,
-                onClick = { selectedTabIndex = 2 },
-                icon = { Icon(Icons.Filled.Insights, contentDescription = "Meta") },
-                label = { Text("Meta", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.Normal) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                  unselectedIconColor = PocketTextSecondary,
-                  unselectedTextColor = PocketTextSecondary
-                ),
-                modifier = Modifier.testTag("nav_item_meta")
-              )
-
-              NavigationBarItem(
-                selected = selectedTabIndex == 3,
-                onClick = { selectedTabIndex = 3 },
-                icon = { Icon(Icons.Filled.CardGiftcard, contentDescription = "Sobres") },
-                label = { Text("Sobres", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.Normal) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                  unselectedIconColor = PocketTextSecondary,
-                  unselectedTextColor = PocketTextSecondary
-                ),
-                modifier = Modifier.testTag("nav_item_recommender")
-              )
-
-              NavigationBarItem(
-                selected = selectedTabIndex == 4,
-                onClick = { selectedTabIndex = 4 },
-                icon = { Icon(Icons.Filled.Calculate, contentDescription = "Probabilidad") },
-                label = { Text("Cálculo", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 4) FontWeight.Bold else FontWeight.Normal) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                  unselectedIconColor = PocketTextSecondary,
-                  unselectedTextColor = PocketTextSecondary
-                ),
-                modifier = Modifier.testTag("nav_item_probability")
-              )
+            NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
+              labels.forEachIndexed { index, label ->
+                NavigationBarItem(
+                  selected = selectedTabIndex == index,
+                  onClick = { selectedTabIndex = index },
+                  icon = { Icon(icons[index], contentDescription = label) },
+                  label = { Text(label, fontSize = 12.sp) },
+                  colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
+                    unselectedIconColor = PocketTextSecondary,
+                    unselectedTextColor = PocketTextSecondary
+                  ),
+                  modifier = Modifier.testTag("nav_item_$index")
+                )
+              }
             }
           }
         ) { innerPadding ->
           val screenModifier = Modifier.padding(innerPadding)
           when (selectedTabIndex) {
-            0 -> CollectionScreen(viewModel = viewModel, modifier = screenModifier)
-            1 -> DeckBuilderScreen(viewModel = viewModel, modifier = screenModifier)
-            2 -> MetaDeckAnalyzerScreen(
-              viewModel = viewModel,
-              onNavigateToDeckBuilder = { deckName ->
-                viewModel.setDeckPrompt(deckName)
-                viewModel.generateDeck(deckName)
+            0 -> CollectionScreen(viewModel, screenModifier)
+            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier)
+            2 -> com.example.ui.screens.TradeMenuScreen(viewModel, screenModifier)
+            else -> com.example.ui.screens.AnalysisMenuScreen(viewModel,
+              onOpenDeck = { name ->
+                viewModel.setDeckPrompt(name)
+                viewModel.generateDeck(name)
                 selectedTabIndex = 1
-              },
-              modifier = screenModifier
-            )
-            3 -> PackRecommenderScreen(viewModel = viewModel, modifier = screenModifier)
-            4 -> ProbabilityCalculatorScreen(modifier = screenModifier)
+              }, modifier = screenModifier)
           }
         }
       }

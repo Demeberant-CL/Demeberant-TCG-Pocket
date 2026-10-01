@@ -8,6 +8,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,6 +104,9 @@ fun CollectionScreen(
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
   val collectionFilter by viewModel.collectionFilter.collectAsStateWithLifecycle()
+  val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
+  val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
+  var showFiltersDialog by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
   var showPasteDialog by remember { mutableStateOf(false) }
@@ -257,58 +264,7 @@ fun CollectionScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // CSV Action Buttons (Import & Export)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-          Button(
-            onClick = {
-              try {
-                csvPickerLauncher.launch("*/*")
-              } catch (_: Exception) {
-                showPasteDialog = true
-              }
-            },
-            modifier = Modifier
-              .weight(1f)
-              .height(38.dp)
-              .testTag("import_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary, contentColor = Color.White)
-          ) {
-            Icon(Icons.Filled.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Cargar CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-          }
 
-          OutlinedButton(
-            onClick = { showPasteDialog = true },
-            modifier = Modifier
-              .height(38.dp)
-              .testTag("paste_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = PocketTextPrimary)
-          ) {
-            Text("Pegar CSV", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-          }
-
-          Button(
-            onClick = {
-              csvExportLauncher.launch("coleccion-pokemon.csv")
-            },
-            modifier = Modifier
-              .weight(1f)
-              .height(38.dp)
-              .testTag("export_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A), contentColor = Color.White)
-          ) {
-            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Exportar CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-          }
-        }
       }
     }
 
@@ -372,6 +328,10 @@ fun CollectionScreen(
       )
     )
 
+    TextButton(onClick = { showFiltersDialog = true }, modifier = Modifier.padding(horizontal = 14.dp)) {
+      val active = (if (expansionFilter != null) 1 else 0) + (if (rarityFilter != null) 1 else 0)
+      Text(if (active == 0) "Filtros avanzados" else "Filtros avanzados ($active)")
+    }
     // One collection status is selected at a time.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
@@ -466,6 +426,30 @@ fun CollectionScreen(
     }
   }
 
+  if (showFiltersDialog) {
+    val expansions = fullInventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted()
+    AlertDialog(
+      onDismissRequest = { showFiltersDialog = false },
+      title = { Text("Filtros avanzados") },
+      text = {
+        Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+          Text("Expansión", fontWeight = FontWeight.Bold)
+          FilterChip(selected = expansionFilter == null, onClick = { viewModel.setExpansionFilter(null) }, label = { Text("Todas las expansiones") })
+          expansions.forEach { code ->
+            FilterChip(selected = expansionFilter == code, onClick = { viewModel.setExpansionFilter(code) }, label = { Text(code) })
+          }
+          Text("Rareza", fontWeight = FontWeight.Bold)
+          FilterChip(selected = rarityFilter == null, onClick = { viewModel.setRarityFilter(null) }, label = { Text("Todas las rarezas") })
+          com.example.data.model.CardRarity.entries.forEach { rarity ->
+            FilterChip(selected = rarityFilter == rarity, onClick = { viewModel.setRarityFilter(rarity) }, label = { Text("${rarity.symbol} · ${rarity.displayName}") })
+          }
+        }
+      },
+      confirmButton = { TextButton(onClick = { showFiltersDialog = false }) { Text("Ver cartas") } },
+      dismissButton = { TextButton(onClick = { viewModel.setExpansionFilter(null); viewModel.setRarityFilter(null) }) { Text("Limpiar filtros") } }
+    )
+  }
+
   // Settings & Preferences Modal Dialog
   if (showSettingsDialog) {
     AlertDialog(
@@ -478,7 +462,18 @@ fun CollectionScreen(
         }
       },
       text = {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(14.dp)) {
+          Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
+          OutlinedButton(onClick = {
+            showSettingsDialog = false
+            try { csvPickerLauncher.launch("*/*") } catch (_: Exception) { showPasteDialog = true }
+          }, modifier = Modifier.fillMaxWidth()) { Text("Importar CSV") }
+          OutlinedButton(onClick = { showSettingsDialog = false; showPasteDialog = true },
+            modifier = Modifier.fillMaxWidth()) { Text("Pegar CSV") }
+          OutlinedButton(onClick = { showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
+            modifier = Modifier.fillMaxWidth()) { Text("Exportar colección CSV") }
+          Text("El CSV contiene la colección; no incluye mazos ni ajustes.", fontSize = 12.sp)
           // Language selector
           Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -519,7 +514,7 @@ fun CollectionScreen(
             }
             Spacer(modifier = Modifier.height(6.dp))
             listOf(
-              "dark" to "Neón Oscuro (Por Defecto)",
+              "dark" to "Oscuro carbón",
               "blue" to "Azul Pokémon Clásico",
               "light" to "Modo Claro"
             ).forEach { (themeKey, label) ->
@@ -543,7 +538,7 @@ fun CollectionScreen(
 
           // Error Logging Export Section
           Column {
-            Text("Diagnóstico & Registro de Errores", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+            Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedButton(
               onClick = {
@@ -556,7 +551,7 @@ fun CollectionScreen(
             ) {
               Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Exportar Log de Errores", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              Text("Exportar registro de errores", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
