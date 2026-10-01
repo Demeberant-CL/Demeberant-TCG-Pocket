@@ -71,9 +71,9 @@ class MainActivity : ComponentActivity() {
                 icon = { Icon(Icons.Filled.Collections, contentDescription = "Colección") },
                 label = { Text("Colección", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal) },
                 colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = PocketBluePrimary,
-                  selectedTextColor = PocketBluePrimary,
-                  indicatorColor = PocketBluePrimary.copy(alpha = 0.15f),
+                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
                   unselectedIconColor = PocketTextSecondary,
                   unselectedTextColor = PocketTextSecondary
                 ),
@@ -86,9 +86,9 @@ class MainActivity : ComponentActivity() {
                 icon = { Icon(Icons.Filled.AutoAwesome, contentDescription = "Mazos") },
                 label = { Text("Mazos", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal) },
                 colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = PocketBluePrimary,
-                  selectedTextColor = PocketBluePrimary,
-                  indicatorColor = PocketBluePrimary.copy(alpha = 0.15f),
+                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
                   unselectedIconColor = PocketTextSecondary,
                   unselectedTextColor = PocketTextSecondary
                 ),
@@ -101,9 +101,9 @@ class MainActivity : ComponentActivity() {
                 icon = { Icon(Icons.Filled.Insights, contentDescription = "Meta") },
                 label = { Text("Meta", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.Normal) },
                 colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = PocketBluePrimary,
-                  selectedTextColor = PocketBluePrimary,
-                  indicatorColor = PocketBluePrimary.copy(alpha = 0.15f),
+                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
                   unselectedIconColor = PocketTextSecondary,
                   unselectedTextColor = PocketTextSecondary
                 ),
@@ -116,9 +116,9 @@ class MainActivity : ComponentActivity() {
                 icon = { Icon(Icons.Filled.CardGiftcard, contentDescription = "Sobres") },
                 label = { Text("Sobres", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 3) FontWeight.Bold else FontWeight.Normal) },
                 colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = PocketBluePrimary,
-                  selectedTextColor = PocketBluePrimary,
-                  indicatorColor = PocketBluePrimary.copy(alpha = 0.15f),
+                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
                   unselectedIconColor = PocketTextSecondary,
                   unselectedTextColor = PocketTextSecondary
                 ),
@@ -131,9 +131,9 @@ class MainActivity : ComponentActivity() {
                 icon = { Icon(Icons.Filled.Calculate, contentDescription = "Probabilidad") },
                 label = { Text("Cálculo", fontSize = 10.sp, fontWeight = if (selectedTabIndex == 4) FontWeight.Bold else FontWeight.Normal) },
                 colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = PocketBluePrimary,
-                  selectedTextColor = PocketBluePrimary,
-                  indicatorColor = PocketBluePrimary.copy(alpha = 0.15f),
+                  selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
+                  selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                  indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
                   unselectedIconColor = PocketTextSecondary,
                   unselectedTextColor = PocketTextSecondary
                 ),

@@ -25,15 +25,20 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-  primary = Color(0xFF38BDF8),
-  onPrimary = Color(0xFF0F172A),
-  primaryContainer = Color(0xFF0369A1),
-  onPrimaryContainer = Color(0xFFE0F2FE),
-  secondary = PocketGold,
-  background = Color(0xFF020617), // Slate 950
-  surface = Color(0xFF0F172A),    // Slate 900
-  onBackground = Color(0xFFF8FAFC),
-  onSurface = Color(0xFFF8FAFC)
+  primary = Color(0xFFFF762D),
+  onPrimary = Color(0xFF211A15),
+  primaryContainer = Color(0xFF65371F),
+  onPrimaryContainer = Color(0xFFFFDBC8),
+  secondary = Color(0xFFD0C5DE),
+  secondaryContainer = Color(0xFF4B445B),
+  onSecondaryContainer = Color(0xFFE8DFF5),
+  background = Color(0xFF111216),
+  surface = Color(0xFF23262E),
+  onBackground = Color(0xFFF1F0F4),
+  onSurface = Color(0xFFF1F0F4),
+  onSurfaceVariant = Color(0xFFC5C1CC),
+  outline = Color(0xFF939097),
+  outlineVariant = Color(0xFF49474F)
 )
 
 private val ClassicBlueColorScheme = lightColorScheme(

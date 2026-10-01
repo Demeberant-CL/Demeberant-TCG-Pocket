@@ -23,4 +23,10 @@ class CollectionFilterTest {
     assertFalse(CollectionFilter.FAVORITES.matches(CardWithInventory(card, 0, false)))
     assertTrue(CollectionFilter.ALL.matches(CardWithInventory(card, 0, false)))
   }
+  @Test fun repeatedRequiresMoreThanOneCopy() {
+    assertFalse(CollectionFilter.REPEATED.matches(CardWithInventory(card, 0, true)))
+    assertFalse(CollectionFilter.REPEATED.matches(CardWithInventory(card, 1, true)))
+    assertTrue(CollectionFilter.REPEATED.matches(CardWithInventory(card, 2, false)))
+    assertTrue(CollectionFilter.REPEATED.matches(CardWithInventory(card, 5, false)))
+  }
 }

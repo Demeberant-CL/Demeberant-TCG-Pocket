@@ -160,9 +160,9 @@ fun CollectionScreen(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 14.dp, vertical = 10.dp)
-        .shadow(3.dp, shape = RoundedCornerShape(18.dp), clip = false)
+        .shadow(3.dp, shape = RoundedCornerShape(10.dp), clip = false)
         .testTag("collection_stats_card"),
-      shape = RoundedCornerShape(18.dp),
+      shape = RoundedCornerShape(10.dp),
       colors = CardDefaults.cardColors(containerColor = PocketSurface),
       border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
     ) {
@@ -381,34 +381,51 @@ fun CollectionScreen(
         PocketPillChip(
           label = "Todas",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.ALL,
-          activeColor = PocketBluePrimary,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.ALL) }
         )
       }
       item {
         PocketPillChip(
-          label = "Poseídas ($totalOwned)",
+          label = "Tengo ($totalOwned)",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.OWNED,
-          activeColor = Color(0xFF10B981),
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.OWNED) }
         )
       }
       item {
         PocketPillChip(
-          label = "Faltantes (${totalCatalog - totalOwned})",
+          label = "Faltan (${totalCatalog - totalOwned})",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.MISSING,
-          activeColor = PocketRed,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.MISSING) }
         )
       }
       item {
         PocketPillChip(
-          label = "Favoritas",
+          label = "Deseos",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.FAVORITES,
-          activeColor = PocketGold,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
         )
       }
+    }
+    TextButton(
+      onClick = {
+        viewModel.setCollectionFilter(
+          if (collectionFilter == com.example.data.util.CollectionFilter.REPEATED)
+            com.example.data.util.CollectionFilter.ALL
+          else com.example.data.util.CollectionFilter.REPEATED
+        )
+      },
+      modifier = Modifier.padding(horizontal = 14.dp)
+    ) {
+      Text(
+        if (collectionFilter == com.example.data.util.CollectionFilter.REPEATED)
+          "Ver todas" else "Ver repetidas",
+        color = PocketBluePrimary,
+        fontWeight = FontWeight.SemiBold
+      )
     }
     Spacer(modifier = Modifier.height(4.dp))
 
@@ -616,18 +633,18 @@ private fun PocketPillChip(
   activeColor: Color,
   onClick: () -> Unit
 ) {
-  val bg = if (isSelected) activeColor else PocketSurface
+  val bg = if (isSelected) activeColor else PocketBackground
   val border = if (isSelected) activeColor else PocketBorder
-  val textColor = if (isSelected) Color.White else PocketTextPrimary
+  val textColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else PocketTextSecondary
 
   Box(
     modifier = Modifier
-      .clip(RoundedCornerShape(18.dp))
-      .shadow(if (isSelected) 2.dp else 1.dp, RoundedCornerShape(18.dp), clip = false)
+      .clip(RoundedCornerShape(10.dp))
+      .shadow(if (isSelected) 2.dp else 1.dp, RoundedCornerShape(10.dp), clip = false)
       .background(bg)
-      .border(1.dp, border, RoundedCornerShape(18.dp))
+      .border(1.dp, border, RoundedCornerShape(10.dp))
       .clickable { onClick() }
-      .padding(horizontal = 10.dp, vertical = 5.dp)
+      .padding(horizontal = 14.dp, vertical = 10.dp)
   ) {
     Text(
       text = label,
