@@ -31,16 +31,19 @@ jobs:
             echo "APK withheld: configure a persistent signing key before distributing updates." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          mkdir -p "$HOME/.android"
           umask 077
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
-          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > /dev/null
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/collection-signing.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/collection-signing.keystore" -storepass android -alias androiddebugkey > /dev/null
+          echo "CI_SIGNING_STORE_FILE=$RUNNER_TEMP/collection-signing.keystore" >> "$GITHUB_ENV"
           echo "ready=true" >> "$GITHUB_OUTPUT"
       - run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
       - name: Record signing certificate
         if: steps.signing.outputs.ready == 'true'
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/signing-certificate.txt
+          expected=$(keytool -exportcert -keystore "$CI_SIGNING_STORE_FILE" -storepass android -alias androiddebugkey 2>/dev/null | sha256sum | cut -d " " -f 1)
+          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' app/build/outputs/apk/debug/signing-certificate.txt)
+          test "$actual" = "$expected" || { echo "::error::APK signing certificate does not match the persistent key."; exit 1; }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -55,7 +58,7 @@ jobs:
             app/build/outputs/apk/debug/signing-certificate.txt
       - name: Remove signing key
         if: always()
-        run: rm -f "$HOME/.android/debug.keystore"
+        run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
   web:
     runs-on: ubuntu-latest
     steps:

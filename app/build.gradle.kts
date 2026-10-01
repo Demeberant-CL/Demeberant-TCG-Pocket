@@ -8,6 +8,17 @@ android {
     namespace = "com.example"
     compileSdk = 36
 
+    // CI must use the restored key explicitly, regardless of Android's default directory.
+    System.getenv("CI_SIGNING_STORE_FILE")?.let { path ->
+        signingConfigs.getByName("debug") {
+            storeFile = file(path)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeType = "PKCS12"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aistudio.tcgpocket2.kxmpzq"
         minSdk = 26
