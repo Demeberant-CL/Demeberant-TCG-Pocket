@@ -19,14 +19,43 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Restore persistent test signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing ANDROID_DEBUG_KEYSTORE_BASE64. Tests will run, but no installable APK will be published."
+            echo "APK withheld: configure a persistent signing key before distributing updates." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mkdir -p "$HOME/.android"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > /dev/null
+          echo "ready=true" >> "$GITHUB_OUTPUT"
       - run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+      - name: Record signing certificate
+        if: steps.signing.outputs.ready == 'true'
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/signing-certificate.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-reports
+          path: app/build/reports/
+      - uses: actions/upload-artifact@v4
+        if: success() && steps.signing.outputs.ready == 'true'
+        with:
+          name: android-apk
           path: |
-            app/build/reports/
             app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/signing-certificate.txt
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$HOME/.android/debug.keystore"
   web:
     runs-on: ubuntu-latest
     steps:
