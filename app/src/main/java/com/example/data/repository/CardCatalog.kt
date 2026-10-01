@@ -6,6 +6,43 @@ import com.example.data.model.PokemonCard
 import java.util.concurrent.ConcurrentHashMap
 
 object CardCatalog {
+  private val bundledCards = ConcurrentHashMap<String, PokemonCard>()
+  var sourceRevision: String = ""
+    private set
+
+  @Synchronized fun loadBundled(context: android.content.Context) {
+    if (bundledCards.isNotEmpty()) return
+    val root = org.json.JSONObject(context.assets.open("pocket-catalog.json").bufferedReader().use { it.readText() })
+    val rows = root.getJSONArray("cards")
+    val types = mapOf("grass" to "Planta", "fire" to "Fuego", "water" to "Agua",
+      "lightning" to "Rayo", "psychic" to "Psíquico", "fighting" to "Lucha",
+      "darkness" to "Oscuridad", "metal" to "Metal", "dragon" to "Dragón", "colorless" to "Incoloro")
+    val cards = (0 until rows.length()).map { index ->
+      val row = rows.getJSONObject(index)
+      val id = com.example.data.util.CardId.normalize(row.getString("id"))
+      val name = row.getString("name")
+      val category = row.getString("category")
+      val packs = row.getJSONArray("packs").let { a -> (0 until a.length()).map { a.getString(it) } }
+      val rarity = CardRarity.fromSymbol(row.getString("rarity"))
+      val pack = if (id.startsWith("A1-") && packs.size == 1) when (packs[0]) {
+        "Mewtwo" -> BoosterPack.MEWTWO
+        "Charizard" -> BoosterPack.CHARIZARD
+        "Pikachu" -> BoosterPack.PIKACHU
+        else -> BoosterPack.UNKNOWN
+      } else BoosterPack.UNKNOWN
+      PokemonCard(id, name, pack, rarity, 0,
+        if (category in setOf("item", "tool", "supporter", "Fossil")) "Entrenador"
+        else types[row.optString("element")] ?: "Sin verificar", "", "",
+        isEx = name.endsWith(" ex", true), isFullArt = rarity in setOf(CardRarity.ONE_STAR, CardRarity.TWO_STARS),
+        isSecretRare = rarity == CardRarity.CROWN, isImmersive = rarity == CardRarity.THREE_STARS,
+        category = category, stage = row.getString("stage"), evolvesFrom = row.getString("evolvesFrom"),
+        packNames = packs, source = "Catálogo comunitario · 2026-10-01")
+    }
+    require(cards.map { it.id }.distinct().size == cards.size)
+    bundledCards.putAll(cards.associateBy { it.id })
+    sourceRevision = root.getString("revision")
+  }
+
 
   // Dynamic storage for all expansion cards (A1A, A2, A2A, A2B, A3, A3A, A3B, A4, B1, B2, B3, B4, PROMO-A, etc.)
   private val dynamicCards = ConcurrentHashMap<String, PokemonCard>()
@@ -139,7 +176,7 @@ object CardCatalog {
   )
 
   val ALL_CARDS: List<PokemonCard>
-    get() = (STATIC_CARDS + dynamicCards.values.toList()).distinctBy { it.id }
+    get() = ((if (bundledCards.isEmpty()) STATIC_CARDS else bundledCards.values.toList()) + dynamicCards.values.toList()).distinctBy { it.id }.sortedBy { it.id }
 
   fun registerCard(
     id: String,
@@ -149,7 +186,8 @@ object CardCatalog {
     type: String = "Sin verificar"
   ): PokemonCard {
     val cleanId = com.example.data.util.CardId.normalize(id)
-    STATIC_CARDS.find { it.id == cleanId }?.let { return it }
+    bundledCards[cleanId]?.let { return it }
+    if (bundledCards.isEmpty()) STATIC_CARDS.find { it.id == cleanId }?.let { return it }
     val rarity = CardRarity.fromSymbol(raritySymbol)
     val newCard = PokemonCard(
       id = cleanId,
@@ -172,7 +210,7 @@ object CardCatalog {
   /** A lookup never fabricates a card or mutates the catalog. */
   fun getCardById(id: String): PokemonCard? {
     val clean = runCatching { com.example.data.util.CardId.normalize(id) }.getOrNull() ?: return null
-    return STATIC_CARDS.find { it.id == clean } ?: dynamicCards[clean]
+    return bundledCards[clean] ?: (if (bundledCards.isEmpty()) STATIC_CARDS.find { it.id == clean } else null) ?: dynamicCards[clean]
   }
 
   fun getCardsByPack(pack: BoosterPack): List<PokemonCard> = ALL_CARDS.filter { it.pack == pack }

@@ -116,7 +116,7 @@ fun MetaDeckAnalyzerScreen(
                   Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
-                    text = "Sobre Prioritario: ${analysis.bestPackToOpenNext}",
+                    text = "Sobre para plantillas A1: ${analysis.bestPackToOpenNext}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF92400E)
@@ -138,13 +138,21 @@ fun MetaDeckAnalyzerScreen(
 
     item {
       Text(
-        text = "Arquetipos Competitivos y Cobertura de Inventario",
+        text = "Plantillas históricas A1 · cobertura de colección",
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = PocketTextPrimary
       )
     }
 
+    item {
+      val context = androidx.compose.ui.platform.LocalContext.current
+      Text("Estas plantillas no representan el meta actual.")
+      androidx.compose.material3.OutlinedButton(onClick = {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+          android.net.Uri.parse("https://play.limitlesstcg.com/tournaments?game=POCKET")))
+      }) { Text("Consultar torneos actuales") }
+    }
     // Deck Insight Cards
     items(metaAnalysis?.deckInsights ?: emptyList()) { deckInsight ->
       MetaDeckInsightCard(
@@ -205,7 +213,7 @@ private fun MetaDeckInsightCard(
             .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
           Text(
-            text = insight.tier,
+            text = "Plantilla A1",
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             color = tierColor

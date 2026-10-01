@@ -33,6 +33,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import com.example.data.util.CollectionCsv
 import com.example.data.util.CardId
+import com.example.data.util.AppBackup
+import com.example.data.util.BackupSnapshot
+import com.example.data.util.DeckCodec
 
 class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -41,6 +44,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
   init {
     ErrorLogManager.init(application)
+    CardCatalog.loadBundled(application)
     val db = AppDatabase.getDatabase(application)
     repository = InventoryRepository.fromDatabase(db)
     preferencesRepository = UserPreferencesRepository(application)
@@ -128,14 +132,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   init {
     viewModelScope.launch {
       try {
-        if (repository.isInventoryEmpty()) {
-          val assetCsv = withContext(Dispatchers.IO) {
-            getApplication<Application>().assets.open("coleccion-pokemon-2026-09-29.csv")
-              .bufferedReader().use { it.readText() }
-          }
-          val parsed = withContext(Dispatchers.Default) { CollectionCsv.parse(assetCsv) }
-          repository.processParsedCsvCards(parsed)
-        }
         // Ensure persisted card names and rarities have been hydrated before generation.
         repository.inventoryFlow.first()
       } catch (e: CancellationException) {
@@ -147,7 +143,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         initialization.complete(Unit)
       }
       runGeminiMetaAnalysis()
-      generateDeck("Pikachu ex Turbo")
+
     }
   }
 
@@ -203,7 +199,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         repository.processParsedCsvCards(parsed)
         _csvStatusMessage.value = "Importación exitosa: ${parsed.size} cartas procesadas."
         runGeminiMetaAnalysis()
-        generateDeck()
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -242,6 +237,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
           onlyFromInventory = _onlyFromInventoryDeck.value,
           ownedMap = ownedMap
         ) }
+        editingDeckId = 0
         _generatedDeck.value = deck
       } catch (e: CancellationException) {
         throw e
@@ -253,28 +249,90 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  private var editingDeckId = 0L
+  fun reportMessage(value: String) { _csvStatusMessage.value = value }
+
+  fun setQuantity(id: String, quantity: Int) {
+    viewModelScope.launch {
+      try { initialization.await(); repository.setQuantity(id, quantity); reportMessage("Cantidad guardada.") }
+      catch (e: CancellationException) { throw e }
+      catch (e: Exception) { reportMessage("No se pudo guardar: ${e.localizedMessage}") }
+    }
+  }
+
+  suspend fun generateBackupContent(): String {
+    initialization.await()
+    val (cards, decks) = repository.snapshot()
+    val prefs = preferencesRepository.userPreferencesFlow.first()
+    return withContext(Dispatchers.Default) { AppBackup.encode(BackupSnapshot(cards, decks, prefs)) }
+  }
+
+  fun restoreBackup(value: BackupSnapshot) {
+    viewModelScope.launch {
+      try {
+        initialization.await()
+        repository.restoreSnapshot(value.cards, value.decks)
+        try { preferencesRepository.restore(value.preferences) }
+        catch (e: CancellationException) { throw e }
+        catch (e: Exception) { reportMessage("Colección y mazos restaurados; no se pudieron restaurar los ajustes."); return@launch }
+        reportMessage("Respaldo restaurado sin borrar las cartas ausentes.")
+        runGeminiMetaAnalysis()
+      } catch (e: CancellationException) { throw e }
+      catch (e: Exception) { reportMessage("No se pudo restaurar: ${e.localizedMessage}") }
+    }
+  }
+
+  fun newManualDeck() {
+    editingDeckId = 0
+    _generatedDeck.value = GeneratedDeck("Mi mazo", "Manual", "", emptyList(), 0,
+      listOf("Mazo incompleto: 0/20 cartas."))
+  }
+  fun editDeckName(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(name = value) }
+  fun editDeckStrategy(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(strategy = value) }
+  fun toggleDeckEnergy(value: String) {
+    require(value in DeckCodec.energyNames)
+    val deck = _generatedDeck.value ?: return
+    val energies = if (value in deck.energyTypes) deck.energyTypes - value else deck.energyTypes + value
+    if (energies.size > 3) { reportMessage("Máximo de tres energías."); return }
+    _generatedDeck.value = deck.copy(energyTypes = energies)
+  }
+  fun editDeckQuantity(id: String, count: Int) {
+    val deck = _generatedDeck.value ?: return
+    val card = CardCatalog.getCardById(id) ?: return
+    if (count !in 0..2) return
+    val cards = deck.cards.filter { it.card.id != id } + if (count > 0) listOf(DeckCardEntry(card, count)) else emptyList()
+    if (cards.sumOf { it.count } > 20 || cards.groupBy { it.card.rulesName.lowercase() }.any { (_, list) -> list.sumOf { it.count } > 2 }) {
+      reportMessage("Máximo de 20 cartas y dos copias por nombre."); return
+    }
+    _generatedDeck.value = deck.copy(cards = cards, totalCardCount = cards.sumOf { it.count },
+      validationWarnings = DeckBuilderEngine.validate(cards))
+  }
+
   // Saved Decks Persistence
-  fun saveCurrentDeck(customName: String? = null) {
+  fun saveCurrentDeck(customName: String? = null, allowDraft: Boolean = false) {
     viewModelScope.launch {
       val deck = _generatedDeck.value ?: return@launch
-      if (deck.validationWarnings.isNotEmpty()) {
+      if (!allowDraft && deck.validationWarnings.isNotEmpty()) {
         _csvStatusMessage.value = "El mazo necesita correcciones antes de guardarse: ${deck.validationWarnings.joinToString(" ")}"
         return@launch
       }
       try {
-        val serializedCards = deck.cards.joinToString(";") { "${it.card.id}:${it.count}" }
+        require(deck.cards.isNotEmpty() && (customName ?: deck.name).isNotBlank()) { "Añade cartas y un nombre." }
+        val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes)
         val entity = SavedDeckEntity(
+          id = editingDeckId,
           name = customName ?: deck.name,
           archetype = deck.archetype,
           strategy = deck.strategy,
           cardListSerialized = serializedCards,
           totalCards = deck.totalCardCount
         )
-        repository.saveDeck(entity)
+        editingDeckId = repository.saveDeck(entity)
         _csvStatusMessage.value = "¡Mazo '${entity.name}' guardado correctamente en tu base de datos!"
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
+        reportMessage("Error al guardar: ${e.localizedMessage}")
         ErrorLogManager.logError(getApplication(), "SAVE_DECK", "Error al guardar mazo en base de datos", e)
       }
     }
@@ -282,28 +340,20 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
   fun loadSavedDeck(savedDeck: SavedDeckEntity) {
     try {
-      val cardEntries = mutableListOf<DeckCardEntry>()
-      val parts = savedDeck.cardListSerialized.split(";").filter { it.isNotBlank() }
-      parts.forEach { part ->
-        val pair = part.split(":")
-        if (pair.size == 2) {
-          val cardId = CardId.normalize(pair[0])
-          val count = pair[1].toIntOrNull() ?: 1
-          val card = CardCatalog.getCardById(cardId)
-            ?: throw IllegalArgumentException("Carta $cardId no disponible en la colección.")
-          cardEntries.add(DeckCardEntry(card, count))
-        }
-      }
+      val cardEntries = DeckCodec.decode(savedDeck.cardListSerialized)
+      editingDeckId = savedDeck.id
       _generatedDeck.value = GeneratedDeck(
         name = savedDeck.name,
         archetype = savedDeck.archetype,
         strategy = savedDeck.strategy,
         cards = cardEntries,
         totalCardCount = cardEntries.sumOf { it.count },
-        validationWarnings = DeckBuilderEngine.validate(cardEntries)
+        validationWarnings = DeckBuilderEngine.validate(cardEntries),
+        energyTypes = DeckCodec.energies(savedDeck.cardListSerialized)
       )
       _deckBuildPrompt.value = savedDeck.name
     } catch (e: Exception) {
+      reportMessage("Error al abrir mazo: ${e.localizedMessage}")
       ErrorLogManager.logError(getApplication(), "LOAD_DECK", "Error al cargar mazo guardado ${savedDeck.id}", e)
     }
   }

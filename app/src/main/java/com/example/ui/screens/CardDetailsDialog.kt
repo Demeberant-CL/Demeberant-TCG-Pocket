@@ -1,0 +1,60 @@
+package com.example.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.example.data.api.CardDetails
+import com.example.data.api.CardDetailsClient
+import com.example.data.repository.CardWithInventory
+import com.example.data.util.TcgdexHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
+
+@Composable
+fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -> Unit,
+  onSave: (Int) -> Unit, onWishlist: () -> Unit) {
+  val context = LocalContext.current
+  var quantity by remember(item.card.id, item.ownedCount) { mutableStateOf(item.ownedCount.toString()) }
+  var details by remember(item.card.id, language) { mutableStateOf<CardDetails?>(null) }
+  var loading by remember { mutableStateOf(true) }
+  var error by remember(item.card.id, language) { mutableStateOf<String?>(null) }
+  LaunchedEffect(item.card.id, language) {
+    loading = true
+    try { details = withContext(Dispatchers.IO) { CardDetailsClient.load(context, item.card.id, language) } }
+    catch (e: CancellationException) { throw e }
+    catch (e: Exception) { error = "Detalles sin conexión o no disponibles. Puedes editar la colección." }
+    finally { loading = false }
+  }
+  AlertDialog(onDismissRequest = onDismiss, title = { Text(item.card.name) }, text = {
+    Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      AsyncImage(model = TcgdexHelper.getCardImageUrl(item.card.id, language).replace("low.webp", "high.webp"),
+        contentDescription = item.card.name, modifier = Modifier.fillMaxWidth().height(240.dp))
+      Text("${item.card.id} · ${item.card.rarity.displayName}")
+      Text(item.card.packNames.joinToString(", ").ifBlank { "Sin datos de sobre" })
+      OutlinedTextField(value = quantity, onValueChange = { if (it.length <= 5 && it.all(Char::isDigit)) quantity = it },
+        label = { Text("Copias en mi colección") }, singleLine = true)
+      TextButton(onClick = onWishlist) { Text(if (item.isWishlist) "Quitar de Deseos" else "Añadir a Deseos") }
+      if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+      error?.let { Text(it) }
+      details?.let { value ->
+        Text(value.source, style = MaterialTheme.typography.labelSmall)
+        value.hp?.let { Text("PS: $it") }
+        Text(listOf(value.category, value.stage).filter { it.isNotBlank() }.joinToString(" · "))
+        value.retreat?.let { Text("Retirada: $it") }
+        if (value.description.isNotBlank()) Text(value.description)
+        value.attacks.forEach { Text(it) }
+      }
+    }
+  }, confirmButton = {
+    TextButton(enabled = quantity.toIntOrNull()?.let { it in 0..99999 } == true,
+      onClick = { onSave(quantity.toInt()); onDismiss() }) { Text("Guardar cantidad") }
+  }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } })
+}

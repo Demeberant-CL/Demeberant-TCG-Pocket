@@ -9,13 +9,14 @@ import com.example.data.model.BoosterPack
 import com.example.data.model.PokemonCard
 import com.example.data.util.CardId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
  data class CardWithInventory(val card: PokemonCard, val ownedCount: Int, val isWishlist: Boolean)
  data class ParsedCsvCard(val setCode: String, val cardNumber: String, val name: String,
-   val rarity: String, val quantity: Int, val isRegistered: Boolean)
+   val rarity: String, val quantity: Int, val isRegistered: Boolean, val wishlist: Boolean? = null)
 
 class InventoryRepository private constructor(private val db: AppDatabase) {
   private val inventoryDao = db.inventoryDao()
@@ -64,14 +65,45 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
         val old = existing[id]
         val card = CardCatalog.registerCard(id, parsed.name, parsed.rarity)
         inventoryEntities.add(InventoryCardEntity(card.id, card.name, card.pack.displayName,
-          card.rarity.symbol, parsed.quantity, old?.isWishlist ?: false,
+          card.rarity.symbol, parsed.quantity, parsed.wishlist ?: old?.isWishlist ?: false,
           old?.acquisitionDate ?: System.currentTimeMillis()))
         val (set, number) = CardId.split(id)
         userEntities.add(UserCardEntity(card.id, set, number, card.name, card.rarity.symbol,
-          parsed.quantity, parsed.quantity > 0, old?.isWishlist ?: false))
+          parsed.quantity, parsed.quantity > 0, parsed.wishlist ?: old?.isWishlist ?: false))
       }
       inventoryDao.insertCards(inventoryEntities)
       userCardDao.insertUserCards(userEntities)
+    }
+  }
+
+  suspend fun setQuantity(cardId: String, quantity: Int) = db.withTransaction {
+    require(quantity in 0..99999) { "Cantidad no válida." }
+    val id = CardId.normalize(cardId)
+    val card = CardCatalog.getCardById(id) ?: error("Carta no disponible.")
+    val old = inventoryDao.getCardById(id)
+    inventoryDao.insertCard(InventoryCardEntity(id, card.name, card.pack.displayName, card.rarity.symbol,
+      quantity, old?.isWishlist ?: false, old?.acquisitionDate ?: System.currentTimeMillis()))
+    val (set, number) = CardId.split(id)
+    userCardDao.insertUserCards(listOf(UserCardEntity(id, set, number, card.name, card.rarity.symbol,
+      quantity, quantity > 0, old?.isWishlist ?: false)))
+  }
+
+  suspend fun snapshot() = db.withTransaction {
+    inventoryDao.getAllCards() to savedDeckDao.getAllSavedDecksFlow().first()
+  }
+
+  suspend fun restoreSnapshot(cards: List<InventoryCardEntity>, decks: List<SavedDeckEntity>) = db.withTransaction {
+    inventoryDao.insertCards(cards)
+    userCardDao.insertUserCards(cards.map { card ->
+      val (set, number) = CardId.split(card.cardId)
+      UserCardEntity(card.cardId, set, number, card.cardName, card.rarity, card.quantity,
+        card.quantity > 0, card.isWishlist)
+    })
+    val signatures = savedDeckDao.getAllSavedDecksFlow().first().map {
+      Triple(it.name, it.cardListSerialized, it.strategy)
+    }.toMutableSet()
+    decks.forEach { deck ->
+      if (signatures.add(Triple(deck.name, deck.cardListSerialized, deck.strategy))) savedDeckDao.insertDeck(deck.copy(id = 0))
     }
   }
 

@@ -30,8 +30,9 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
   var section by rememberSaveable { mutableIntStateOf(0) }
   Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Crear", "Mis mazos"), section) { section = it }
-    DeckBuilderScreen(viewModel, Modifier.weight(1f), savedOnly = section == 1,
+    MenuChoices(listOf("Editor", "Plantillas A1", "Mis mazos"), section) { section = it }
+    if (section == 0) ManualDeckScreen(viewModel, Modifier.weight(1f))
+    else DeckBuilderScreen(viewModel, Modifier.weight(1f), savedOnly = section == 2,
       onOpenSavedDeck = { section = 0 })
   }
 }
@@ -41,7 +42,7 @@ fun AnalysisMenuScreen(viewModel: TcgViewModel, onOpenDeck: (String) -> Unit,
   modifier: Modifier = Modifier) {
   var section by rememberSaveable { mutableIntStateOf(0) }
   Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Meta", "Recomendaciones", "Calculadora"), section) { section = it }
+    MenuChoices(listOf("Plantillas", "Sobres", "Calculadora"), section) { section = it }
     val contentModifier = Modifier.weight(1f)
     when (section) {
       0 -> MetaDeckAnalyzerScreen(viewModel, onOpenDeck, contentModifier)

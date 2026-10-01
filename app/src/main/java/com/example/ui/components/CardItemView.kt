@@ -67,7 +67,8 @@ fun CardItemView(
   isWishlist: Boolean,
   onToggleWishlist: () -> Unit,
   modifier: Modifier = Modifier,
-  imageLanguage: String = "es"
+  imageLanguage: String = "es",
+  onClick: () -> Unit = {}
 ) {
   val isOwned = ownedCount > 0
   var imageFailed by remember(card.id, imageLanguage) { mutableStateOf(false) }
@@ -90,7 +91,7 @@ fun CardItemView(
   }
 
   Card(
-    modifier = modifier
+    modifier = modifier.clickable(onClick = onClick)
       .fillMaxWidth()
       .aspectRatio(0.714f)
       .shadow(if (isOwned) 3.dp else 1.dp, shape = RoundedCornerShape(12.dp), clip = false)
@@ -259,7 +260,7 @@ fun CardItemView(
             ) {
               Icon(
                 imageVector = Icons.Filled.Lock,
-                contentDescription = "Bloqueada",
+                contentDescription = "Falta",
                 tint = Color.White,
                 modifier = Modifier.size(16.dp)
               )
@@ -272,7 +273,7 @@ fun CardItemView(
                 .padding(horizontal = 4.dp, vertical = 1.dp)
             ) {
               Text(
-                text = "x0 • Bloqueada",
+                text = "x0 • Falta",
                 color = Color.White,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold

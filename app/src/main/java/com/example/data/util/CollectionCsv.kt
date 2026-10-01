@@ -23,6 +23,7 @@ object CollectionCsv {
     val name = column("nombre", "name")
     val rarity = column("rareza", "rarity")
     val qty = column("cantidad", "quantity", "count", "copias")
+    val wish = column("deseos", "wishlist", "favorito", "favorita")
     require(listOf(set, id, name, rarity, qty).all { it >= 0 }) {
       "Faltan columnas: Set, ID, Nombre, Rareza y Cantidad."
     }
@@ -36,7 +37,11 @@ object CollectionCsv {
       require(quantity != null && quantity >= 0) { "Fila ${index + 2}: cantidad no válida." }
       require(row[name].isNotBlank()) { "Fila ${index + 2}: nombre vacío." }
       com.example.data.model.CardRarity.fromSymbol(row[rarity])
-      ParsedCsvCard(setCode, number, row[name].trim(), row[rarity].trim(), quantity, quantity > 0)
+      ParsedCsvCard(setCode, number, row[name].trim(), row[rarity].trim(), quantity, quantity > 0, if (wish < 0) null else when (normalize(row[wish])) {
+        "si", "true", "1" -> true
+        "no", "false", "0", "" -> false
+        else -> error("Fila ${index + 2}: Deseos no válido.")
+      })
     }
     require(parsed.isNotEmpty()) { "El CSV no contiene cartas." }
     return parsed
@@ -45,11 +50,11 @@ object CollectionCsv {
   fun export(cards: List<CardWithInventory>): String {
     fun quote(value: String) = "\"${value.replace("\"", "\"\"")}\""
     return buildString {
-      appendLine("\"Set\",\"ID\",\"Nombre\",\"Rareza\",\"Cantidad\",\"Registrada\"")
+      appendLine("\"Set\",\"ID\",\"Nombre\",\"Rareza\",\"Cantidad\",\"Registrada\",\"Deseos\"")
       cards.sortedBy { it.card.id }.forEach { item ->
         val (set, number) = CardId.split(item.card.id)
         appendLine(listOf(set, number.toInt().toString(), item.card.name, item.card.rarity.symbol,
-          item.ownedCount.toString(), if (item.ownedCount > 0) "sí" else "no").joinToString(",", transform = ::quote))
+          item.ownedCount.toString(), if (item.ownedCount > 0) "sí" else "no", if (item.isWishlist) "sí" else "no").joinToString(",", transform = ::quote))
       }
     }.trimEnd()
   }

@@ -13,12 +13,14 @@ data class GeneratedDeck(
   val strategy: String,
   val cards: List<DeckCardEntry>,
   val totalCardCount: Int,
-  val validationWarnings: List<String> = emptyList()
+  val validationWarnings: List<String> = emptyList(),
+  val energyTypes: List<String> = emptyList()
 ) {
   fun toExportText(): String {
     val sb = StringBuilder()
     sb.appendLine("###### Mazo Pokémon TCG Pocket: $name")
     sb.appendLine("Arquetipo: $archetype")
+    if (energyTypes.isNotEmpty()) sb.appendLine("Energías: ${energyTypes.joinToString(", ")}")
     sb.appendLine("Cartas ($totalCardCount/20):")
     cards.forEach { entry ->
       sb.appendLine("${entry.count}x ${entry.card.name} (${entry.card.id})")
@@ -87,7 +89,7 @@ object DeckBuilderEngine {
     fun nameCount(name: String) = quantities.values.filter { it.card.name.equals(name, true) }.sumOf { it.count }
     fun total() = quantities.values.sumOf { it.count }
     fun tryAdd(card: PokemonCard, desired: Int) {
-      val parent = evolutionParents[card.name.lowercase()]
+      val parent = card.evolvesFrom.takeIf { it.isNotBlank() } ?: evolutionParents[card.rulesName.lowercase()]
       if (parent != null && nameCount(parent) == 0) return
       val previous = quantities[card.id]?.count ?: 0
       val ownedLimit = if (onlyFromInventory) canonicalOwned[card.id] ?: 0 else 2
@@ -139,10 +141,10 @@ object DeckBuilderEngine {
     val total = cards.sumOf { it.count }
     if (total != 20) add("Mazo incompleto: $total/20 cartas.")
     if (cards.any { it.count <= 0 }) add("Hay cantidades no válidas.")
-    val counts = cards.groupBy { it.card.name.lowercase() }.mapValues { (_, entries) -> entries.sumOf { it.count } }
+    val counts = cards.groupBy { it.card.rulesName.lowercase() }.mapValues { (_, entries) -> entries.sumOf { it.count } }
     if (counts.any { it.value > 2 }) add("Máximo de dos copias por nombre excedido.")
     cards.forEach { entry ->
-      evolutionParents[entry.card.name.lowercase()]?.let { parent ->
+      (entry.card.evolvesFrom.takeIf { it.isNotBlank() } ?: evolutionParents[entry.card.rulesName.lowercase()])?.let { parent ->
         if ((counts[parent.lowercase()] ?: 0) == 0) add("${entry.card.name} necesita $parent.")
       }
       if (entry.card.type == "Sin verificar") add("Datos de ${entry.card.name} sin verificar.")

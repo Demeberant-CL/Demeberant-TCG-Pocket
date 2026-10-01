@@ -15,6 +15,7 @@ import com.example.data.util.TcgdexHelper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -24,6 +25,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CollectionRegressionTest {
+  @Before fun loadCatalog() { CardCatalog.loadBundled(RuntimeEnvironment.getApplication()) }
   @Test fun canonicalIdsPreservePromoSets() {
     assertEquals("A1-001", CardId.normalize(" a1-1 "))
     assertEquals("PROMO-A-001", CardId.normalize("promo-a-1"))
@@ -89,7 +91,7 @@ class CollectionRegressionTest {
   }
 
   @Test fun builderChecksEvolutionAndTwoCopiesAcrossVariants() {
-    val card = CardCatalog.getCardById("A1-130")!!
+    val card = CardCatalog.getCardById("A1-132")!!
     assertTrue(DeckBuilderEngine.validate(listOf(com.example.data.repository.DeckCardEntry(card, 2))).any { it.contains("Kirlia") })
     val deck = DeckBuilderEngine.buildArchetypeDeck("Charizard", false, emptyMap())
     assertTrue(deck.cards.groupBy { it.card.name }.all { (_, entries) -> entries.sumOf { it.count } <= 2 })

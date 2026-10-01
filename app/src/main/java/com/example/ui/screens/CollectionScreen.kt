@@ -76,6 +76,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.util.AppBackup
+import com.example.data.util.BackupSnapshot
+import com.example.data.util.readBytesBounded
 import com.example.data.util.ErrorLogManager
 import com.example.ui.components.CardItemView
 import com.example.ui.theme.PocketBackground
@@ -109,6 +112,9 @@ fun CollectionScreen(
   var showFiltersDialog by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
+  var selectedCardId by remember { mutableStateOf<String?>(null) }
+  var pendingRestore by remember { mutableStateOf<BackupSnapshot?>(null) }
+  var pendingBackup by remember { mutableStateOf<String?>(null) }
   var showPasteDialog by remember { mutableStateOf(false) }
   var showSettingsDialog by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
@@ -123,7 +129,7 @@ fun CollectionScreen(
     if (uri != null) scope.launch {
       try {
         val text = withContext(Dispatchers.IO) {
-          context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+          context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
         }
         if (!text.isNullOrBlank()) viewModel.importCsv(text)
         else Toast.makeText(context, "El archivo CSV está vacío.", Toast.LENGTH_SHORT).show()
@@ -146,6 +152,33 @@ fun CollectionScreen(
       } catch (e: Exception) {
         Toast.makeText(context, "Error al exportar: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
       }
+    }
+  }
+
+  val backupExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    if (uri == null) pendingBackup = null else scope.launch {
+      try {
+        val content = pendingBackup ?: error("Respaldo no preparado.")
+        withContext(Dispatchers.IO) {
+          val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("No se pudo abrir el destino.")
+          output.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+        }
+        Toast.makeText(context, "Respaldo completo guardado.", Toast.LENGTH_LONG).show()
+      } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) { Toast.makeText(context, "Error al guardar: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
+      finally { pendingBackup = null }
+    }
+  }
+  val backupImport = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    if (uri != null) scope.launch {
+      try {
+        pendingRestore = withContext(Dispatchers.IO) {
+          val text = context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
+            ?: error("No se pudo abrir el archivo.")
+          AppBackup.decode(text)
+        }
+      } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) { Toast.makeText(context, "Respaldo rechazado: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
     }
   }
 
@@ -419,11 +452,23 @@ fun CollectionScreen(
             ownedCount = item.ownedCount,
             isWishlist = item.isWishlist,
             onToggleWishlist = { viewModel.toggleWishlist(item.card.id) },
-            imageLanguage = userPreferences.language
+            imageLanguage = userPreferences.language,
+            onClick = { selectedCardId = item.card.id }
           )
         }
       }
     }
+  }
+
+  selectedCardId?.let { id -> fullInventory.find { it.card.id == id }?.let { item ->
+    CardDetailsDialog(item, userPreferences.language, { selectedCardId = null },
+      { viewModel.setQuantity(id, it) }, { viewModel.toggleWishlist(id) })
+  } }
+  pendingRestore?.let { backup ->
+    AlertDialog(onDismissRequest = { pendingRestore = null }, title = { Text("Restaurar respaldo") },
+      text = { Text("${backup.cards.size} registros · ${backup.cards.sumOf { it.quantity }} copias · ${backup.decks.size} mazos.\n\nSe reemplazan cantidades y deseos de las cartas incluidas. Las demás cartas y los mazos existentes se conservan. También se restauran los ajustes.") },
+      confirmButton = { TextButton(onClick = { viewModel.restoreBackup(backup); pendingRestore = null }) { Text("Restaurar") } },
+      dismissButton = { TextButton(onClick = { pendingRestore = null }) { Text("Cancelar") } })
   }
 
   if (showFiltersDialog) {
@@ -473,7 +518,20 @@ fun CollectionScreen(
             modifier = Modifier.fillMaxWidth()) { Text("Pegar CSV") }
           OutlinedButton(onClick = { showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
             modifier = Modifier.fillMaxWidth()) { Text("Exportar colección CSV") }
-          Text("El CSV contiene la colección; no incluye mazos ni ajustes.", fontSize = 12.sp)
+          Text("El CSV contiene cantidades y Deseos. El respaldo JSON incluye también mazos y ajustes.", fontSize = 12.sp)
+          OutlinedButton(onClick = {
+            showSettingsDialog = false
+            scope.launch {
+              try {
+                pendingBackup = viewModel.generateBackupContent()
+                backupExport.launch("respaldo-tcg-pocket.json")
+              } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+              catch (e: Exception) { Toast.makeText(context, "No se pudo preparar el respaldo.", Toast.LENGTH_LONG).show() }
+            }
+          }, modifier = Modifier.fillMaxWidth()) { Text("Guardar respaldo completo") }
+          OutlinedButton(onClick = { showSettingsDialog = false; backupImport.launch("*/*") },
+            modifier = Modifier.fillMaxWidth()) { Text("Restaurar respaldo completo") }
+          Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
           // Language selector
           Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -582,7 +640,7 @@ fun CollectionScreen(
       text = {
         Column {
           Text(
-            text = "Pega aquí tus líneas en formato 'Set,ID,Nombre,Rareza,Cantidad,Registrada' o 'card_id,quantity':",
+            text = "Pega aquí tus líneas en formato 'Set,ID,Nombre,Rareza,Cantidad,Registrada' :",
             fontSize = 12.sp,
             color = PocketTextSecondary
           )

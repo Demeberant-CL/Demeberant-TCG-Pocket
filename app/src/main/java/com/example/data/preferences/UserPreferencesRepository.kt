@@ -37,6 +37,16 @@ class UserPreferencesRepository(private val context: Context) {
     UserPreferences(isDarkMode = isDark, language = lang, themeName = theme)
   }
 
+  suspend fun restore(value: UserPreferences) {
+    require(value.language in setOf("es", "en", "ja"))
+    require(value.themeName in setOf("dark", "blue", "light"))
+    context.dataStore.edit {
+      it[Keys.IS_DARK_MODE] = value.isDarkMode
+      it[Keys.LANGUAGE] = value.language
+      it[Keys.THEME_NAME] = value.themeName
+    }
+  }
+
   suspend fun setDarkMode(enabled: Boolean) {
     context.dataStore.edit { preferences ->
       preferences[Keys.IS_DARK_MODE] = enabled
