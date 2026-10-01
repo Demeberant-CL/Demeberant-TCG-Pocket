@@ -73,9 +73,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   private val _searchQuery = MutableStateFlow("")
   val searchQuery = _searchQuery.asStateFlow()
 
-  private val _selectedPackFilter = MutableStateFlow<BoosterPack?>(null)
-  val selectedPackFilter = _selectedPackFilter.asStateFlow()
-
   private val _collectionFilter = MutableStateFlow(com.example.data.util.CollectionFilter.ALL)
   val collectionFilter = _collectionFilter.asStateFlow()
 
@@ -105,17 +102,15 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   val filteredCards: StateFlow<List<CardWithInventory>> = combine(
     inventoryList,
     _searchQuery,
-    _selectedPackFilter,
     _collectionFilter
-  ) { list, query, pack, filter ->
+  ) { list, query, filter ->
     list.filter { item ->
       val matchesQuery = query.isBlank() ||
         item.card.name.contains(query, ignoreCase = true) ||
         item.card.id.contains(query, ignoreCase = true) ||
         item.card.type.contains(query, ignoreCase = true)
 
-      val matchesPack = pack == null || item.card.pack == pack
-      matchesQuery && matchesPack && filter.matches(item)
+      matchesQuery && filter.matches(item)
     }
   }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -167,10 +162,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   // Collection Filter Actions
   fun setSearchQuery(query: String) {
     _searchQuery.value = query
-  }
-
-  fun setPackFilter(pack: BoosterPack?) {
-    _selectedPackFilter.value = pack
   }
 
   fun setCollectionFilter(filter: com.example.data.util.CollectionFilter) {
