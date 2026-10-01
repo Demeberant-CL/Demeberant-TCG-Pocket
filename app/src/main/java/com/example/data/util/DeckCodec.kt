@@ -18,7 +18,9 @@ object DeckCodec {
       val cards = root.getJSONArray("cards")
       (0 until cards.length()).map { i ->
         val card = cards.getJSONObject(i)
-        CardId.normalize(card.getString("id")) to card.getInt("count")
+        val count = card.getInt("count")
+        require(card.get("count").toString() == count.toString()) { "Cantidad de mazo no válida." }
+        CardId.normalize(card.getString("id")) to count
       }
     } else text.split(";").filter { it.isNotBlank() }.map {
       val parts = it.split(":")

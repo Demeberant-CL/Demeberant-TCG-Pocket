@@ -4,7 +4,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const server=spawn('npm',['run','preview','--','--host','127.0.0.1'],{stdio:'inherit'});
-let browser;
+let browser, page;
 try {
   for(let attempt=0;attempt<60;attempt++){
     try{if((await fetch('http://127.0.0.1:3000')).ok)break;}catch{}
@@ -12,7 +12,7 @@ try {
   }
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:412,height:915}});
-  const page=await context.newPage(),errors=[];
+  page=await context.newPage();const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://**/*',route=>route.abort());
   await page.goto('http://127.0.0.1:3000');
@@ -68,4 +68,9 @@ try {
   assert.deepEqual(errors,[]);
   await writeFile('web-reports/result.txt','Browser checks passed: quantity, wishlist, CSV, deck persistence, energies, complete backup, merge restore, theme, trades, probability, no page errors.\n');
   console.log('Browser smoke checks passed.');
+ } catch(error) {
+  await mkdir('web-reports',{recursive:true});
+  await writeFile('web-reports/error.txt',String(error.stack));
+  if(page) { await page.screenshot({path:'web-reports/failure.png',fullPage:true}).catch(()=>{});await writeFile('web-reports/page.html',await page.content().catch(()=>'')); }
+  throw error;
 } finally {await browser?.close();server.kill();}

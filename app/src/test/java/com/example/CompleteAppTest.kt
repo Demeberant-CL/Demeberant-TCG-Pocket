@@ -97,6 +97,7 @@ class CompleteAppTest {
   @Test fun deckCodecKeepsLegacyDecksAndRejectsInvalidNewDrafts() {
     assertEquals("A1-001" to 2, DeckCodec.references("A1-1:2").single())
     assertTrue(runCatching { DeckCodec.references("A1-1:3") }.isFailure)
+    assertTrue(runCatching { DeckCodec.references("""{"format":2,"cards":[{"id":"A1-001","count":1.5}],"energies":[]}""") }.isFailure)
     assertTrue(runCatching { DeckCodec.references("A1-1:1;A1-001:1") }.isFailure)
     assertTrue(runCatching { DeckCodec.references("A1-1:2;incorrecto") }.isFailure)
   }
