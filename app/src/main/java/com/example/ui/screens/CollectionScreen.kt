@@ -72,7 +72,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.model.BoosterPack
 import com.example.data.util.ErrorLogManager
 import com.example.ui.components.CardItemView
 import com.example.ui.theme.PocketBackground
@@ -100,7 +99,6 @@ fun CollectionScreen(
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-  val selectedPack by viewModel.selectedPackFilter.collectAsStateWithLifecycle()
   val collectionFilter by viewModel.collectionFilter.collectAsStateWithLifecycle()
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
@@ -374,7 +372,7 @@ fun CollectionScreen(
       )
     )
 
-    // Collection status and booster are independent, visibly separated filters.
+    // One collection status is selected at a time.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
       horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -412,47 +410,6 @@ fun CollectionScreen(
         )
       }
     }
-    LazyRow(
-      contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-      item {
-        PocketPillChip(
-          label = "Todos los sobres",
-          isSelected = selectedPack == null,
-          activeColor = PocketBluePrimary,
-          onClick = { viewModel.setPackFilter(null) }
-        )
-      }
-
-      item {
-        PocketPillChip(
-          label = "Charizard",
-          isSelected = selectedPack == BoosterPack.CHARIZARD,
-          activeColor = Color(0xFFEA580C),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.CHARIZARD) null else BoosterPack.CHARIZARD) }
-        )
-      }
-
-      item {
-        PocketPillChip(
-          label = "Mewtwo",
-          isSelected = selectedPack == BoosterPack.MEWTWO,
-          activeColor = Color(0xFF9333EA),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.MEWTWO) null else BoosterPack.MEWTWO) }
-        )
-      }
-
-      item {
-        PocketPillChip(
-          label = "Pikachu",
-          isSelected = selectedPack == BoosterPack.PIKACHU,
-          activeColor = Color(0xFFCA8A04),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.PIKACHU) null else BoosterPack.PIKACHU) }
-        )
-      }
-    }
-
     Spacer(modifier = Modifier.height(4.dp))
 
     // -------------------------------------------------------------
