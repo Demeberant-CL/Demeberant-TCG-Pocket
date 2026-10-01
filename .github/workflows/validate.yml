@@ -68,4 +68,19 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
+      - name: Browser regression checks
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node web/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-reports
+          path: web-reports/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-app
+          path: dist/

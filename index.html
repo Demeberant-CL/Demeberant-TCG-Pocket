@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="data:," />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demeberant TCG Pocket</title>
-    <meta name="description" content="Gestión, análisis de colecciones y cálculo de probabilidades para Pokémon TCG Pocket" />
-    <meta property="og:title" content="Demeberant TCG Pocket" />
-    <meta property="og:description" content="Gestión, análisis de colecciones y cálculo de probabilidades para Pokémon TCG Pocket" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white">
-    <main style="max-width:38rem;margin:3rem auto;padding:1.5rem;font-family:Nunito,sans-serif;line-height:1.6">
-      <h1>Demeberant TCG Pocket</h1>
-      <p>El proyecto principal es una aplicación Android para gestionar tu colección y preparar mazos.</p>
-      <p>La versión web completa todavía no está implementada.</p>
-      <a href="https://github.com/Demeberant-CL/Demeberant-TCG-Pocket">Ver el proyecto y las instrucciones</a>
-    </main>
-  </body>
-</html>
+<!doctype html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111216"><title>Demeberant TCG Pocket</title>
+<link rel="stylesheet" href="./web/style.css"></head>
+<body><header><strong>Demeberant TCG Pocket</strong><button id="settings" aria-label="Abrir ajustes">Ajustes</button></header>
+<nav id="nav" aria-label="Secciones"></nav><p id="status" role="status" aria-live="polite"></p>
+<main id="app"><p>Cargando catálogo…</p></main><dialog id="dialog" aria-label="Detalle o ajustes"><div id="dialog-content"></div><button id="close-dialog">Cerrar</button></dialog>
+<input type="file" id="file" hidden accept=".csv,.json,text/csv,application/json">
+<script type="module" src="./web/app.mjs"></script></body></html>
