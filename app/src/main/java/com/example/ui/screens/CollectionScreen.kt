@@ -101,8 +101,7 @@ fun CollectionScreen(
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
   val selectedPack by viewModel.selectedPackFilter.collectAsStateWithLifecycle()
-  val onlyWishlist by viewModel.onlyWishlistFilter.collectAsStateWithLifecycle()
-  val onlyMissing by viewModel.onlyMissingFilter.collectAsStateWithLifecycle()
+  val collectionFilter by viewModel.collectionFilter.collectAsStateWithLifecycle()
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
   var showPasteDialog by remember { mutableStateOf(false) }
@@ -375,51 +374,54 @@ fun CollectionScreen(
       )
     )
 
-    // Pill Filters
+    // Collection status and booster are independent, visibly separated filters.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
       item {
-        val isAllSelected = selectedPack == null && !onlyWishlist && !onlyMissing
         PocketPillChip(
-          label = "Todos los Sets",
-          isSelected = isAllSelected,
+          label = "Todas",
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.ALL,
           activeColor = PocketBluePrimary,
-          onClick = {
-            viewModel.setPackFilter(null)
-            if (onlyWishlist) viewModel.toggleOnlyWishlist()
-            if (onlyMissing) viewModel.toggleOnlyMissing()
-          }
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.ALL) }
         )
       }
-
       item {
         PocketPillChip(
           label = "Poseídas ($totalOwned)",
-          isSelected = onlyWishlist.not() && onlyMissing.not() && selectedPack == null,
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.OWNED,
           activeColor = Color(0xFF10B981),
-          onClick = {
-            if (onlyMissing) viewModel.toggleOnlyMissing()
-          }
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.OWNED) }
         )
       }
-
       item {
         PocketPillChip(
           label = "Faltantes (${totalCatalog - totalOwned})",
-          isSelected = onlyMissing,
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.MISSING,
           activeColor = PocketRed,
-          onClick = { viewModel.toggleOnlyMissing() }
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.MISSING) }
         )
       }
-
       item {
         PocketPillChip(
           label = "Favoritas",
-          isSelected = onlyWishlist,
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.FAVORITES,
           activeColor = PocketGold,
-          onClick = { viewModel.toggleOnlyWishlist() }
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
+        )
+      }
+    }
+    LazyRow(
+      contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+      item {
+        PocketPillChip(
+          label = "Todos los sobres",
+          isSelected = selectedPack == null,
+          activeColor = PocketBluePrimary,
+          onClick = { viewModel.setPackFilter(null) }
         )
       }
 
