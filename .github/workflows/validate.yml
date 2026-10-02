@@ -54,6 +54,9 @@ jobs:
               issues = ET.parse(lint).getroot().findall("issue")
               errors = [i for i in issues if i.attrib.get("severity") in ("Error", "Fatal")]
               print(f"Lint: {len(errors)} errors; {len(issues) - len(errors)} other findings")
+              for issue in issues:
+                  locations = [{"file": loc.attrib.get("file"), "line": loc.attrib.get("line")} for loc in issue.findall("location")]
+                  print("LINT_FINDING=" + json.dumps({"id": issue.attrib.get("id"), "severity": issue.attrib.get("severity"), "message": issue.attrib.get("message"), "locations": locations}, ensure_ascii=False))
               assert not errors
           Path("app/build/reports/validation-summary.txt").write_text(message + "\n")
           metadata = json.loads(Path("app/build/outputs/apk/debug/output-metadata.json").read_text())

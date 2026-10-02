@@ -16,7 +16,7 @@ El resultado de la última revisión se registra en los trabajos y en la descrip
 - Mazos: cantidades válidas, formatos heredado y JSON, energías y borradores.
 - Canjes: reserva de copias, propuesta recíproca por rareza y ausencia explícita en CSV.
 - Probabilidades: casos exactos de aperturas independientes y robo sin reemplazo.
-- Web: `npm test` (10 pruebas), `npm run build` y prueba de navegador Chromium.
+- Web: `npm test` (11 pruebas), `npm run build` y prueba de navegador Chromium.
 - Navegador: editar cantidad, Deseos, exportar CSV, guardar y reabrir mazos tras recargar,
   energías, respaldo completo, restauración sin duplicar, temas, canjes y calculadora.
   Los servicios externos se bloquean durante esta prueba para comprobar el funcionamiento
@@ -36,7 +36,7 @@ No se fusiona en main ni se despliega la web automáticamente.
 
 - La instalación y los flujos nuevos de Android requieren validación en un teléfono físico.
 - Catálogo comunitario: metadatos de tipo/evolución incompletos en expansiones recientes.
-  Los detalles e imágenes dependen de TCGdex. Interfaz en español; cambia el idioma de imágenes.
+  Los detalles e imágenes dependen de TCGdex. Interfaz, imágenes y detalles en español fijo.
 - Las plantillas A1 son históricas, sin afirmar que representan el meta actual.
 - No hay integración real con Gemini, cuenta del juego, ejecución de canjes ni sincronización
   automática entre Android y web.
@@ -85,4 +85,23 @@ Las comprobaciones del commit final se consultan en Actions y el PR.
   Mano inicial con básico mediante aproximación explícita. No implementa ataques ni todas las reglas.
 - Estas pantallas avanzadas están en Android, menú Análisis. La web conserva sus funciones
   anteriores; no incluye aún IA, sandbox o filtros por efectos.
-- Draft, giroscopio/shaders, QR y winrates de torneos quedan fuera de esta ampliación.
+- Draft, giroscopio/shaders y winrates de torneos quedan fuera de esta ampliación. QR de mazos implementado posteriormente.
+
+## Auditoría integral del PR #1
+
+Cobertura automática: configuración y persistencia DataStore; filtros/cantidades/CSV;
+respaldos actuales y heredados y restauración idempotente; edición/codec de mazos;
+validación IA de IDs/cantidades/sustituciones, JSON externo y portapapeles manual;
+QR binario contra dos fixtures conocidos, mapa completo, imagen PNG decodificada;
+sandbox y canjes sin escrituras de colección; diagnóstico redactado, FileProvider y permisos.
+GitHub Actions vuelve a ejecutar pruebas Android, Lint, compilación, pruebas web/servidor y Chromium.
+Los resultados exactos del commit final están en la descripción del PR y Actions.
+Las pruebas Android usan Robolectric/Room/DataStore: no equivalen a probar la interfaz en un teléfono.
+Solo se emplean datos sintéticos de prueba; no hay llamadas pagadas de IA.
+
+Probado en dispositivo por esta auditoría: ninguno. Entorno local desconectado, sin teléfono
+ni sesión de Pokémon TCG Pocket disponibles. Pendientes: selector y persistencia en teléfono,
+importar/exportar mediante el selector Android real, copiar/pegar consulta con una IA externa,
+compartir PNG/TXT a otra app y escanear QR dentro del juego.
+Chromium prueba realmente la web; bloquea servicios externos para no compartir datos.
+Los logs de CI ahora detallan ID, mensaje y localización de cada hallazgo de Lint.

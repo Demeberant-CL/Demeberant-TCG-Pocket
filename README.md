@@ -77,7 +77,7 @@ intercambio de carta como aproximación explícita. No modifica cantidades ni ma
 Efectos indexa hasta 25 cartas nuevas por solicitud y consulta Room por PS, tipo,
 texto de ataques/habilidades y roles estimados (robo, curación, energía, milling, movilidad).
 Una carta se indexa también al abrir sus detalles. Las etiquetas son heurísticas y
-los resultados solo incluyen cartas con reglas disponibles en el idioma seleccionado.
+los resultados solo incluyen cartas con reglas disponibles en español.
 La migración Room 4→5 crea la caché de reglas conservando colección y mazos.
 
 Diagnóstico: logs diarios con escritura asíncrona, cola acotada, rotación y máximo de seis
@@ -87,8 +87,8 @@ No conserva cuerpos privados ni credenciales. Exportación TXT por FileProvider 
 el selector de compartir lo abre el usuario, sin enviar automáticamente.
 
 Capas: `data/` (Room, HTTP y repositorios), `domain/` (validadores, roles y sandbox),
-`ui/` (Presentation: ViewModels y Compose). ZXing no está instalado en esta revisión;
-este módulo no incorpora códigos QR, draft, giroscopio ni estadísticas de torneos.
+`ui/` (Presentation: ViewModels y Compose). ZXing se utiliza para la exportación QR de mazos descrita más abajo.
+Draft, giroscopio y estadísticas de torneos no están incluidos.
 
 ## Configuración simplificada
 Android utiliza español fijo para interfaz, imágenes y detalles. Configuración no guarda idioma.
