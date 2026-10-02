@@ -54,8 +54,7 @@ class MainActivity : ComponentActivity() {
       val userPrefs by viewModel.userPreferences.collectAsStateWithLifecycle()
 
       PocketAppTheme(
-        isDarkMode = userPrefs.isDarkMode,
-        themeName = userPrefs.themeName
+        darkTheme = userPrefs.themeMode.isDark(androidx.compose.foundation.isSystemInDarkTheme())
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 

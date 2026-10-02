@@ -54,3 +54,11 @@ test('bundled catalogue has unique canonical cards and no placeholder health',as
  assert.ok(data.cards.every(c=>canonical(c.id)===c.id&&!('hp'in c)));
  assert.ok(data.cards.some(c=>c.id==='B4B-001'));
 });
+
+test('Android theme-only backups remain compatible',()=>{
+  for(const theme of ['light','dark','system']){
+    const parsed=validateBackup(JSON.stringify({format:'demeberant-tcg-pocket-backup',version:1,inventory:[],decks:[],preferences:{theme}}));
+    assert.equal(parsed.preferences.language,'es');
+    assert.ok(['light','dark'].includes(parsed.preferences.theme));
+  }
+});

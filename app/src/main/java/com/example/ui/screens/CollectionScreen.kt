@@ -38,11 +38,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -56,7 +54,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -452,7 +449,7 @@ fun CollectionScreen(
             ownedCount = item.ownedCount,
             isWishlist = item.isWishlist,
             onToggleWishlist = { viewModel.toggleWishlist(item.card.id) },
-            imageLanguage = userPreferences.language,
+            imageLanguage = "es",
             onClick = { selectedCardId = item.card.id }
           )
         }
@@ -461,7 +458,7 @@ fun CollectionScreen(
   }
 
   selectedCardId?.let { id -> fullInventory.find { it.card.id == id }?.let { item ->
-    CardDetailsDialog(item, userPreferences.language, { selectedCardId = null },
+    CardDetailsDialog(item, "es", { selectedCardId = null },
       { viewModel.setQuantity(id, it) }, { viewModel.toggleWishlist(id) })
   } }
   pendingRestore?.let { backup ->
@@ -495,20 +492,12 @@ fun CollectionScreen(
     )
   }
 
-  // Settings & Preferences Modal Dialog
   if (showSettingsDialog) {
-    AlertDialog(
-      onDismissRequest = { showSettingsDialog = false },
-      title = {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Filled.Settings, contentDescription = null, tint = PocketBluePrimary)
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("Ajustes y Preferencias", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-      },
-      text = {
-        Column(modifier = Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState()),
-          verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    SettingsScreen(
+      themeMode = userPreferences.themeMode,
+      onThemeModeChange = viewModel::setThemeMode,
+      onDismiss = { showSettingsDialog = false }
+    ) {
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
             showSettingsDialog = false
@@ -532,68 +521,6 @@ fun CollectionScreen(
           OutlinedButton(onClick = { showSettingsDialog = false; backupImport.launch("*/*") },
             modifier = Modifier.fillMaxWidth()) { Text("Restaurar respaldo completo") }
           Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
-          // Language selector
-          Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(Icons.Filled.Translate, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Idioma de imágenes (interfaz en español)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            listOf(
-              "es" to "Español Neutro",
-              "en" to "English",
-              "ja" to "日本語"
-            ).forEach { (code, label) ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .clickable { viewModel.setLanguage(code) }
-                  .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                RadioButton(
-                  selected = userPreferences.language == code,
-                  onClick = { viewModel.setLanguage(code) }
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
-              }
-            }
-          }
-
-          // Theme selector
-          Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(Icons.Filled.Palette, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Tema visual", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            listOf(
-              "dark" to "Oscuro carbón",
-              "blue" to "Azul Pokémon Clásico",
-              "light" to "Modo Claro"
-            ).forEach { (themeKey, label) ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .clickable { viewModel.setThemeName(themeKey) }
-                  .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                RadioButton(
-                  selected = userPreferences.themeName == themeKey,
-                  onClick = { viewModel.setThemeName(themeKey) }
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
-              }
-            }
-          }
-
           // Error Logging Export Section
           Column {
             Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
@@ -612,24 +539,7 @@ fun CollectionScreen(
               Text("Compartir diagnóstico TXT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
-        }
-      },
-      confirmButton = {
-        Button(
-          onClick = {
-            showSettingsDialog = false
-          },
-          colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
-        ) {
-          Text("Listo")
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { showSettingsDialog = false }) {
-          Text("Cerrar")
-        }
-      }
-    )
+    }
   }
 
   // CSV Paste Modal Dialog

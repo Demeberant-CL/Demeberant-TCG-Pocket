@@ -86,7 +86,6 @@ fun DeckBuilderScreen(
   onOpenSavedDeck: () -> Unit = {}
 ) {
   val context = LocalContext.current
-  val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
   val generatedDeck by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val deckPrompt by viewModel.deckBuildPrompt.collectAsStateWithLifecycle()
   val onlyFromInventory by viewModel.onlyFromInventoryDeck.collectAsStateWithLifecycle()
@@ -317,7 +316,7 @@ fun DeckBuilderScreen(
                     .background(PocketSurface)
                 ) {
                   AsyncImage(
-                    model = TcgdexHelper.getCardImageUrl(entry.card.id, userPreferences.language),
+                    model = TcgdexHelper.getCardImageUrl(entry.card.id, "es"),
                     contentDescription = entry.card.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

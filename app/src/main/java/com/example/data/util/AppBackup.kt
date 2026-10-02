@@ -20,8 +20,7 @@ object AppBackup {
     .put("decks", JSONArray(value.decks.map { deck -> JSONObject().put("name", deck.name)
       .put("archetype", deck.archetype).put("strategy", deck.strategy).put("cards", deck.cardListSerialized)
       .put("total", deck.totalCards).put("createdAt", deck.createdAt) }))
-    .put("preferences", JSONObject().put("dark", value.preferences.isDarkMode)
-      .put("language", value.preferences.language).put("theme", value.preferences.themeName)).toString(2)
+    .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue)).toString(2)
 
   fun decode(text: String): BackupSnapshot {
     require(text.length <= 8_000_000) { "Respaldo demasiado grande." }
@@ -50,9 +49,8 @@ object AppBackup {
         strategy = row.getString("strategy"), cardListSerialized = content, totalCards = total, createdAt = row.getLong("createdAt"))
     }
     val prefs = root.getJSONObject("preferences")
-    val language = prefs.getString("language")
     val theme = prefs.getString("theme")
-    require(language in setOf("es", "en", "ja") && theme in setOf("dark", "blue", "light")) { "Ajustes no válidos." }
-    return BackupSnapshot(cards, decks, UserPreferences(prefs.getBoolean("dark"), language, theme))
+    require(theme in setOf("dark", "blue", "light", "system")) { "Ajustes no válidos." }
+    return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme)))
   }
 }

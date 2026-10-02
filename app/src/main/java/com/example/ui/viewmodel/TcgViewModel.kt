@@ -148,21 +148,14 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   // Preferences Actions
-  fun setDarkMode(isDark: Boolean) {
+  fun setThemeMode(mode: com.example.data.preferences.ThemeMode) {
     viewModelScope.launch {
-      preferencesRepository.setDarkMode(isDark)
-    }
-  }
-
-  fun setLanguage(languageCode: String) {
-    viewModelScope.launch {
-      preferencesRepository.setLanguage(languageCode)
-    }
-  }
-
-  fun setThemeName(themeName: String) {
-    viewModelScope.launch {
-      preferencesRepository.setThemeName(themeName)
+      try { preferencesRepository.setThemeMode(mode) }
+      catch (e: CancellationException) { throw e }
+      catch (e: Exception) {
+        ErrorLogManager.event("SETTINGS_WRITE", "Theme preference could not be saved", e)
+        _csvStatusMessage.value = "No se pudo guardar el tema."
+      }
     }
   }
 

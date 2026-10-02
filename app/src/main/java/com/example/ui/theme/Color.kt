@@ -14,8 +14,6 @@ val PocketBorder: Color
 
 val PocketBluePrimary: Color
   @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
-val PocketBlueDark = Color(0xFF0369A1)
-val PocketBlueLight = Color(0xFFE0F2FE)
 
 val PocketGold = Color(0xFFF59E0B)
 val PocketGoldLight = Color(0xFFFEF3C7)

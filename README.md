@@ -89,3 +89,9 @@ el selector de compartir lo abre el usuario, sin enviar automáticamente.
 Capas: `data/` (Room, HTTP y repositorios), `domain/` (validadores, roles y sandbox),
 `ui/` (Presentation: ViewModels y Compose). ZXing no está instalado en esta revisión;
 este módulo no incorpora códigos QR, draft, giroscopio ni estadísticas de torneos.
+
+## Configuración simplificada
+Android utiliza español fijo para interfaz, imágenes y detalles. Configuración no guarda idioma.
+El tema admite Claro, Oscuro y Automático (Sistema), con dos paletas Light/Dark.
+Los ajustes antiguos Azul pasan a Claro; la migración elimina idioma y booleano redundante.
+Los respaldos anteriores se aceptan sin recuperar el idioma retirado. Nuevos respaldos guardan solo el modo de tema.

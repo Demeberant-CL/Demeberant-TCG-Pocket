@@ -45,7 +45,7 @@ class CompleteAppTest {
     val deck = SavedDeckEntity(name = "Borrador", archetype = "Manual", strategy = "Notas",
       cardListSerialized = DeckCodec.encode(entries, listOf("Planta")), totalCards = 2)
     val snapshot = BackupSnapshot(listOf(InventoryCardEntity("A1-001", "Bulbasaur", "Sobre Mewtwo", "♦", 3, true, 100)),
-      listOf(deck), UserPreferences(false, "en", "light"))
+      listOf(deck), UserPreferences(com.example.data.preferences.ThemeMode.LIGHT))
     val restored = AppBackup.decode(AppBackup.encode(snapshot))
     assertEquals(snapshot.cards, restored.cards)
     assertEquals(snapshot.preferences, restored.preferences)

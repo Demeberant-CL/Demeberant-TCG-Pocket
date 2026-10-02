@@ -28,7 +28,6 @@ private fun AdvancedStatus(model: AdvancedViewModel) {
 @Composable
 fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier) {
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
-  val preferences by main.userPreferences.collectAsStateWithLifecycle()
   val proposal by model.proposal.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   var endpoint by remember { mutableStateOf(model.endpoint) }
@@ -82,7 +81,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   confirmMode?.let { replace ->
     AlertDialog(onDismissRequest = { confirmMode = null }, title = { Text("Enviar contexto a la IA") },
       text = { Text("Se enviarán IDs, cantidades disponibles, tipos, efectos indexados, objetivo y contexto meta a tu servidor y a OpenAI. Puede generar un coste en tu cuenta API. No modifica la colección ni guarda automáticamente un mazo.") },
-      confirmButton = { TextButton(onClick = { model.askAssistant(replace, deck, preferences.language); confirmMode = null }) { Text("Enviar y consultar") } },
+      confirmButton = { TextButton(onClick = { model.askAssistant(replace, deck, "es"); confirmMode = null }) { Text("Enviar y consultar") } },
       dismissButton = { TextButton(onClick = { confirmMode = null }) { Text("Cancelar") } })
   }
   if (confirmOpen) AlertDialog(onDismissRequest = { confirmOpen = false }, title = { Text("Abrir propuesta") },
@@ -94,7 +93,6 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
 @Composable
 fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifier = Modifier) {
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
-  val prefs by main.userPreferences.collectAsStateWithLifecycle()
   val state by model.board.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   var restart by remember { mutableStateOf(false) }
@@ -103,7 +101,7 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
       Text("Tapete de práctica", style = MaterialTheme.typography.titleLarge)
       Text("Abre un mazo de 20 cartas en Mazos y úsalo aquí. Tablero manual de un jugador; no ejecuta ataques, evoluciones ni reglas automáticamente.")
       Text("La mano inicial garantiza un básico por intercambio de una carta si hace falta. Es una aproximación, no el algoritmo interno del juego.")
-      Button(enabled = !busy && deck?.totalCardCount == 20, onClick = { if (state == null) model.startSandbox(deck, prefs.language) else restart = true }) {
+      Button(enabled = !busy && deck?.totalCardCount == 20, onClick = { if (state == null) model.startSandbox(deck, "es") else restart = true }) {
         Text(if (state == null) "Iniciar con el mazo abierto" else "Nueva práctica")
       }
       AdvancedStatus(model)
@@ -130,7 +128,7 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
   }
   if (restart) AlertDialog(onDismissRequest = { restart = false }, title = { Text("Reiniciar práctica") },
     text = { Text("Se reinician solo el tapete, la mano y los descartes. No modifica la colección ni los mazos guardados.") },
-    confirmButton = { TextButton(onClick = { model.startSandbox(deck, prefs.language); restart = false }) { Text("Reiniciar") } },
+    confirmButton = { TextButton(onClick = { model.startSandbox(deck, "es"); restart = false }) { Text("Reiniciar") } },
     dismissButton = { TextButton(onClick = { restart = false }) { Text("Cancelar") } })
 }
 
@@ -164,7 +162,6 @@ private fun BoardCardControls(card: BoardCard, zone: BoardZone, model: AdvancedV
 @Composable
 fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifier = Modifier) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
-  val prefs by main.userPreferences.collectAsStateWithLifecycle()
   val matches by model.matches.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   var query by rememberSaveable { mutableStateOf("") }
@@ -173,8 +170,8 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
   var minHp by rememberSaveable { mutableStateOf("") }
   var maxHp by rememberSaveable { mutableStateOf("") }
   var element by rememberSaveable { mutableStateOf("") }
-  LaunchedEffect(prefs.language, keyword, role, minHp, maxHp, element) {
-    model.updateFilter(RulesFilter(prefs.language, minHp.toIntOrNull(), maxHp.toIntOrNull(), element, role, keyword))
+  LaunchedEffect("es", keyword, role, minHp, maxHp, element) {
+    model.updateFilter(RulesFilter("es", minHp.toIntOrNull(), maxHp.toIntOrNull(), element, role, keyword))
   }
   val candidates = inventory.filter { query.isBlank() || it.card.name.contains(query, true) || it.card.id.contains(query, true) }
   val visible = matches.filter { query.isBlank() || it.cardId.contains(query, true) ||
@@ -195,7 +192,7 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
         items(CardRole.entries) { value -> FilterChip(selected = role == value.key,
           onClick = { role = if (role == value.key) "" else value.key }, label = { Text(value.label) }) }
       }
-      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, prefs.language) }) { Text("Indexar hasta 25 cartas de esta búsqueda") }
+      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }) { Text("Indexar hasta 25 cartas de esta búsqueda") }
       TextButton(onClick = { query = ""; keyword = ""; role = ""; minHp = ""; maxHp = ""; element = "" }) { Text("Limpiar filtros") }
       Text("También se indexa una carta al abrir sus detalles en Colección. No se descarga todo el catálogo automáticamente.")
       AdvancedStatus(model)

@@ -41,30 +41,12 @@ private val DarkColorScheme = darkColorScheme(
   outlineVariant = Color(0xFF49474F)
 )
 
-private val ClassicBlueColorScheme = lightColorScheme(
-  primary = Color(0xFF0284C7),
-  onPrimary = Color.White,
-  primaryContainer = Color(0xFFE0F2FE),
-  onPrimaryContainer = Color(0xFF0369A1),
-  secondary = Color(0xFFF59E0B),
-  background = Color(0xFFF0F9FF),
-  surface = Color.White,
-  onBackground = Color(0xFF0C4A6E),
-  onSurface = Color(0xFF0C4A6E)
-)
-
 @Composable
 fun PocketAppTheme(
-  isDarkMode: Boolean = false,
-  themeName: String = "dark",
+  darkTheme: Boolean = isSystemInDarkTheme(),
   content: @Composable () -> Unit
 ) {
-  val colorScheme = when {
-    themeName == "light" -> LightColorScheme
-    themeName == "blue" -> ClassicBlueColorScheme
-    isDarkMode || themeName == "dark" -> DarkColorScheme
-    else -> LightColorScheme
-  }
+  val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
   val view = LocalView.current
   if (!view.isInEditMode) {
