@@ -193,6 +193,27 @@ class AdvancedModuleTest {
     assertTrue(logs.contains("REDACTED"))
   }
 
+  @Test fun externalPromptPreservesContextAndReplacementTarget() {
+    val cards = candidates()
+    val text = ExternalAiExchange.prompt("Fuente y fecha", "Control", cards, cards.map { DeckCardEntry(it.card, 2) })
+    val context = JSONObject(text.substringAfter("CONTEXTO:\n"))
+    assertEquals(10, context.getJSONArray("cards").length())
+    assertEquals(10, context.getJSONArray("target").length())
+    assertEquals("Control", context.getString("goal"))
+    assertEquals(2, context.getJSONArray("cards").getJSONObject(0).getInt("quantity"))
+    assertTrue(runCatching { ExternalAiExchange.prompt("", "", emptyList(), null) }.isFailure)
+  }
+
+  @Test fun externalJsonAcceptsSingleCodeBlockButRejectsProseAndInvalidCollection() {
+    val raw = proposal().toString()
+    assertEquals(raw, ExternalAiExchange.response("  " + raw + "  "))
+    assertEquals(20, AiValidator.parse(ExternalAiExchange.response("```json\n" + raw + "\n```"), candidates()).deck.totalCardCount)
+    assertTrue(runCatching { AiValidator.parse(ExternalAiExchange.response("Aquí tienes: " + raw), candidates()) }.isFailure)
+    assertTrue(runCatching { ExternalAiExchange.response("```json\n" + raw + "\n```\nTexto extra") }.isFailure)
+    assertTrue(runCatching { ExternalAiExchange.response("x".repeat(100001)) }.isFailure)
+    assertTrue(runCatching { AiValidator.parse(raw, candidates().map { it.copy(owned = 1) }) }.isFailure)
+  }
+
   private fun String.toRequestBodyCompat(): RequestBody =
     this.toRequestBody("text/plain".toMediaType())
 }

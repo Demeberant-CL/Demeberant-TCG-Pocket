@@ -35,6 +35,9 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   var meta: String = ""
   var goal: String = ""
   var candidateType: String = ""
+  val externalPrompt = MutableStateFlow<String?>(null)
+  private var externalCandidates: List<AiCandidate>? = null
+  private var externalTarget: List<DeckCardEntry>? = null
   private var job: Job? = null
 
   fun updateFilter(query: RulesFilter) { filter.value = query }
@@ -88,6 +91,16 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
 
   fun askAssistant(replace: Boolean, target: GeneratedDeck?, language: String) = task("AI_ASSIST") {
+    val (candidates, hydratedTarget) = assistantContext(replace, target, language)
+    if (replace) {
+      require(target != null && target.totalCardCount == 20) { "Abre un mazo objetivo de 20 cartas en el editor." }
+      proposal.value = assistant.suggestReplacements(endpoint, token, meta, hydratedTarget!!, candidates)
+    } else proposal.value = assistant.generateDeck(endpoint, token, meta, goal, candidates)
+    message.value = "Propuesta validada. Revisa la estrategia antes de abrirla en el editor."
+  }
+
+  private suspend fun assistantContext(replace: Boolean, target: GeneratedDeck?, language: String):
+    Pair<List<AiCandidate>, List<DeckCardEntry>?> {
     val inventory = repository.inventoryFlow.first()
     val rules = db.cardRulesDao().all(language).associateBy { it.cardId }
     val targetIds = target?.cards?.map { it.card.id }?.toSet() ?: emptySet()
@@ -99,12 +112,43 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       AiCandidate(hydrate(item.card, rules[item.card.id]), item.ownedCount, rules[item.card.id]?.rulesText ?: "")
     }
     require(candidates.sumOf { minOf(it.owned, 2) } >= 20) { "Necesitas al menos 20 copias disponibles." }
-    if (replace) {
-      require(target != null && target.totalCardCount == 20) { "Abre un mazo objetivo de 20 cartas en el editor." }
-      val hydrated = target.cards.map { it.copy(card = hydrate(it.card, rules[it.card.id])) }
-      proposal.value = assistant.suggestReplacements(endpoint, token, meta, hydrated, candidates)
-    } else proposal.value = assistant.generateDeck(endpoint, token, meta, goal, candidates)
-    message.value = "Propuesta validada. Revisa la estrategia antes de abrirla en el editor."
+
+    require(!replace || target?.totalCardCount == 20) { "Abre un mazo objetivo de 20 cartas en el editor." }
+    return candidates to if (replace) target!!.cards.map { it.copy(card = hydrate(it.card, rules[it.card.id])) } else null
+  }
+
+  fun prepareExternal(replace: Boolean, target: GeneratedDeck?) = task("AI_EXTERNAL_PREPARE") {
+    externalPrompt.value = null
+    externalCandidates = null
+    externalTarget = null
+    proposal.value = null
+    val (candidates, requestedTarget) = assistantContext(replace, target, "es")
+    val text = withContext(Dispatchers.Default) { ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget) }
+    externalCandidates = candidates
+    externalTarget = requestedTarget
+    externalPrompt.value = text
+    message.value = "Consulta preparada. Revisa el contenido antes de copiarlo a tu IA."
+  }
+
+  fun importExternal(text: String) = task("AI_EXTERNAL_IMPORT") {
+    proposal.value = null
+    val original = externalCandidates ?: error("Prepara primero una consulta.")
+    val current = repository.inventoryFlow.first().associateBy { it.card.id }
+    val available = original.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }
+    val result = withContext(Dispatchers.Default) {
+      AiValidator.parse(ExternalAiExchange.response(text), available, externalTarget)
+    }
+    proposal.value = result
+    message.value = "Respuesta validada con las cantidades actuales. Revisa el borrador."
+  }
+
+  fun clearExternal() {
+    if (busy.value) return
+    externalPrompt.value = null
+    externalCandidates = null
+    externalTarget = null
+    proposal.value = null
+    message.value = "Consulta y propuesta eliminadas de la sesión."
   }
 
   fun startSandbox(deck: GeneratedDeck?, language: String) = task("SANDBOX_START") {

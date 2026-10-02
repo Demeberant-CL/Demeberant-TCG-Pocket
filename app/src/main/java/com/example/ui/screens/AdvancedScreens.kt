@@ -37,15 +37,26 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
   var confirmMode by remember { mutableStateOf<Boolean?>(null) }
   var confirmOpen by remember { mutableStateOf(false) }
+  var useServer by rememberSaveable { mutableStateOf(false) }
+  var responseText by remember { mutableStateOf("") }
+  var showCopy by remember { mutableStateOf(false) }
+  val externalPrompt by model.externalPrompt.collectAsStateWithLifecycle()
+  val context = androidx.compose.ui.platform.LocalContext.current
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
       Text("Propuestas de mazos y sustituciones con tus cartas. Se validan IDs, cantidades, copias por nombre y evoluciones. No garantiza el mejor mazo ni un winrate.")
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = !useServer, onClick = { useServer = false }, label = { Text("Mi IA · copiar y pegar") })
+        FilterChip(selected = useServer, onClick = { useServer = true }, label = { Text("Servidor · avanzado") })
+      }
+      if (useServer) {
       OutlinedTextField(endpoint, { endpoint = it; model.endpoint = it }, label = { Text("Servidor IA · URL HTTPS /assist") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       OutlinedTextField(token, { token = it; model.token = it }, label = { Text("Token de acceso al servidor") },
         visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true)
       Text("La clave de OpenAI permanece en tu servidor. Este token solo se guarda durante la sesión y no entra en respaldos o logs.")
       TextButton(onClick = { token = ""; model.clearToken() }) { Text("Eliminar token de la sesión") }
+      }
       OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, label = { Text("Objetivo y estrategia") }, modifier = Modifier.fillMaxWidth())
       OutlinedTextField(meta, { if (it.length <= 16_000) { meta = it; model.meta = it } }, label = { Text("Contexto meta · fuente y fecha (opcional)") },
         modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
@@ -58,9 +69,23 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         }
       }
       Text("El contexto meta es aportado por ti. No se obtiene mediante scraping ni se verifica como actual. Los efectos disponibles dependen de las cartas indexadas en Efectos.")
+      if (useServer) {
       Button(enabled = !busy && endpoint.isNotBlank() && token.isNotBlank(), onClick = { confirmMode = false }) { Text("Proponer mazo de 20 cartas") }
       OutlinedButton(enabled = !busy && endpoint.isNotBlank() && token.isNotBlank() && deck?.totalCardCount == 20,
         onClick = { confirmMode = true }) { Text("Sustituir faltantes del mazo abierto") }
+      } else {
+        Text("Sin clave API ni servidor. Prepara la consulta, cópiala a la IA que uses y pega su respuesta JSON aquí. Tú decides qué servicio recibe estos datos.")
+        Button(enabled = !busy, onClick = { model.prepareExternal(false, deck) }) { Text("Preparar consulta para un mazo") }
+        OutlinedButton(enabled = !busy && deck?.totalCardCount == 20, onClick = { model.prepareExternal(true, deck) }) { Text("Preparar sustitución de faltantes") }
+        externalPrompt?.let { prompt ->
+          Text("Consulta lista: " + prompt.length + " caracteres. Incluye IDs, cantidades, metadatos, objetivo y contexto; no incluye credenciales.")
+          OutlinedButton(enabled = !busy, onClick = { showCopy = true }) { Text("Revisar y copiar consulta") }
+          OutlinedTextField(responseText, { if (it.length <= 100000) responseText = it },
+            label = { Text("Pega la respuesta JSON de tu IA") }, modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp))
+          Button(enabled = !busy && responseText.isNotBlank(), onClick = { model.importExternal(responseText) }) { Text("Validar respuesta") }
+          TextButton(enabled = !busy, onClick = { responseText = ""; model.clearExternal() }) { Text("Eliminar consulta y respuesta") }
+        }
+      }
       AdvancedStatus(model)
     }
     proposal?.let { result ->
@@ -78,6 +103,19 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       }
     }
   }
+  if (showCopy) AlertDialog(onDismissRequest = { showCopy = false }, title = { Text("Revisar consulta") },
+    text = { androidx.compose.foundation.text.selection.SelectionContainer {
+      LazyColumn(Modifier.heightIn(max = 400.dp)) { item { Text(externalPrompt ?: "") } }
+    } },
+    confirmButton = { TextButton(onClick = {
+      externalPrompt?.let { text ->
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Consulta de mazo", text))
+        android.widget.Toast.makeText(context, "Consulta copiada. Pégala en tu IA habitual.", android.widget.Toast.LENGTH_LONG).show()
+      }
+      showCopy = false
+    }) { Text("Copiar") } },
+    dismissButton = { TextButton(onClick = { showCopy = false }) { Text("Cancelar") } })
   confirmMode?.let { replace ->
     AlertDialog(onDismissRequest = { confirmMode = null }, title = { Text("Enviar contexto a la IA") },
       text = { Text("Se enviarán IDs, cantidades disponibles, tipos, efectos indexados, objetivo y contexto meta a tu servidor y a OpenAI. Puede generar un coste en tu cuenta API. No modifica la colección ni guarda automáticamente un mazo.") },
