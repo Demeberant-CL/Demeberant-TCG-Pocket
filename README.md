@@ -95,3 +95,20 @@ Android utiliza español fijo para interfaz, imágenes y detalles. Configuració
 El tema admite Claro, Oscuro y Automático (Sistema), con dos paletas Light/Dark.
 Los ajustes antiguos Azul pasan a Claro; la migración elimina idioma y booleano redundante.
 Los respaldos anteriores se aceptan sin recuperar el idioma retirado. Nuevos respaldos guardan solo el modo de tema.
+
+## Exportar QR de mazo al juego
+
+En Android: Mazos → Editor → Exportar QR para el juego. Abre un mazo guardado o creado,
+completa 20 cartas y selecciona de una a tres energías. El diálogo muestra el QR y permite
+Guardar PNG o Compartir PNG. No cambia la colección, no abre el juego y no garantiza que
+la cuenta receptora tenga las cartas. El código usa entidades semánticas, por lo que el juego
+puede elegir otra impresión del mismo Pokémon/Entrenador.
+
+Formato binario comunitario compatible con los códigos de mazo de Pocket: Base64,
+secciones Entrenadores/Pokémon/Energías, IDs u24 big-endian y offset de Entrenador.
+Mapeo local de las 4317 impresiones del catálogo: sin solicitudes de red. Se rechazan cartas
+sin mapeo, mazos incompletos, más de dos copias por nombre y energías no seleccionables.
+El juego valida básicos, evoluciones y reglas especiales; la exportación no afirma legalidad completa.
+ZXing genera QR convencional versión 9/H con margen blanco, sin adornos sobre el código.
+La importación real en el juego sigue pendiente de una prueba en teléfono; las pruebas automáticas
+comparan dos fixtures comunitarios capturados del juego y decodifican la imagen producida.

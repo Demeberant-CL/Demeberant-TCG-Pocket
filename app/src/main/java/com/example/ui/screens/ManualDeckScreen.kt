@@ -45,6 +45,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
         items(DeckCodec.energyNames) { name -> FilterChip(selected = name in current.energyTypes,
           onClick = { viewModel.toggleDeckEnergy(name) }, label = { Text(name) }) }
       }
+      com.example.ui.components.DeckQrExportButton(current)
       current.validationWarnings.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
       Text("Puedes guardar un borrador incompleto. Revisa en el juego las reglas especiales y los datos de cartas sin verificar.")
       OutlinedButton(enabled = current.cards.isNotEmpty(), onClick = {
