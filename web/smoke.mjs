@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 const server=spawn('npm',['run','preview','--','--host','127.0.0.1'],{stdio:'inherit'});
 let browser, page;
+async function assertTheme(theme){await page.waitForFunction(value=>document.body.dataset.theme===value,theme,{timeout:5000});assert.equal(await page.locator('body').getAttribute('data-theme'),theme);}
 try {
   for(let attempt=0;attempt<60;attempt++){
     try{if((await fetch('http://127.0.0.1:3000')).ok)break;}catch{}
@@ -18,9 +19,9 @@ try {
   await page.goto('http://127.0.0.1:3000');
   await page.getByRole('heading',{name:'Mi colección',exact:true}).waitFor();
   await page.emulateMedia({colorScheme:'dark'});
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'dark');
+  await assertTheme('dark');
   await page.emulateMedia({colorScheme:'light'});
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await assertTheme('light');
   assert.ok((await page.locator('main').innerText()).includes('0 de 4317 cartas'));
   await page.locator('#collection-search').fill('A1-001');
   await page.getByRole('button',{name:'Bulbasaur A1-001 0 copias',exact:true}).click();
@@ -58,17 +59,17 @@ try {
   const backupStream=await backupDownload.createReadStream();let backupText='';for await(const chunk of backupStream)backupText+=chunk.toString();
   const backup=JSON.parse(backupText);assert.equal(backup.inventory[0].quantity,3);assert.equal(backup.inventory[0].wishlist,true);assert.equal(backup.decks.length,1);
   await page.getByLabel('Tema',{exact:true}).selectOption('light');
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await assertTheme('light');
   await page.emulateMedia({colorScheme:'dark'});
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await assertTheme('light');
   assert.equal(await page.getByLabel('Tema',{exact:true}).locator('option').count(),3);
   assert.equal(await page.getByLabel('Idioma de imágenes',{exact:true}).count(),0);
   await page.getByLabel('Tema',{exact:true}).selectOption('system');
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'dark');
+  await assertTheme('dark');
   await page.reload();
   await page.getByRole('heading',{name:'Mi colección',exact:true}).waitFor();
   await page.emulateMedia({colorScheme:'light'});
-  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await assertTheme('light');
   await page.getByRole('button',{name:'Abrir ajustes',exact:true}).click();
   assert.equal(await page.getByLabel('Tema',{exact:true}).inputValue(),'system');
   await page.getByRole('button',{name:'Cerrar',exact:true}).click();
@@ -88,6 +89,7 @@ try {
   await page.getByRole('button',{name:'Colección',exact:true}).click();
   await page.locator('#collection-search').fill('A1-001');
   await page.emulateMedia({colorScheme:'dark'});
+  await assertTheme('dark');
   await mkdir('web-reports',{recursive:true});await page.screenshot({path:'web-reports/mobile-dark.png',fullPage:true});
   await page.setViewportSize({width:1280,height:900});await page.screenshot({path:'web-reports/desktop-dark.png',fullPage:true});
   assert.deepEqual(errors,[]);

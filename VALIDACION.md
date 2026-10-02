@@ -108,3 +108,23 @@ Los logs de CI ahora detallan ID, mensaje y localización de cada hallazgo de Li
 La web elimina idioma y Azul, conserva Automático en respaldos y sigue los cambios del sistema.
 Chromium comprueba todos los filtros, persistencia tras recargar y cambios reales de prefers-color-scheme.
 El portapapeles Android y las pantallas Compose requieren una prueba manual; no se confunden con las pruebas de dominio.
+
+### Revisión de advertencias de Lint
+
+Revisión del informe completo: 0 errores y 47 advertencias; no se han ocultado ni suprimido.
+
+| Grupo | Cantidad | Evaluación |
+| --- | ---: | --- |
+| SDK objetivo (`OldTargetApi`) | 1 | Cambio de nivel objetivo pendiente de validación de comportamientos en dispositivo. |
+| Versiones de Gradle/AGP, bibliotecas y herramientas | 21 | Avisos de versiones disponibles; no indican por sí mismos fallos funcionales. Actualización coordinada pendiente. |
+| Recursos sin uso y directorio v26 redundante | 11 | Limpieza de recursos pendiente; sin modificación de datos, firma o identidad de paquete. |
+| Iconos: forma, capa monocroma y ubicación | 8 | Presentación del lanzador; revisar en dispositivos con iconos adaptativos. |
+| Estilo KTX y catálogo TOML | 6 | Recomendaciones de mantenimiento; no son errores de ejecución. |
+
+Los mensajes y localizaciones exactos están en `lint-results-debug.xml` (artefacto
+`android-reports`) y como `LINT_FINDING` en Actions.
+Se corrigió el fallo reproducible de configuración web: retirada de Azul/idioma,
+restauración del modo Sistema y seguimiento del sistema. La nueva prueba de Chromium espera
+el evento asíncrono de cambio de apariencia, sin temporizadores fijos para asumir el resultado.
+La prueba FileProvider limpia únicamente la caché estática del proveedor en Robolectric:
+cada aplicación de prueba tiene un directorio distinto; no cambia la app ni archivos del usuario.
