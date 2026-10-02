@@ -16,7 +16,7 @@ El resultado de la última revisión se registra en los trabajos y en la descrip
 - Mazos: cantidades válidas, formatos heredado y JSON, energías y borradores.
 - Canjes: reserva de copias, propuesta recíproca por rareza y ausencia explícita en CSV.
 - Probabilidades: casos exactos de aperturas independientes y robo sin reemplazo.
-- Web: `npm test` (11 pruebas), `npm run build` y prueba de navegador Chromium.
+- Web: `npm test`, `npm run build` y prueba de navegador Chromium.
 - Navegador: editar cantidad, Deseos, exportar CSV, guardar y reabrir mazos tras recargar,
   energías, respaldo completo, restauración sin duplicar, temas, canjes y calculadora.
   Los servicios externos se bloquean durante esta prueba para comprobar el funcionamiento
@@ -91,7 +91,7 @@ Las comprobaciones del commit final se consultan en Actions y el PR.
 
 Cobertura automática: configuración y persistencia DataStore; filtros/cantidades/CSV;
 respaldos actuales y heredados y restauración idempotente; edición/codec de mazos;
-validación IA de IDs/cantidades/sustituciones, JSON externo y portapapeles manual;
+validación IA de IDs/cantidades/sustituciones, preparación de consulta y JSON externo;
 QR binario contra dos fixtures conocidos, mapa completo, imagen PNG decodificada;
 sandbox y canjes sin escrituras de colección; diagnóstico redactado, FileProvider y permisos.
 GitHub Actions vuelve a ejecutar pruebas Android, Lint, compilación, pruebas web/servidor y Chromium.
@@ -105,3 +105,6 @@ importar/exportar mediante el selector Android real, copiar/pegar consulta con u
 compartir PNG/TXT a otra app y escanear QR dentro del juego.
 Chromium prueba realmente la web; bloquea servicios externos para no compartir datos.
 Los logs de CI ahora detallan ID, mensaje y localización de cada hallazgo de Lint.
+La web elimina idioma y Azul, conserva Automático en respaldos y sigue los cambios del sistema.
+Chromium comprueba todos los filtros, persistencia tras recargar y cambios reales de prefers-color-scheme.
+El portapapeles Android y las pantallas Compose requieren una prueba manual; no se confunden con las pruebas de dominio.

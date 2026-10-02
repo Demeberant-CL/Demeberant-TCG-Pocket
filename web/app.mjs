@@ -5,7 +5,7 @@ const KEY='demeberant-pocket-v1';
 let catalog=[], section='Colección', filter='Todas', query='', expansion='', rarity='', page=0;
 let draft={name:'Mi mazo',strategy:'',cards:[],energies:[]}, editing=-1, deckQuery='', onlyOwned=true;
 let peer=null, reserve=2, fileMode='csv', storageBlocked=false, rawStorage='';
-let state={inventory:{},decks:[],preferences:{dark:true,language:'es',theme:'dark'}};
+let state={inventory:{},decks:[],preferences:{theme:'system'}};
 const el=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
 const button=(label,action,cls)=>{const node=el('button',label,cls);node.type='button';node.addEventListener('click',()=>guard(action));return node;};
 const text=(parent,message,cls)=>parent.append(el('p',message,cls));
@@ -15,7 +15,9 @@ const toolbar=parent=>{const node=el('div',undefined,'toolbar');parent.append(no
 const notice=(message,error=false)=>{$('status').textContent=message;$('status').className=error?'error':'';};
 async function guard(action){try{await action();}catch(error){notice(error.message||'No se pudo completar la operación.',true);}}
 function commit(next){if(storageBlocked)throw new Error('El almacenamiento anterior no se pudo leer. Descarga una copia desde Ajustes antes de reemplazarlo.');localStorage.setItem(KEY,JSON.stringify(next));state=next;applyTheme();}
-function applyTheme(){document.body.dataset.theme=state.preferences.theme;}
+const systemTheme=window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(){document.body.dataset.theme=state.preferences.theme==='system'?(systemTheme.matches?'dark':'light'):state.preferences.theme;}
+systemTheme.addEventListener('change',applyTheme);
 function openDialog(){modal.showModal();}
 $('close-dialog').onclick=()=>modal.close();
 function download(name,content,type='text/plain'){const url=URL.createObjectURL(new Blob([content],{type}));const a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
@@ -30,7 +32,7 @@ function updateCard(card,changes){const next={...state,inventory:{...state.inven
 function field(parent,label,value,onChange,type='text'){const wrap=el('label',label),input=el('input');input.type=type;input.setAttribute('aria-label',label);input.value=value;input.addEventListener('input',()=>onChange(input.value));wrap.append(input);parent.append(wrap);return input;}
 function select(parent,label,options,current,onChange){const wrap=el('label',label),node=el('select');node.setAttribute('aria-label',label);options.forEach(([value,name])=>{const option=el('option',name);option.value=value;node.append(option);});node.value=current;node.onchange=()=>guard(()=>onChange(node.value));wrap.append(node);parent.append(wrap);return node;}
 function imageUrl(id,lang='es',high=false){let [set,num]=splitId(id);set=set.replace('PROMO-','P-').replace(/^([AB]\d+)([A-Z]+)$/,(_,a,b)=>a+b.toLowerCase());return 'https://assets.tcgdex.net/'+lang+'/tcgp/'+set+'/'+num+'/'+(high?'high':'low')+'.webp';}
-function image(card,high=false){const node=el('img');node.alt=card.name;node.loading='lazy';node.src=imageUrl(card.id,state.preferences.language,high);let retried=false;node.onerror=()=>{if(!retried&&state.preferences.language!=='en'){retried=true;node.src=imageUrl(card.id,'en',high);}else{node.remove();}};return node;}
+function image(card,high=false){const node=el('img');node.alt=card.name;node.loading='lazy';node.src=imageUrl(card.id,'es',high);let retried=false;node.onerror=()=>{if(!retried&&true){retried=true;node.src=imageUrl(card.id,'en',high);}else{node.remove();}};return node;}
 async function cardDialog(card){
   modalContent.replaceChildren();heading(modalContent,card.name);modalContent.append(image(card,true));text(modalContent,card.id+' · '+card.rarity+' · '+(card.packs.join(', ')||'Sin datos de sobre'));
   const input=field(modalContent,'Copias en mi colección',card.quantity,()=>{},'number');input.min='0';input.max='99999';input.step='1';
@@ -40,7 +42,7 @@ async function cardDialog(card){
   const details=el('div');modalContent.append(details);text(details,'Consultando detalles de TCGdex…','muted');openDialog();
   try {
     const [set,num]=splitId(card.id),apiSet=set.replace('PROMO-','P-').replace(/^([AB]\d+)([A-Z]+)$/,(_,a,b)=>a+b.toLowerCase()),apiId=apiSet+'-'+num;
-    const response=await fetch('https://api.tcgdex.net/v2/'+state.preferences.language+'/cards/'+apiId,{signal:AbortSignal.timeout(8000)});
+    const response=await fetch('https://api.tcgdex.net/v2/es/cards/'+apiId,{signal:AbortSignal.timeout(8000)});
     if(!response.ok)throw new Error('Sin detalles');
     const data=await response.json();if(data.id.toLowerCase()!==apiId.toLowerCase())throw new Error('Respuesta incorrecta');
     details.replaceChildren();text(details,'Fuente: TCGdex','muted');
@@ -160,8 +162,7 @@ function settings(){
   modalContent.replaceChildren();heading(modalContent,'Ajustes');
   const tools=toolbar(modalContent);tools.append(button('Guardar respaldo completo',()=>download('respaldo-tcg-pocket.json',JSON.stringify(backup(),null,2),'application/json')),button('Restaurar respaldo completo',()=>{modal.close();pick('backup');}));
   text(modalContent,'El respaldo JSON incluye colección, Deseos, mazos y ajustes. Es compatible con Android. El CSV contiene cantidades y Deseos.');
-  select(modalContent,'Tema',[['dark','Oscuro carbón'],['blue','Azul Pokémon'],['light','Claro']],state.preferences.theme,value=>{commit({...state,preferences:{...state.preferences,theme:value,dark:value==='dark'}});render();});
-  select(modalContent,'Idioma de imágenes',[['es','Español'],['en','English'],['ja','日本語']],state.preferences.language,value=>{commit({...state,preferences:{...state.preferences,language:value}});render();});
+  select(modalContent,'Tema',[['light','Claro'],['dark','Oscuro'],['system','Automático (Sistema)']],state.preferences.theme,value=>{commit({...state,preferences:{theme:value}});render();});
   text(modalContent,'Los datos de esta web se guardan en este navegador. No se sincronizan automáticamente con Android. Usa un respaldo para trasladarlos.');
   text(modalContent,'Catálogo comunitario: 4317 cartas, 24 colecciones (incluidas promociones) · revisión del 01-10-2026. Fuente flibustier/pokemon-tcg-pocket-database (MIT). Los detalles e imágenes proceden de TCGdex.');
   const source=el('a','Ver fuentes y licencias');source.href='https://github.com/Demeberant-CL/Demeberant-TCG-Pocket/blob/fix/collection-decks-validation-20261001/THIRD_PARTY_NOTICES.md';source.target='_blank';source.rel='noopener noreferrer';modalContent.append(source);

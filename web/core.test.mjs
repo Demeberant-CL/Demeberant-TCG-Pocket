@@ -58,7 +58,12 @@ test('bundled catalogue has unique canonical cards and no placeholder health',as
 test('Android theme-only backups remain compatible',()=>{
   for(const theme of ['light','dark','system']){
     const parsed=validateBackup(JSON.stringify({format:'demeberant-tcg-pocket-backup',version:1,inventory:[],decks:[],preferences:{theme}}));
-    assert.equal(parsed.preferences.language,'es');
-    assert.ok(['light','dark'].includes(parsed.preferences.theme));
+    assert.deepEqual(parsed.preferences,{theme});
   }
+});
+
+test('legacy blue and language are migrated without losing inventory',()=>{
+ const parsed=validateBackup(JSON.stringify({...backup,preferences:{theme:'blue',language:'ja',dark:false}}));
+ assert.deepEqual(parsed.preferences,{theme:'light'});
+ assert.deepEqual(parsed.inventory,[record]);
 });

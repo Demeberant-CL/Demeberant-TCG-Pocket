@@ -63,7 +63,10 @@ Fuentes y licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ## Módulo avanzado: IA, sandbox, efectos y diagnóstico
 
 En Análisis hay tres nuevas secciones: IA, Sandbox y Efectos.
-IA utiliza el servidor de `backend/` para conectar a OpenAI Responses API con JSON Schema estricto.
+IA permite preparar una consulta, revisar y copiar el texto a cualquier asistente y pegar
+su respuesta JSON. La importación valida IDs, cantidades actuales, 20 cartas y sustituciones;
+solo abre un borrador. No requiere una API ni realiza consultas pagadas.
+Opcionalmente utiliza el servidor de `backend/` para conectar a OpenAI Responses API con JSON Schema estricto.
 La app solicita confirmación antes de enviar contexto y solo abre propuestas validadas como borradores.
 La clave API permanece en el servidor; URL y token de acceso se introducen en la pantalla IA.
 El token no se persiste, no se exporta en respaldos ni se registra. Para configurar:
@@ -91,7 +94,7 @@ Capas: `data/` (Room, HTTP y repositorios), `domain/` (validadores, roles y sand
 Draft, giroscopio y estadísticas de torneos no están incluidos.
 
 ## Configuración simplificada
-Android utiliza español fijo para interfaz, imágenes y detalles. Configuración no guarda idioma.
+Android y web utilizan español fijo para interfaz, imágenes y detalles. Configuración no guarda idioma.
 El tema admite Claro, Oscuro y Automático (Sistema), con dos paletas Light/Dark.
 Los ajustes antiguos Azul pasan a Claro; la migración elimina idioma y booleano redundante.
 Los respaldos anteriores se aceptan sin recuperar el idioma retirado. Nuevos respaldos guardan solo el modo de tema.

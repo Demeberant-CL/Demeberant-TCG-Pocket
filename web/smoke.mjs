@@ -17,6 +17,10 @@ try {
   await page.route('https://**/*',route=>route.abort());
   await page.goto('http://127.0.0.1:3000');
   await page.getByRole('heading',{name:'Mi colección',exact:true}).waitFor();
+  await page.emulateMedia({colorScheme:'dark'});
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'dark');
+  await page.emulateMedia({colorScheme:'light'});
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
   assert.ok((await page.locator('main').innerText()).includes('0 de 4317 cartas'));
   await page.locator('#collection-search').fill('A1-001');
   await page.getByRole('button',{name:'Bulbasaur A1-001 0 copias',exact:true}).click();
@@ -25,6 +29,14 @@ try {
   await page.getByRole('button',{name:'Bulbasaur A1-001 3 copias',exact:true}).click();
   await page.getByRole('button',{name:'Añadir a Deseos',exact:true}).click();
   await page.getByRole('button',{name:'Cerrar',exact:true}).click();
+  for(const name of ['Tengo','Deseos','Ver repetidas']){
+    await page.getByRole('button',{name,exact:true}).click();
+    assert.equal(await page.getByRole('button',{name:'Bulbasaur A1-001 3 copias',exact:true}).count(),1);
+  }
+  await page.getByRole('button',{name:'Faltan',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Bulbasaur A1-001 3 copias',exact:true}).count(),0);
+  assert.ok((await page.locator('main').innerText()).includes('No se encontraron cartas'));
+  await page.getByRole('button',{name:'Todas',exact:true}).click();
   const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar CSV',exact:true}).click()]);
   const stream=await download.createReadStream();let csv='';for await(const chunk of stream)csv+=chunk.toString();
   assert.ok(csv.includes('"A1","1","Bulbasaur","♦","3","sí","sí"'));
@@ -47,6 +59,18 @@ try {
   const backup=JSON.parse(backupText);assert.equal(backup.inventory[0].quantity,3);assert.equal(backup.inventory[0].wishlist,true);assert.equal(backup.decks.length,1);
   await page.getByLabel('Tema',{exact:true}).selectOption('light');
   assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await page.emulateMedia({colorScheme:'dark'});
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  assert.equal(await page.getByLabel('Tema',{exact:true}).locator('option').count(),3);
+  assert.equal(await page.getByLabel('Idioma de imágenes',{exact:true}).count(),0);
+  await page.getByLabel('Tema',{exact:true}).selectOption('system');
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'dark');
+  await page.reload();
+  await page.getByRole('heading',{name:'Mi colección',exact:true}).waitFor();
+  await page.emulateMedia({colorScheme:'light'});
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'light');
+  await page.getByRole('button',{name:'Abrir ajustes',exact:true}).click();
+  assert.equal(await page.getByLabel('Tema',{exact:true}).inputValue(),'system');
   await page.getByRole('button',{name:'Cerrar',exact:true}).click();
   await page.getByRole('button',{name:'Canjes',exact:true}).click();
   assert.ok((await page.locator('main').innerText()).includes('Bulbasaur'));
@@ -63,10 +87,11 @@ try {
   assert.equal(JSON.parse(await page.evaluate(()=>localStorage.getItem('demeberant-pocket-v1'))).decks.length,1);
   await page.getByRole('button',{name:'Colección',exact:true}).click();
   await page.locator('#collection-search').fill('A1-001');
+  await page.emulateMedia({colorScheme:'dark'});
   await mkdir('web-reports',{recursive:true});await page.screenshot({path:'web-reports/mobile-dark.png',fullPage:true});
   await page.setViewportSize({width:1280,height:900});await page.screenshot({path:'web-reports/desktop-dark.png',fullPage:true});
   assert.deepEqual(errors,[]);
-  await writeFile('web-reports/result.txt','Browser checks passed: quantity, wishlist, CSV, deck persistence, energies, complete backup, merge restore, theme, trades, probability, no page errors.\n');
+  await writeFile('web-reports/result.txt','Browser checks passed: quantity, wishlist, CSV, deck persistence, energies, complete backup, merge restore, theme persistence and system changes, filters, trades, probability, no page errors.\n');
   console.log('Browser smoke checks passed.');
  } catch(error) {
   await mkdir('web-reports',{recursive:true});

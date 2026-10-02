@@ -106,6 +106,22 @@ class AdvancedModuleTest {
     assertEquals(20, (board.drawPile + board.hand + board.bench + board.discard).size)
   }
 
+  @Test fun sandboxUndoRestoresBoardAndNeverWritesCollection() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    val repository = InventoryRepository.fromDatabase(AppDatabase.getDatabase(context))
+    val before = repository.inventoryFlow.first()
+    val viewModel = com.example.ui.viewmodel.AdvancedViewModel(context)
+    val initial = SandboxEngine.start(candidates().map { DeckCardEntry(it.card, 2) }, Random(17))
+    viewModel.board.value = initial
+    viewModel.updateBoard { SandboxEngine.move(it, it.hand.first().instanceId, BoardZone.ACTIVE) }
+    assertNotEquals(initial, viewModel.board.value)
+    viewModel.undoMove()
+    assertEquals(initial, viewModel.board.value)
+    viewModel.undoMove()
+    assertEquals(initial, viewModel.board.value)
+    assertEquals(before, repository.inventoryFlow.first())
+  }
+
   @Test fun sandboxRejectsIncompleteDeckWithoutTouchingSourceDeck() {
     val entries = candidates().take(1).map { DeckCardEntry(it.card, 2) }
     assertTrue(runCatching { SandboxEngine.start(entries) }.isFailure)
