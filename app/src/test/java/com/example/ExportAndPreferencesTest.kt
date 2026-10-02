@@ -7,6 +7,7 @@ import com.example.data.util.ErrorLogManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,6 +20,13 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ExportAndPreferencesTest {
+  @Before fun isolateFileProviderPaths() {
+    // Robolectric creates a new application/cache directory per test, while AndroidX
+    // keeps resolved provider roots in a process-wide cache for the same authority.
+    val cache = FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }
+    (cache.get(null) as MutableMap<*, *>).clear()
+  }
+
   @Test fun selectedThemeIsPersistedAndReadByAnotherRepository() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     val repository = UserPreferencesRepository(context)
