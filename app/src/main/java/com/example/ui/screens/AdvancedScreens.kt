@@ -35,6 +35,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var token by remember { mutableStateOf(model.token) }
   var meta by rememberSaveable { mutableStateOf(model.meta) }
   var goal by rememberSaveable { mutableStateOf(model.goal) }
+  var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
   var confirmMode by remember { mutableStateOf<Boolean?>(null) }
   var confirmOpen by remember { mutableStateOf(false) }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -49,6 +50,14 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, label = { Text("Objetivo y estrategia") }, modifier = Modifier.fillMaxWidth())
       OutlinedTextField(meta, { if (it.length <= 16_000) { meta = it; model.meta = it } }, label = { Text("Contexto meta · fuente y fecha (opcional)") },
         modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
+      Text("Acotar cartas enviadas · incluye Entrenadores y las cartas del mazo objetivo")
+      LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(listOf("" to "Todas", "Planta" to "Planta", "Fuego" to "Fuego", "Agua" to "Agua",
+          "Rayo" to "Rayo", "Psíquico" to "Psíquico", "Lucha" to "Lucha", "Oscuridad" to "Oscuridad",
+          "Metal" to "Metal", "Dragón" to "Dragón", "Incoloro" to "Incoloro")) { (type, label) ->
+          FilterChip(selected = candidateType == type, onClick = { candidateType = type; model.candidateType = type }, label = { Text(label) })
+        }
+      }
       Text("El contexto meta es aportado por ti. No se obtiene mediante scraping ni se verifica como actual. Los efectos disponibles dependen de las cartas indexadas en Efectos.")
       Button(enabled = !busy && endpoint.isNotBlank() && token.isNotBlank(), onClick = { confirmMode = false }) { Text("Proponer mazo de 20 cartas") }
       OutlinedButton(enabled = !busy && endpoint.isNotBlank() && token.isNotBlank() && deck?.totalCardCount == 20,
@@ -187,6 +196,7 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
           onClick = { role = if (role == value.key) "" else value.key }, label = { Text(value.label) }) }
       }
       OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, prefs.language) }) { Text("Indexar hasta 25 cartas de esta búsqueda") }
+      TextButton(onClick = { query = ""; keyword = ""; role = ""; minHp = ""; maxHp = ""; element = "" }) { Text("Limpiar filtros") }
       Text("También se indexa una carta al abrir sus detalles en Colección. No se descarga todo el catálogo automáticamente.")
       AdvancedStatus(model)
       Text("${visible.size} coincidencias indexadas")

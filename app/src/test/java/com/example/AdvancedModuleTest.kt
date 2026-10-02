@@ -63,7 +63,7 @@ class AdvancedModuleTest {
       val tables = schema.getJSONArray("entities")
       repeat(tables.length()) { i ->
         val entity = tables.getJSONObject(i)
-        raw.execSQL(entity.getString("createSql").replace("${TABLE_NAME}", entity.getString("tableName")))
+        raw.execSQL(entity.getString("createSql").replace("$" + "{TABLE_NAME}", entity.getString("tableName")))
       }
       raw.execSQL("INSERT INTO inventory_cards(cardId,cardName,packName,rarity,quantity,isWishlist,acquisitionDate) VALUES('A1-001','Bulbasaur','','♦',3,1,100)")
       raw.execSQL("INSERT INTO saved_decks(id,name,archetype,strategy,cardListSerialized,totalCards,createdAt) VALUES(1,'Anterior','Manual','','A1-001:2',2,100)")

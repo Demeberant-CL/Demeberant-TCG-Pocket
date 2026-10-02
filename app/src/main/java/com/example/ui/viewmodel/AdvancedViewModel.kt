@@ -34,6 +34,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   var token: String = ""
   var meta: String = ""
   var goal: String = ""
+  var candidateType: String = ""
   private var job: Job? = null
 
   fun updateFilter(query: RulesFilter) { filter.value = query }
@@ -90,7 +91,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val inventory = repository.inventoryFlow.first()
     val rules = db.cardRulesDao().all(language).associateBy { it.cardId }
     val targetIds = target?.cards?.map { it.card.id }?.toSet() ?: emptySet()
-    val candidates = inventory.filter { it.ownedCount > 0 || (replace && it.card.id in targetIds) }.map { item ->
+    val candidates = inventory.filter { item ->
+      val type = hydrate(item.card, rules[item.card.id]).type
+      (item.ownedCount > 0 && (candidateType.isBlank() || type == candidateType || type == "Entrenador")) ||
+        (replace && item.card.id in targetIds)
+    }.map { item ->
       AiCandidate(hydrate(item.card, rules[item.card.id]), item.ownedCount, rules[item.card.id]?.rulesText ?: "")
     }
     require(candidates.sumOf { minOf(it.owned, 2) } >= 20) { "Necesitas al menos 20 copias disponibles." }

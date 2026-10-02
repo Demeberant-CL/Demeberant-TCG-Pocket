@@ -609,7 +609,7 @@ fun CollectionScreen(
             ) {
               Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Exportar registro de errores", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              Text("Compartir diagnóstico TXT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
         }

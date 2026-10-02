@@ -33,7 +33,7 @@ object PocketHttp {
     .callTimeout(100, TimeUnit.SECONDS).retryOnConnectionFailure(false)
     .followRedirects(false).followSslRedirects(false)
     .addInterceptor(DiagnosticInterceptor()).build()
-  val detailsClient: OkHttpClient = client.newBuilder().readTimeout(10, TimeUnit.SECONDS).callTimeout(12, TimeUnit.SECONDS).build()
+  val detailsClient: OkHttpClient = client.newBuilder().followRedirects(true).followSslRedirects(false).readTimeout(10, TimeUnit.SECONDS).callTimeout(12, TimeUnit.SECONDS).build()
 }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
