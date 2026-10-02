@@ -282,6 +282,12 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun openAiProposal(deck: GeneratedDeck) {
+    editingDeckId = 0
+    _generatedDeck.value = deck
+    reportMessage("Propuesta de IA abierta como borrador. Revisa y guarda si quieres conservarla.")
+  }
+
   fun newManualDeck() {
     editingDeckId = 0
     _generatedDeck.value = GeneratedDeck("Mi mazo", "Manual", "", emptyList(), 0,

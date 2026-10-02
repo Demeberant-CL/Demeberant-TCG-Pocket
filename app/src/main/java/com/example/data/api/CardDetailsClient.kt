@@ -4,12 +4,16 @@ import android.content.Context
 import com.example.data.util.CardId
 import com.example.data.util.readBytesBounded
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
+import com.example.data.network.PocketHttp
+import okhttp3.Request
+import com.example.data.local.AppDatabase
+import com.example.data.local.CardRulesEntity
+import com.example.domain.RoleClassifier
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
 data class CardDetails(val hp: Int?, val category: String, val stage: String, val description: String,
-  val attacks: List<String>, val retreat: Int?, val source: String)
+  val attacks: List<String>, val retreat: Int?, val source: String, val element: String = "", val abilityText: String = "", val evolvesFrom: String = "")
 
 object CardDetailsClient {
   fun load(context: Context, id: String, language: String): CardDetails {
@@ -33,19 +37,39 @@ object CardDetailsClient {
           listOf(attack.optString("name"), attack.optString("damage"), attack.optString("effect"))
             .filter { it.isNotBlank() }.joinToString(" · ")
         }, if (root.has("retreat")) root.getInt("retreat") else null,
-        if (cached) "TCGdex · copia en caché" else "TCGdex")
+        if (cached) "TCGdex · copia en caché" else "TCGdex",
+        root.optJSONArray("types")?.optString(0) ?: "",
+        root.optJSONArray("abilities")?.let { a -> (0 until a.length()).joinToString("\n") { i ->
+          val ability = a.getJSONObject(i); ability.optString("name") + " · " + ability.optString("effect")
+        } } ?: "", root.optString("evolveFrom"))
     }
     val cache = File(context.cacheDir, "details-$lang-$canonical.json")
     val cached = runCatching { parse(cache.readText(), true) }.getOrNull()
-    val connection = URL("https://api.tcgdex.net/v2/$lang/cards/$apiId").openConnection() as HttpURLConnection
+    fun persist(value: CardDetails) {
+      val rules = (listOf(value.description, value.abilityText) + value.attacks).filter { it.isNotBlank() }.joinToString("\n")
+      val tags = RoleClassifier.classify(rules).joinToString("", prefix = "|") { it.key + "|" }
+      try {
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+          AppDatabase.getDatabase(context).cardRulesDao().upsert(CardRulesEntity(canonical, lang, value.hp,
+            value.element, rules, RoleClassifier.normalize(rules), tags, System.currentTimeMillis(), category = value.category, stage = value.stage, evolvesFrom = value.evolvesFrom))
+        }
+      } catch (e: Exception) { com.example.data.util.ErrorLogManager.event("RULES_WRITE", "Rules cache write failed", e) }
+    }
     try {
-      connection.connectTimeout = 8000; connection.readTimeout = 8000
-      require(connection.responseCode == 200) { "Detalles no disponibles (HTTP ${connection.responseCode})." }
-      val text = connection.inputStream.use { it.readBytesBounded(256_000).toString(Charsets.UTF_8) }
-      val value = parse(text, false)
-      runCatching { cache.writeText(text) }
-      return value
-    } catch (e: Exception) { return cached ?: throw e }
-    finally { connection.disconnect() }
+      val request = Request.Builder().url("https://api.tcgdex.net/v2/$lang/cards/$apiId").build()
+      PocketHttp.detailsClient.newCall(request).execute().use { response ->
+        require(response.isSuccessful) { "Detalles no disponibles (HTTP ${response.code})." }
+        val body = response.body ?: error("Respuesta vacía.")
+        val text = body.byteStream().use { it.readBytesBounded(256_000).toString(Charsets.UTF_8) }
+        val value = parse(text, false)
+        runCatching { cache.writeText(text) }
+        persist(value)
+        return value
+      }
+    } catch (e: Exception) {
+      com.example.data.util.ErrorLogManager.event("DETAILS", "Details unavailable; cache=${cached != null}", e)
+      if (cached != null) { persist(cached); return cached }
+      throw e
+    }
   }
 }

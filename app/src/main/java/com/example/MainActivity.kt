@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
 
   private val viewModel: TcgViewModel by viewModels()
 
+  private val advancedViewModel: com.example.ui.viewmodel.AdvancedViewModel by viewModels()
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
@@ -88,7 +90,8 @@ class MainActivity : ComponentActivity() {
             0 -> CollectionScreen(viewModel, screenModifier)
             1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier)
             2 -> com.example.ui.screens.TradeMenuScreen(viewModel, screenModifier)
-            else -> com.example.ui.screens.AnalysisMenuScreen(viewModel,
+            else -> com.example.ui.screens.AnalysisMenuScreen(viewModel, advancedViewModel,
+              onOpenAiDeck = { selectedTabIndex = 1 },
               onOpenDeck = { name ->
                 viewModel.setDeckPrompt(name)
                 viewModel.generateDeck(name)

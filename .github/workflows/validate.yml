@@ -58,6 +58,7 @@ jobs:
           Path("app/build/reports/validation-summary.txt").write_text(message + "\n")
           metadata = json.loads(Path("app/build/outputs/apk/debug/output-metadata.json").read_text())
           print("APK metadata:", [(e.get("versionCode"), e.get("versionName")) for e in metadata["elements"]])
+          print("ROOM_SCHEMA_JSON=" + json.dumps(json.loads(Path("app/schemas/com.example.data.local.AppDatabase/5.json").read_text()), separators=(",", ":")))
           PY
       - name: Record signing certificate
         if: steps.signing.outputs.ready == 'true'
@@ -94,6 +95,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Assistant backend regression tests
+        run: node --test backend/assistant.test.mjs
       - run: npm run build
       - name: Browser regression checks
         run: |

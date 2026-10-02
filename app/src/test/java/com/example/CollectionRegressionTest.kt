@@ -124,7 +124,7 @@ class CollectionRegressionTest {
       db.close()
       android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null,
         android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { it.version = 3 }
-      db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(AppDatabase.MIGRATION_3_4).build()
+      db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5).build()
       val cards = db.inventoryDao().getAllCards()
       assertEquals(2, cards.size)
       assertEquals(3, cards.first { it.cardId == "A1-001" }.quantity)

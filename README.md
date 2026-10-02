@@ -59,3 +59,33 @@ El versionCode aumenta con el número de ejecución para admitir actualizaciones
 - La web compilada se entrega como artefacto; no se despliega ni se fusiona en main automáticamente.
 
 Fuentes y licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Módulo avanzado: IA, sandbox, efectos y diagnóstico
+
+En Análisis hay tres nuevas secciones: IA, Sandbox y Efectos.
+IA utiliza el servidor de `backend/` para conectar a OpenAI Responses API con JSON Schema estricto.
+La app solicita confirmación antes de enviar contexto y solo abre propuestas validadas como borradores.
+La clave API permanece en el servidor; URL y token de acceso se introducen en la pantalla IA.
+El token no se persiste, no se exporta en respaldos ni se registra. Para configurar:
+[backend/README.md](backend/README.md). No se ha desplegado ese servidor.
+
+Sandbox practica con el mazo abierto de 20 cartas: mano, activo, banca de tres, descartes,
+robo, turnos, marcadores de daño/energía y deshacer. Es un tablero manual de un jugador,
+sin ejecución automática de ataques ni reglas. La garantía inicial de básico usa un
+intercambio de carta como aproximación explícita. No modifica cantidades ni mazos guardados.
+
+Efectos indexa hasta 25 cartas nuevas por solicitud y consulta Room por PS, tipo,
+texto de ataques/habilidades y roles estimados (robo, curación, energía, milling, movilidad).
+Una carta se indexa también al abrir sus detalles. Las etiquetas son heurísticas y
+los resultados solo incluyen cartas con reglas disponibles en el idioma seleccionado.
+La migración Room 4→5 crea la caché de reglas conservando colección y mazos.
+
+Diagnóstico: logs diarios con escritura asíncrona, cola acotada, rotación y máximo de seis
+archivos de aproximadamente 1 MB. Registra red (operación/HTTP/tiempo/tamaño), SQL sin
+parámetros, errores de Room y crashes no capturados antes de delegar al manejador Android.
+No conserva cuerpos privados ni credenciales. Exportación TXT por FileProvider desde Ajustes;
+el selector de compartir lo abre el usuario, sin enviar automáticamente.
+
+Capas: `data/` (Room, HTTP y repositorios), `domain/` (validadores, roles y sandbox),
+`ui/` (Presentation: ViewModels y Compose). ZXing no está instalado en esta revisión;
+este módulo no incorpora códigos QR, draft, giroscopio ni estadísticas de torneos.

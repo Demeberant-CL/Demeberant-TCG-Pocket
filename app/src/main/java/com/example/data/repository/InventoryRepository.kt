@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CancellationException
+import com.example.data.util.ErrorLogManager
 
  data class CardWithInventory(val card: PokemonCard, val ownedCount: Int, val isWishlist: Boolean)
  data class ParsedCsvCard(val setCode: String, val cardNumber: String, val name: String,
@@ -34,15 +37,15 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
       val entity = entityMap[card.id]
       CardWithInventory(card, entity?.quantity ?: 0, entity?.isWishlist ?: false)
     }
-  }.flowOn(Dispatchers.Default)
+  }.catch { e -> if (e is CancellationException) throw e; ErrorLogManager.event("ROOM_READ", "Inventory read failed", e); throw e }.flowOn(Dispatchers.Default)
 
-  val savedDecksFlow: Flow<List<SavedDeckEntity>> = savedDeckDao.getAllSavedDecksFlow()
-  suspend fun saveDeck(deck: SavedDeckEntity): Long = savedDeckDao.insertDeck(deck)
-  suspend fun deleteDeck(deckId: Long) = savedDeckDao.deleteDeckById(deckId)
+  val savedDecksFlow: Flow<List<SavedDeckEntity>> = savedDeckDao.getAllSavedDecksFlow().catch { e -> if (e is CancellationException) throw e; ErrorLogManager.event("ROOM_READ", "Deck read failed", e); throw e }
+  suspend fun saveDeck(deck: SavedDeckEntity): Long = logged("SAVE_DECK") { savedDeckDao.insertDeck(deck) }
+  suspend fun deleteDeck(deckId: Long) = logged("DELETE_DECK") { savedDeckDao.deleteDeckById(deckId) }
 
-  suspend fun toggleWishlist(cardId: String) = db.withTransaction {
+  suspend fun toggleWishlist(cardId: String) = transaction {
     val id = CardId.normalize(cardId)
-    val card = CardCatalog.getCardById(id) ?: return@withTransaction
+    val card = CardCatalog.getCardById(id) ?: return@transaction
     val existing = inventoryDao.getCardById(id)
     if (existing == null) {
       inventoryDao.insertCard(InventoryCardEntity(card.id, card.name, card.pack.displayName,
@@ -56,7 +59,7 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
   /** Import updates the supplied cards; cards absent from the CSV remain untouched. */
   suspend fun processParsedCsvCards(csvCards: List<ParsedCsvCard>) {
     require(csvCards.all { it.quantity >= 0 }) { "Cantidad de cartas no válida." }
-    db.withTransaction {
+    transaction {
       val existing = inventoryDao.getAllCards().associateBy { it.cardId }
       val inventoryEntities = mutableListOf<InventoryCardEntity>()
       val userEntities = mutableListOf<UserCardEntity>()
@@ -76,7 +79,7 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
     }
   }
 
-  suspend fun setQuantity(cardId: String, quantity: Int) = db.withTransaction {
+  suspend fun setQuantity(cardId: String, quantity: Int) = transaction {
     require(quantity in 0..99999) { "Cantidad no válida." }
     val id = CardId.normalize(cardId)
     val card = CardCatalog.getCardById(id) ?: error("Carta no disponible.")
@@ -88,11 +91,11 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
       quantity, quantity > 0, old?.isWishlist ?: false)))
   }
 
-  suspend fun snapshot() = db.withTransaction {
+  suspend fun snapshot() = transaction {
     inventoryDao.getAllCards() to savedDeckDao.getAllSavedDecksFlow().first()
   }
 
-  suspend fun restoreSnapshot(cards: List<InventoryCardEntity>, decks: List<SavedDeckEntity>) = db.withTransaction {
+  suspend fun restoreSnapshot(cards: List<InventoryCardEntity>, decks: List<SavedDeckEntity>) = transaction {
     inventoryDao.insertCards(cards)
     userCardDao.insertUserCards(cards.map { card ->
       val (set, number) = CardId.split(card.cardId)
@@ -108,6 +111,17 @@ class InventoryRepository private constructor(private val db: AppDatabase) {
   }
 
   suspend fun isInventoryEmpty(): Boolean = inventoryDao.getCardCount() == 0
+
+  private suspend fun <T> logged(operation: String, block: suspend () -> T): T {
+    try {
+      val value = block()
+      ErrorLogManager.event("ROOM_OK", operation)
+      return value
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) { ErrorLogManager.event("ROOM_FAIL", operation, e); throw e }
+  }
+  private suspend fun <T> transaction(block: suspend () -> T): T =
+    logged("TRANSACTION") { db.withTransaction { block() } }
 
   companion object {
     fun fromDatabase(db: AppDatabase) = InventoryRepository(db)

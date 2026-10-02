@@ -8,12 +8,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.util.CardId
 
-@Database(entities = [InventoryCardEntity::class, SavedDeckEntity::class, UserCardEntity::class],
-  version = 4, exportSchema = true)
+@Database(entities = [InventoryCardEntity::class, SavedDeckEntity::class, UserCardEntity::class, CardRulesEntity::class],
+  version = 5, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
   abstract fun inventoryDao(): InventoryDao
   abstract fun savedDeckDao(): SavedDeckDao
   abstract fun userCardDao(): UserCardDao
+  abstract fun cardRulesDao(): CardRulesDao
 
   companion object {
     @Volatile private var INSTANCE: AppDatabase? = null
@@ -55,10 +56,28 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS card_rules (
+          cardId TEXT NOT NULL, language TEXT NOT NULL, hp INTEGER,
+          element TEXT NOT NULL, rulesText TEXT NOT NULL, searchText TEXT NOT NULL,
+          roles TEXT NOT NULL, fetchedAt INTEGER NOT NULL, source TEXT NOT NULL,
+          category TEXT NOT NULL, stage TEXT NOT NULL, evolvesFrom TEXT NOT NULL,
+          PRIMARY KEY(cardId, language))""")
+      }
+    }
+
+    private val queryLogger = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+      Thread(task, "pocket-room-log").apply { isDaemon = true }
+    }
+
     fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
       INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java,
         "tcg_pocket_inventory.db")
-        .addMigrations(MIGRATION_3_4)
+        .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+        .setQueryCallback({ sql, _ ->
+          com.example.data.util.ErrorLogManager.event("ROOM_QUERY", sql.trim().substringBefore(' ').uppercase())
+        }, queryLogger)
         // An unknown earlier schema fails safely instead of deleting the collection.
         .build().also { INSTANCE = it }
     }
