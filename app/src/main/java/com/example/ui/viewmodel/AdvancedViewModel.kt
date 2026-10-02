@@ -60,7 +60,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       currentCoroutineContext().ensureActive()
       try {
         withContext(Dispatchers.IO) { CardDetailsClient.load(getApplication(), id, language) }
-        completed++
+        if (db.cardRulesDao().get(id, language) != null) completed++
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) { ErrorLogManager.event("RULES_FETCH", "Card rules unavailable", e) }
       message.value = "Indexando ${index + 1}/${pending.size} · $completed disponibles"
