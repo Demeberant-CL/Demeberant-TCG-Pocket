@@ -300,11 +300,21 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun openAiProposal(deck: GeneratedDeck) {
-    _automaticEnergies.value = false
-    editingDeckId = 0
-    _generatedDeck.value = deck
-    reportMessage("Propuesta de IA abierta como borrador. Revisa y guarda si quieres conservarla.")
+  fun openAiProposal(deck: GeneratedDeck, onOpened: () -> Unit = {}) = viewModelScope.launch {
+    try {
+      initialization.await()
+      val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
+      com.example.domain.AiValidator.requireAvailable(deck, current)
+      _automaticEnergies.value = false
+      editingDeckId = 0
+      _generatedDeck.value = deck
+      reportMessage("Propuesta de IA abierta como borrador. Revisa y guarda si quieres conservarla.")
+      onOpened()
+    } catch (e: CancellationException) { throw e }
+    catch (_: Exception) {
+      reportMessage("No se abrió la propuesta. Revisa tu colección actual y genera un mazo nuevo.")
+      ErrorLogManager.event("AI_OPEN", "Proposal could not be opened with current inventory")
+    }
   }
 
   fun newManualDeck() {

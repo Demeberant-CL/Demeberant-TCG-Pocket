@@ -18,15 +18,19 @@ object ErrorLogManager {
   private val fileLock = Any()
   private var appContext: Context? = null
   private const val MAX_BYTES = 1_048_576
+  private val dropped = java.util.concurrent.atomic.AtomicLong(0)
   private val writer = ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
     ArrayBlockingQueue<Runnable>(256), { task -> Thread(task, "pocket-diagnostics").apply { isDaemon = true } },
-    ThreadPoolExecutor.DiscardOldestPolicy())
+    ThreadPoolExecutor.AbortPolicy())
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+  private val bearerPattern = Regex("(?i)Bearer\\s+[^\\s,;]+")
+  private val secretPattern = Regex("(?:sk-[A-Za-z0-9_-]+|AIza[A-Za-z0-9_-]{25,})")
+  private val credentialPattern = Regex("(?i)([\"']?(?:api[_-]?key|authorization|token|password)[\"']?\\s*[:=]\\s*)[\"']?[^\\s,;\"'}]+")
   fun redact(value: String): String = value
-    .replace(Regex("(?i)Bearer\\s+[^\\s,;]+"), "Bearer [REDACTED]")
-    .replace(Regex("sk-[A-Za-z0-9_-]+"), "[REDACTED]")
-    .replace(Regex("(?i)(api[_-]?key|authorization|token|password)\\s*[:=]\\s*[^\\s,;]+"), "$1=[REDACTED]")
+    .replace(bearerPattern, "Bearer [REDACTED]")
+    .replace(secretPattern, "[REDACTED]")
+    .replace(credentialPattern, "$1[REDACTED]")
 
   fun init(context: Context) {
     appContext = context.applicationContext
@@ -42,7 +46,8 @@ object ErrorLogManager {
     error.javaClass.simpleName + "\n" + error.stackTrace.take(40).joinToString("\n") { "  at $it" }
   fun event(tag: String, message: String, error: Throwable? = null) {
     val safe = redact(message) + if (error == null) "" else "\n" + safeTrace(error)
-    writer.execute { write(tag, safe) }
+    try { writer.execute { write(tag, safe) } }
+    catch (_: java.util.concurrent.RejectedExecutionException) { dropped.incrementAndGet() }
   }
   fun log(context: Context, tag: String, message: String, throwable: Throwable? = null) =
     logError(context, tag, message, throwable)
@@ -70,14 +75,32 @@ object ErrorLogManager {
 
   suspend fun flush() = withContext(Dispatchers.IO) {
     val completed = java.util.concurrent.CountDownLatch(1)
-    writer.execute { completed.countDown() }
+    val barrier = Runnable { completed.countDown() }
+    try { writer.execute(barrier) }
+    catch (_: java.util.concurrent.RejectedExecutionException) {
+      check(writer.queue.offer(barrier, 5, TimeUnit.SECONDS)) { "Diagnostic writer is busy." }
+    }
     check(completed.await(5, TimeUnit.SECONDS)) { "Diagnostic writer is busy." }
   }
   suspend fun readLogs(context: Context): String = withContext(Dispatchers.IO) {
     flush()
     synchronized(fileLock) {
-      File(context.filesDir, "diagnostics").listFiles()?.sortedBy { it.name }
+      File(context.filesDir, "diagnostics").listFiles()?.sortedBy { it.lastModified() }
         ?.joinToString("\n") { redact(it.readText()) }?.ifBlank { "No hay registros." } ?: "No hay registros."
+    }
+  }
+  suspend fun briefReport(context: Context): String = withContext(Dispatchers.IO) {
+    flush()
+    @Suppress("DEPRECATION")
+    val info = context.packageManager.getPackageInfo(context.packageName, 0)
+    synchronized(fileLock) {
+      val files = File(context.filesDir, "diagnostics").listFiles()?.sortedBy { it.lastModified() }.orEmpty()
+      val lines = sequence {
+        files.forEach { file -> file.bufferedReader(Charsets.UTF_8).use { reader ->
+          reader.lineSequence().forEach { yield(it) }
+        } }
+      }
+      DiagnosticSummary.create(lines, info.versionName ?: "desconocida", android.os.Build.VERSION.SDK_INT, dropped.get())
     }
   }
   suspend fun clearLogs(context: Context): Boolean = withContext(Dispatchers.IO) {
@@ -90,6 +113,12 @@ object ErrorLogManager {
       val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("Destino no disponible.")
       output.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
     }
+  }
+
+  suspend fun saveBriefReport(context: Context, uri: android.net.Uri, report: String) = withContext(Dispatchers.IO) {
+    require(report.length <= DiagnosticSummary.MAX_CHARS)
+    val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("Destino no disponible.")
+    output.bufferedWriter(Charsets.UTF_8).use { it.write(report) }
   }
 
   fun exportErrorLogs(context: Context) {

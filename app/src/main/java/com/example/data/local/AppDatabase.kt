@@ -67,17 +67,10 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
-    private val queryLogger = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
-      Thread(task, "pocket-room-log").apply { isDaemon = true }
-    }
-
     fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
       INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java,
         "tcg_pocket_inventory.db")
         .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
-        .setQueryCallback({ sql, _ ->
-          com.example.data.util.ErrorLogManager.event("ROOM_QUERY", sql.trim().substringBefore(' ').uppercase())
-        }, queryLogger)
         // An unknown earlier schema fails safely instead of deleting the collection.
         .build().also { INSTANCE = it }
     }

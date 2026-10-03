@@ -13,6 +13,12 @@ data class AiReplacement(val removedId: String, val addedId: String, val count: 
 data class AiProposal(val deck: GeneratedDeck, val replacements: List<AiReplacement>)
 
 object AiValidator {
+  fun requireAvailable(deck: GeneratedDeck, owned: Map<String, Int>) {
+    require(deck.totalCardCount == 20 && deck.cards.sumOf { it.count } == 20)
+    require(deck.cards.all { it.count in 1..2 && it.count <= (owned[it.card.id] ?: 0) }) {
+      "Tu colección cambió o no tiene las copias necesarias. Genera una nueva propuesta."
+    }
+  }
   fun parse(text: String, candidates: List<AiCandidate>, target: List<DeckCardEntry>? = null): AiProposal {
     require(text.length <= 100_000)
     val root = JSONObject(text)

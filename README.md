@@ -82,8 +82,7 @@ los resultados solo incluyen cartas con reglas disponibles en español.
 La migración Room 4→5 crea la caché de reglas conservando colección y mazos.
 
 Diagnóstico: logs diarios con escritura asíncrona, cola acotada, rotación y máximo de seis
-archivos de aproximadamente 1 MB. Registra red (operación/HTTP/tiempo/tamaño), SQL sin
-parámetros, errores de Room y crashes no capturados antes de delegar al manejador Android.
+archivos de aproximadamente 1 MB. Registra red (operación/HTTP/tiempo/tamaño), errores de Room y crashes no capturados antes de delegar al manejador Android.
 No conserva cuerpos privados ni credenciales. Exportación TXT por FileProvider desde Ajustes;
 el selector de compartir lo abre el usuario, sin enviar automáticamente.
 
@@ -141,3 +140,11 @@ Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el a
 Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
 
 Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.
+
+## Diagnóstico breve para el chat
+
+Ajustes → Diagnóstico → Copiar diagnóstico para el chat abre un resumen de hasta 6000 caracteres. Se puede copiar y pegar como mensaje, compartir como texto sin archivo o guardar como TXT breve. El TXT completo continúa disponible. El resumen incluye versión, Android API, periodo UTC, número de eventos y hasta 12 tipos recientes de fallo agrupados; no incluye mensajes, cuerpos, URLs, consultas IA ni credenciales. Las consultas SQL rutinarias ya no se escriben una por una. Los registros anteriores se leen sin borrarlos.
+
+El registro sigue usando una cola limitada; cuenta los eventos omitidos por saturación y no descarta la barrera que espera las escrituras al exportar. Las reglas de redacción se reutilizan y cubren claves Gemini y credenciales JSON entre comillas. La revisión añade una segunda comprobación de cantidades al abrir una propuesta IA, con lectura actual de Room.
+
+No corrige la carga de adjuntos de ChatGPT ni observa errores internos del juego. Si el resumen no muestra fallos, no garantiza que todos los flujos funcionen. Persisten las limitaciones de proveedores reales, datos comunitarios y pruebas físicas descritas arriba.

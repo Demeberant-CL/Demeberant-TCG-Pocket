@@ -170,3 +170,11 @@ Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el a
 Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
 
 Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.
+
+## Diagnóstico breve y revisión (03-10-2026)
+
+Resumen para portapapeles/compartir texto/guardar TXT breve, máximo 6000 caracteres. Se analiza el registro por líneas en IO, con grupos acotados y últimos 12 tipos de fallo; no se copia mensaje, URL ni cuerpo. Room conserva sus errores pero deja de registrar cada consulta interna. El TXT completo y los archivos anteriores se conservan. Cola limitada con contador de omisiones y barrera de exportación no descartable; redacción precompilada y ampliada a Gemini/JSON.
+
+Regresiones: inundación de 10000 consultas SQL seguida de QR/HTTP 429, agrupación y tamaño máximo, ausencia de mensajes/secretos, informe vacío con límites explícitos, redacción Gemini/JSON, guardado UTF-8 y colección modificada después de una propuesta IA. La apertura del borrador lee la colección actual y se bloquea si faltan copias, sin cambiar cantidades.
+
+Pendiente en teléfono: copiar y pegar el resumen aquí, compartir como texto y guardar el TXT breve. No se afirma solucionar el cargador de adjuntos de ChatGPT. Los resultados completos y el APK de este commit se registran en Actions y la descripción actual del PR.

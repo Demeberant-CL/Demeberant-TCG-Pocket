@@ -114,6 +114,7 @@ fun CollectionScreen(
   var pendingBackup by remember { mutableStateOf<String?>(null) }
   var showPasteDialog by remember { mutableStateOf(false) }
   var showSettingsDialog by remember { mutableStateOf(false) }
+  var showDiagnosticReport by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
 
   val diagnosticSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
@@ -503,6 +504,8 @@ fun CollectionScreen(
     )
   }
 
+  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
+
   if (showSettingsDialog) {
     SettingsScreen(
       themeMode = userPreferences.themeMode,
@@ -537,6 +540,8 @@ fun CollectionScreen(
           Column {
             Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             Spacer(modifier = Modifier.height(6.dp))
+            Button(onClick = { showSettingsDialog = false; showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth()) { Text("Copiar diagnóstico para el chat") }
+            Text("Resumen breve sin adjuntos. El TXT completo queda disponible abajo.", fontSize = 12.sp)
             OutlinedButton(onClick = {
               showSettingsDialog = false
               diagnosticSave.launch("diagnostico-tcg-pocket.txt")
