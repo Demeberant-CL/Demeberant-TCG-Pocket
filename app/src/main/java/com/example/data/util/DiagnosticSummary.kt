@@ -6,7 +6,7 @@ object DiagnosticSummary {
   private val header = Regex("^\\[([0-9TZ:.+\\-]{10,40})] \\[([A-Z_]{1,80})]")
   private val statusPattern = Regex("\\bstatus=([0-9]{3})\\b")
   private val failureTags = setOf("FATAL_CRASH", "HTTP_FAIL", "ROOM_FAIL", "ROOM_READ", "RULES_READ",
-    "RULES_FETCH", "QR_EXPORT", "LOG_SAVE", "LOG_EXPORT", "AI_CONNECTED", "AI_ASSIST", "AI_EXTERNAL_IMPORT", "INVENTORY_READ", "DECKS_READ", "AI_OPEN")
+    "RULES_FETCH", "QR_EXPORT", "LOG_SAVE", "LOG_EXPORT", "AI_CONNECTED", "AI_ASSIST", "AI_EXTERNAL_IMPORT", "INVENTORY_READ", "DECKS_READ", "AI_OPEN", "META_FETCH", "AI_MODELS")
   private val exception = Regex("^[A-Za-z][A-Za-z0-9_$]{0,79}(Exception|Error)$")
   private val frame = Regex("^  at (com\\.example\\.[A-Za-z0-9_.$]+\\((?:[A-Za-z0-9_.-]{1,100}:[0-9]{1,8}|Unknown Source|Native Method)\\))$")
   private data class Failure(val timestamp: String, val tag: String, var type: String = "Sin detalle privado",

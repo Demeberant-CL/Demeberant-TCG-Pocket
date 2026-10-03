@@ -51,7 +51,9 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
     confirmButton = { TextButton(onClick = {
       val entries = d.cards.map { (id, count) -> DeckCardEntry(cards.getValue(id).card, count) }
       main.openTournamentDeck(GeneratedDeck(d.name, "Limitless", "Lista de ejemplo: https://play.limitlesstcg.com/tournament/${d.tournamentId}", entries, 20, energyTypes = d.energies))
-      model.meta = TournamentRepository.encode(snapshot!!).toString().take(18000)
+      model.meta = org.json.JSONObject().put("source", "Limitless").put("updated", snapshot!!.updated)
+        .put("tournaments", snapshot!!.tournaments).put("sampleLists", snapshot!!.players)
+        .put("archetype", d.name).put("wins", d.wins).put("losses", d.losses).put("ties", d.ties).toString()
       model.goal = "Adapta el mazo de torneo conservando todas mis copias disponibles."
       selected = null; onAi()
     }) { Text("Abrir asistente") } }, dismissButton = { TextButton(onClick = { selected = null }) { Text("Cancelar") } }) }

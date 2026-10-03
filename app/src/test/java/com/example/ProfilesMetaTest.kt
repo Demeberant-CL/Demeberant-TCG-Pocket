@@ -28,6 +28,35 @@ class ProfilesMetaTest {
     assertFalse(store.loadProfiles().toString().contains("secret"))
     store.clear()
   }
+  @Test fun legacyEncryptedConnectionLoadsWithoutChangingKey() {
+    val context = RuntimeEnvironment.getApplication()
+    val key = SecretKeySpec(ByteArray(32) { 9 }, "AES")
+    val old = org.json.JSONObject().put("provider", "GEMINI").put("model", "legacy-model")
+      .put("key", "legacy-secret").put("endpoint", "").toString().toByteArray()
+    val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key)
+    val encrypted = cipher.doFinal(old)
+    val file = java.io.File(context.noBackupFilesDir, "ai-connection.enc")
+    file.writeBytes(byteArrayOf(cipher.iv.size.toByte()) + cipher.iv + encrypted)
+    val store = AiConnectionStore(context) { key }
+    assertEquals("legacy-secret", store.load()!!.apiKey)
+    store.save(AiConnection(AiProvider.OPENAI, "model", "new-secret", id = "new"))
+    assertEquals("legacy-secret", store.loadProfiles().entries.first { it.id == "legacy-connection" }.apiKey)
+    store.clear()
+  }
+  @Test fun modelDiscoveryUsesGetAndFiltersGeminiGenerationModels() = kotlinx.coroutines.runBlocking {
+    var sent: okhttp3.Request? = null
+    val client = okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
+      sent = chain.request()
+      okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200).message("OK")
+        .body(okhttp3.ResponseBody.create(null, """{"models":[{"name":"models/gemini-test","supportedGenerationMethods":["generateContent"]},{"name":"models/embedding","supportedGenerationMethods":["embedContent"]}]}""" )).build()
+    }.build()
+    assertEquals(listOf("gemini-test"), ConnectedAiRepository(client).models(AiConnection(apiKey = "test-key")))
+    assertEquals("GET", sent!!.method)
+    assertEquals("test-key", sent!!.header("x-goog-api-key"))
+    assertNull(sent!!.url.query)
+    Unit
+  }
   @Test fun metaCacheRoundTripPreservesCardsEnergyAndCounts() {
     val deck = MetaDeck("Sample", 3, 7, 2, 1, mapOf("A1-001" to 2, "P-A-005" to 2), listOf("Planta"), "abc")
     val value = MetaSnapshot("2026-10-03T12:00:00Z", 2, 3, listOf(deck), 1)

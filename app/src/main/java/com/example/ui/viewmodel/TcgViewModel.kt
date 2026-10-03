@@ -322,6 +322,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   fun openTournamentDeck(deck: GeneratedDeck) {
     require(deck.totalCardCount == 20 && deck.cards.sumOf { it.count } == 20)
     require(deck.cards.all { it.count in 1..2 } && deck.energyTypes.size in 1..3)
+    require(deck.cards.groupBy { it.card.rulesName.lowercase() }.values.all { rows -> rows.sumOf { it.count } <= 2 })
     _automaticEnergies.value = false; editingDeckId = 0; _generatedDeck.value = deck
     reportMessage("Mazo de torneo abierto como borrador. Puede incluir cartas que te faltan.")
   }
