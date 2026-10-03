@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
@@ -23,9 +24,15 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.preferences.ProfileAvatars
 
+private object TrainerAtlas {
+  @Volatile private var bitmap: ImageBitmap? = null
+  @Synchronized fun get(resources: android.content.res.Resources): ImageBitmap =
+    bitmap ?: ImageBitmap.imageResource(resources, R.drawable.trainer_avatars).also { bitmap = it }
+}
+
 @Composable
 fun ProfileAvatar(id: String, modifier: Modifier = Modifier, description: String = "Avatar de perfil") {
-  val atlas = ImageBitmap.imageResource(R.drawable.trainer_avatars)
+  val atlas = TrainerAtlas.get(LocalContext.current.resources)
   val index = ProfileAvatars.ids.indexOf(ProfileAvatars.normalize(id))
   Canvas(modifier.clip(CircleShape).semantics { contentDescription = description }) {
     drawImage(atlas, srcOffset = IntOffset(index % 3 * atlas.width / 3, index / 3 * atlas.height / 2),
