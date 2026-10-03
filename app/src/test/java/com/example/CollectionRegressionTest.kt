@@ -26,6 +26,19 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class CollectionRegressionTest {
   @Before fun loadCatalog() { CardCatalog.loadBundled(RuntimeEnvironment.getApplication()) }
+  @Test fun imageFallbackPreservesCardIdentityAndResolutionOrder() {
+    val urls = TcgdexHelper.imageCandidates("B1-132", "es", true)
+    assertEquals(listOf(
+      "https://assets.tcgdex.net/es/tcgp/B1/132/high.webp",
+      "https://assets.tcgdex.net/es/tcgp/B1/132/low.webp",
+      "https://assets.tcgdex.net/en/tcgp/B1/132/high.webp",
+      "https://assets.tcgdex.net/en/tcgp/B1/132/low.webp"), urls)
+    assertEquals(1, TcgdexHelper.imageCandidates("PROMO-B-1", "en").size)
+    assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").all { "/P-B/001/" in it })
+    assertTrue(com.example.data.network.PocketHttp.imageClient.retryOnConnectionFailure)
+    assertFalse(com.example.data.network.PocketHttp.client.retryOnConnectionFailure)
+  }
+
   @Test fun canonicalIdsPreservePromoSets() {
     assertEquals("A1-001", CardId.normalize(" a1-1 "))
     assertEquals("PROMO-A-001", CardId.normalize("promo-a-1"))

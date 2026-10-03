@@ -1,6 +1,14 @@
 package com.example.data.util
 
 object TcgdexHelper {
+  fun imageCandidates(id: String, language: String = "es", highResolution: Boolean = false): List<String> {
+    val primary = getCardImageUrl(id, language)
+    val languages = listOf(primary, getCardImageUrl(id, "en")).distinct()
+    return languages.flatMap { low ->
+      if (highResolution) listOf(low.replace("low.webp", "high.webp"), low) else listOf(low)
+    }
+  }
+
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {
     val (set, number) = CardId.split(cardFullId)
     return getCardImageUrl(set, number, lang)

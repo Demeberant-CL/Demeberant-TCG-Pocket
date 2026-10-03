@@ -44,10 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.network.HttpException
 import com.example.data.model.PokemonCard
-import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
@@ -69,9 +66,6 @@ fun CardItemView(
   onClick: () -> Unit = {}
 ) {
   val isOwned = ownedCount > 0
-  var imageFailed by remember(card.id, imageLanguage) { mutableStateOf(false) }
-
-  var assetLanguage by remember(card.id, imageLanguage) { mutableStateOf(imageLanguage) }
 
   val typeColor = when (card.type.lowercase()) {
     "planta" -> Color(0xFF10B981)
@@ -103,27 +97,8 @@ fun CardItemView(
     )
   ) {
     Box(modifier = Modifier.fillMaxSize()) {
-      if (!imageFailed) {
-        AsyncImage(
-          model = TcgdexHelper.getCardImageUrl(card.id, assetLanguage),
-          contentDescription = card.name,
-          contentScale = ContentScale.Crop,
-          colorFilter = null,
-          onError = { state ->
-            // Only an absent translated asset justifies one English fallback.
-            if ((state.result.throwable as? HttpException)?.response?.code == 404 && assetLanguage != "en") {
-              assetLanguage = "en"
-            } else imageFailed = true
-          },
-          modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(12.dp))
-            .alpha(1f)
-        )
-      }
-
-      // Elegant Fallback Card Design when Image is loading or unavailable
-      if (imageFailed) {
+      PocketCardImage(id = card.id, name = card.name, language = imageLanguage,
+        contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), unavailable = {
         Column(
           modifier = Modifier
             .fillMaxSize()
@@ -195,7 +170,7 @@ fun CardItemView(
             )
           }
         }
-      }
+      })
 
       // Floating Badge Top-Right: Quantity (x1, x2, x3...) or (x0)
       Box(

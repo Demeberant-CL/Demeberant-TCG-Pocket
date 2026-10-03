@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
-import coil.network.HttpException
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,8 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.util.DeckCodec
 import com.example.ui.viewmodel.TcgViewModel
-import com.example.data.util.TcgdexHelper
-import coil.compose.AsyncImage
 
 @Composable
 fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
@@ -200,15 +197,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
 
 @Composable
 fun DeckThumbnail(id: String, name: String) {
-  var language by remember(id) { mutableStateOf("es") }
-  var failed by remember(id) { mutableStateOf(false) }
-  Box(Modifier.width(64.dp).height(90.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
-    if (failed) Text(name, modifier = Modifier.padding(4.dp), fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 4)
-    else AsyncImage(model = TcgdexHelper.getCardImageUrl(id, language), contentDescription = name,
-      contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
-      onError = { state ->
-        if ((state.result.throwable as? HttpException)?.response?.code == 404 && language != "en") language = "en"
-        else failed = true
-      })
-  }
+  com.example.ui.components.PocketCardImage(id = id, name = name,
+    modifier = Modifier.width(64.dp).height(90.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    unavailable = { Text(name, modifier = Modifier.padding(4.dp), fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 4) })
 }

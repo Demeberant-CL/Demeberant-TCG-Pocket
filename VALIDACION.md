@@ -217,3 +217,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Barra de cinco destinos: Inicio/Colección/Mazos/IA/Más. Meta accesible desde Inicio y Más con vuelta al origen y botón Atrás. Tutoriales siguen aparte.
 - Entrar en Inicio no consulta IA ni actualiza torneos; solo lee caché local de meta. Navegar al editor conserva el borrador. Biblioteca seleccionada por acceso directo Mis mazos.
 - Pendiente compilación CI y revisión visual en teléfono.
+
+
+### Revisión de imágenes de cartas
+- Confirmada ausencia de imagen española y disponibilidad inglesa para B1-132 y A4b-364 (2026-10-03). PROMO-B-001 responde 404 en ambos idiomas: conservar ficha y cantidades.
+- Carga común en colección, detalle, miniaturas y plantillas; alternativa solo ante HTTP 404, alta resolución a baja antes del inglés; indicador y reintento manual. Cliente de imágenes recupera conexiones sin alterar solicitudes IA.
+- Nueva prueba de orden/identidad de alternativas y separación del cliente de imágenes. Pendiente comprobar visualmente en teléfono.
+- Usuario confirma nueva pantalla y QR funcionando.

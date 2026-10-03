@@ -33,6 +33,10 @@ object PocketHttp {
     .callTimeout(100, TimeUnit.SECONDS).retryOnConnectionFailure(false)
     .followRedirects(false).followSslRedirects(false)
     .addInterceptor(DiagnosticInterceptor()).build()
+  // Image GETs can recover a reset connection without retrying AI requests.
+  val imageClient: OkHttpClient = client.newBuilder().retryOnConnectionFailure(true)
+    .followRedirects(true).followSslRedirects(false)
+    .readTimeout(10, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
   val detailsClient: OkHttpClient = client.newBuilder().followRedirects(true).followSslRedirects(false).readTimeout(10, TimeUnit.SECONDS).callTimeout(12, TimeUnit.SECONDS).build()
 }
 

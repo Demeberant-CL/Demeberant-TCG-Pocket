@@ -66,8 +66,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
@@ -315,9 +313,8 @@ fun DeckBuilderScreen(
                     .border(1.dp, PocketBorder, RoundedCornerShape(8.dp))
                     .background(PocketSurface)
                 ) {
-                  AsyncImage(
-                    model = TcgdexHelper.getCardImageUrl(entry.card.id, "es"),
-                    contentDescription = entry.card.name,
+                  com.example.ui.components.PocketCardImage(
+                    id = entry.card.id, name = entry.card.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                   )

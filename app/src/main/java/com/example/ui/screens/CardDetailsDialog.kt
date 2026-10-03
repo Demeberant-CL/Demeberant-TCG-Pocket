@@ -8,11 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.data.api.CardDetails
 import com.example.data.api.CardDetailsClient
 import com.example.data.repository.CardWithInventory
-import com.example.data.util.TcgdexHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
@@ -35,8 +33,8 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
   AlertDialog(onDismissRequest = onDismiss, title = { Text(item.card.name) }, text = {
     Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      AsyncImage(model = TcgdexHelper.getCardImageUrl(item.card.id, language).replace("low.webp", "high.webp"),
-        contentDescription = item.card.name, modifier = Modifier.fillMaxWidth().height(240.dp))
+      com.example.ui.components.PocketCardImage(id = item.card.id, name = item.card.name, language = language,
+        highResolution = true, modifier = Modifier.fillMaxWidth().height(240.dp))
       Text("${item.card.id} · ${item.card.rarity.displayName}")
       Text(item.card.packNames.joinToString(", ").ifBlank { "Sin datos de sobre" })
       OutlinedTextField(value = quantity, onValueChange = { if (it.length <= 5 && it.all(Char::isDigit)) quantity = it },
