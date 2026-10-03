@@ -3,6 +3,7 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.ai.*
 import com.example.data.api.CardDetailsClient
 import com.example.data.local.AppDatabase
 import com.example.data.local.CardRulesEntity
@@ -20,6 +21,46 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   private val db = AppDatabase.getDatabase(application)
   private val repository = InventoryRepository.fromDatabase(db)
   private val assistant = AIAssistantRepository()
+  private val connectedAssistant = ConnectedAiRepository()
+  private val connectionStore = AiConnectionStore(application)
+  val connection = MutableStateFlow(AiConnection())
+  val connectionReady = MutableStateFlow(false)
+  fun saveConnection(value: AiConnection) = task("AI_CONFIG") {
+    require(value.apiKey.isNotBlank() && value.apiKey.length <= 4096 && value.apiKey.all { it.code in 33..126 }) { "Introduce una clave API válida." }
+    require(value.model.matches(Regex("[a-zA-Z0-9._:/-]{1,120}")) && value.endpoint.length <= 2000) { "Revisa modelo y URL." }
+    withContext(Dispatchers.IO) { connectionStore.save(value) }
+    connection.value = value
+    proposal.value = null
+    message.value = "Conexión guardada en este dispositivo. Aún no se ha consultado la API."
+  }
+  fun removeConnection() = task("AI_CONFIG") {
+    withContext(Dispatchers.IO) { connectionStore.clear() }
+    connection.value = AiConnection()
+    proposal.value = null
+    message.value = "Conexión eliminada."
+  }
+  fun askConnected(replace: Boolean, target: GeneratedDeck?) = task("AI_CONNECTED") {
+    proposal.value = null
+    try {
+      val (candidates, requestedTarget) = assistantContext(replace, target, "es")
+      val prompt = ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget)
+      val result = connectedAssistant.request(connection.value, prompt)
+      val current = repository.inventoryFlow.first().associateBy { it.card.id }
+      val available = candidates.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }
+      proposal.value = withContext(Dispatchers.Default) {
+        AiValidator.parse(ExternalAiExchange.response(result), available, requestedTarget)
+      }
+      message.value = "Mazo validado con tu colección actual. Revisa la propuesta antes de guardarla."
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) {
+      // Provider bodies and network exception messages may contain private content.
+      val safe = e.message?.takeIf { it.startsWith("Cuota") || it.startsWith("La API") ||
+        it.startsWith("Modelo o") || it.startsWith("Hay demasiadas") || it.startsWith("Necesitas al menos") ||
+        it.startsWith("La respuesta quedó") || it.startsWith("Introduce tu") || it.startsWith("Revisa el identificador") }
+      message.value = safe ?: "No se pudo obtener un mazo válido. Revisa conexión, cartas disponibles y modelo. No se guardó ninguna propuesta."
+      ErrorLogManager.event("AI_CONNECTED", "Connected request failed; private details omitted")
+    }
+  }
   private val filter = MutableStateFlow(RulesFilter())
   val matches = filter.flatMapLatest { query -> db.cardRulesDao().filter(query.language, query.minHp,
     query.maxHp, query.element, query.role, RoleClassifier.normalize(query.keyword)) }
@@ -27,6 +68,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
   val busy = MutableStateFlow(false)
   val message = MutableStateFlow<String?>(null)
+  init {
+    viewModelScope.launch(Dispatchers.IO) {
+      try { connectionStore.load()?.let { connection.value = it } }
+      catch (_: Exception) { message.value = "No se puede leer la conexión IA. Configúrala de nuevo." }
+      finally { connectionReady.value = true }
+    }
+  }
   val proposal = MutableStateFlow<AiProposal?>(null)
   val board = MutableStateFlow<SandboxState?>(null)
   private val undo = ArrayDeque<SandboxState>()

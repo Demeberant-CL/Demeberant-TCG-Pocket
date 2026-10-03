@@ -38,7 +38,7 @@ No se fusiona en main ni se despliega la web automáticamente.
 - Catálogo comunitario: metadatos de tipo/evolución incompletos en expansiones recientes.
   Los detalles e imágenes dependen de TCGdex. Interfaz, imágenes y detalles en español fijo.
 - Las plantillas A1 son históricas, sin afirmar que representan el meta actual.
-- No hay integración real con Gemini, cuenta del juego, ejecución de canjes ni sincronización
+- No hay conexión con cuenta del juego, ejecución de canjes ni sincronización
   automática entre Android y web.
 - No hay tasas oficiales de apertura importadas. La calculadora requiere una tasa total
   por sobre introducida por el usuario y no simula la garantía de básico ni efectos.
@@ -162,3 +162,11 @@ fallan en la detección normal aunque el símbolo es válido; las demás se deco
 el payload rechazado por el juego, las ocho se decodifican localmente. La exportación ahora
 prueba máscaras y solo devuelve imágenes que decodifican exactamente el payload; la
 alternativa selecciona la segunda máscara legible. Esta corrección no prueba aceptación en el juego.
+
+## IA conectada (03-10-2026)
+
+Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el asistente, sin copiar consultas ni pegar JSON. Cada usuario configura su propia clave y modelo; Gemini es la selección inicial, sin garantía de cuota gratuita si habilita facturación. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cambiar proveedor vacía el campo de clave; Guardar reemplaza la conexión anterior.
+
+Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
+
+Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.

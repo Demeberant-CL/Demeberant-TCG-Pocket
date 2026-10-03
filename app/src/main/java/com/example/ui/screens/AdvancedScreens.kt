@@ -30,100 +30,91 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
   val proposal by model.proposal.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
-  val externalPrompt by model.externalPrompt.collectAsStateWithLifecycle()
+  val connection by model.connection.collectAsStateWithLifecycle()
+  val ready by model.connectionReady.collectAsStateWithLifecycle()
+  var provider by remember { mutableStateOf(connection.provider) }
+  var apiKey by remember { mutableStateOf(connection.apiKey) }
+  var modelName by remember { mutableStateOf(connection.model) }
+  var url by remember { mutableStateOf(connection.endpoint) }
+  var configure by remember { mutableStateOf(false) }
   var goal by rememberSaveable { mutableStateOf(model.goal) }
-  var responseText by remember { mutableStateOf("") }
-  var showResponseEditor by remember { mutableStateOf(false) }
-  var replace by rememberSaveable { mutableStateOf(false) }
-  var step by rememberSaveable { mutableIntStateOf(1) }
-  var showCopy by remember { mutableStateOf(false) }
-  var advanced by rememberSaveable { mutableStateOf(false) }
-  var useServer by rememberSaveable { mutableStateOf(false) }
+  var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
+  var improve by rememberSaveable { mutableStateOf(false) }
   var confirmSend by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
-  var clipboardMessage by remember { mutableStateOf<String?>(null) }
-  var endpoint by remember { mutableStateOf(model.endpoint) }
-  var token by remember { mutableStateOf(model.token) }
-  var meta by remember { mutableStateOf(model.meta) }
-  var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
   val context = androidx.compose.ui.platform.LocalContext.current
-  LaunchedEffect(externalPrompt) { if (externalPrompt != null) step = 2 }
-  LaunchedEffect(proposal) { if (proposal != null) step = 4 }
+  LaunchedEffect(connection) {
+    provider = connection.provider; apiKey = connection.apiKey
+    modelName = connection.model; url = connection.endpoint
+    configure = connection.apiKey.isBlank()
+  }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
-      Text("Crea un mazo con tu IA", style = MaterialTheme.typography.titleLarge)
+      Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
       HelpButton("ia")
-      Text("Te guiamos en cuatro pasos. No necesitas comprender el formato de la respuesta.")
-      Text("Paso $step de 4", style = MaterialTheme.typography.titleMedium)
+      Text("Crea un mazo usando tus cartas. La IA responde directamente aquí.")
+      if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
+      else {
+        Text(if (connection.apiKey.isBlank()) "Primero conecta tu IA" else "Proveedor: ${connection.provider.label} · ${connection.model}")
+        TextButton(enabled = !busy, onClick = { configure = !configure }) { Text(if (configure) "Ocultar configuración" else "Configurar IA") }
+        if (configure) {
+          com.example.data.ai.AiProvider.entries.forEach { value ->
+            FilterChip(selected = provider == value, enabled = !busy, onClick = {
+              provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
+            }, label = { Text(value.label) })
+          }
+          OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
+            visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
+          OutlinedTextField(modelName, { if (it.length <= 120) modelName = it.trim() }, label = { Text("Modelo") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
+          if (provider == com.example.data.ai.AiProvider.COMPATIBLE) {
+            OutlinedTextField(url, { if (it.length <= 2000) url = it.trim() }, label = { Text("URL HTTPS completa de chat/completions") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
+            Text("Solo APIs compatibles con Chat Completions. No todos los proveedores usan este formato; recibirán tus cartas y tu clave.")
+          }
+          Text(if (provider == com.example.data.ai.AiProvider.GEMINI)
+            "Gemini tiene cuotas gratuitas según modelo y cuenta. Si activaste facturación, puede cobrar. En el nivel gratuito Google puede usar el contenido para mejorar sus productos."
+            else "Esta API puede tener coste. ChatGPT Plus no incluye crédito API. Revisa los límites en tu cuenta del proveedor.")
+          Text("La clave se cifra en este teléfono y no se incluye en diagnósticos ni respaldos. No uses una clave compartida para todos los usuarios.")
+          if (provider != com.example.data.ai.AiProvider.COMPATIBLE) TextButton(onClick = {
+            val link = if (provider == com.example.data.ai.AiProvider.GEMINI) "https://aistudio.google.com/apikey" else "https://platform.openai.com/api-keys"
+            try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))) }
+            catch (_: Exception) { model.message.value = "Abre la página de claves del proveedor en tu navegador." }
+          }) { Text("Obtener mi clave API") }
+          Button(enabled = !busy && apiKey.isNotBlank() && modelName.isNotBlank() &&
+            (provider != com.example.data.ai.AiProvider.COMPATIBLE || url.isNotBlank()), onClick = {
+              model.saveConnection(com.example.data.ai.AiConnection(provider, modelName, apiKey, url))
+          }) { Text("Guardar conexión") }
+          TextButton(enabled = !busy, onClick = { apiKey = ""; model.removeConnection() }) { Text("Eliminar conexión") }
+        }
+      }
+      Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = !replace, onClick = { if (!busy) { replace = false; model.clearExternal(); responseText = ""; step = 1 } }, label = { Text("Crear mazo") })
-        FilterChip(selected = replace, onClick = { if (!busy) { replace = true; model.clearExternal(); responseText = ""; step = 1 } }, label = { Text("Mejorar mazo abierto") })
+        FilterChip(selected = !improve, enabled = !busy, onClick = { improve = false; model.proposal.value = null }, label = { Text("Crear mazo") })
+        FilterChip(selected = improve, enabled = !busy, onClick = { improve = true; model.proposal.value = null }, label = { Text("Completar mazo") })
       }
-      if (replace) Text(deck?.let { "Mazo objetivo: ${it.name} · ${it.totalCardCount}/20" } ?: "Abre primero un mazo en Mazos.")
-      if (step == 1 || useServer) {
-        Text("1. ¿Qué mazo quieres?")
-        OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, label = { Text("Ejemplo: mazo de Agua fácil de jugar") }, modifier = Modifier.fillMaxWidth())
-        TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Ocultar opciones avanzadas" else "Opciones avanzadas (opcional)") }
-        if (advanced) {
-          Text("Limitar cartas por tipo")
-          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(listOf("") + com.example.data.util.DeckCodec.energyNames + listOf("Dragón", "Incoloro")) { type ->
-              FilterChip(selected = candidateType == type, onClick = { candidateType = type; model.candidateType = type }, label = { Text(type.ifBlank { "Todas" }) })
-            }
-          }
-          OutlinedTextField(meta, { if (it.length <= 16000) { meta = it; model.meta = it } }, label = { Text("Contexto adicional y fuente (opcional)") }, modifier = Modifier.fillMaxWidth())
-          Row { Text("Usar servidor propio", Modifier.weight(1f)); Switch(useServer, { useServer = it }) }
-          if (useServer) {
-            OutlinedTextField(endpoint, { endpoint = it; model.endpoint = it }, label = { Text("URL HTTPS /assist") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(token, { token = it; model.token = it }, label = { Text("Token del servidor") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-            Text("Opción técnica: servidor propio, no la contraseña de tu IA. Puede tener coste API.")
-            TextButton(onClick = { token = ""; model.clearToken() }) { Text("Eliminar token") }
-          }
-        }
-        Button(enabled = !busy && (!replace || deck?.totalCardCount == 20) && (!useServer || endpoint.isNotBlank() && token.isNotBlank()),
-          onClick = { responseText = ""; clipboardMessage = null; if (useServer) confirmSend = true else model.prepareExternal(replace, deck) }, modifier = Modifier.fillMaxWidth()) {
-          Text(if (useServer) "Consultar servidor" else "Preparar consulta")
+      if (improve) Text(deck?.let { "${it.name} · ${it.totalCardCount}/20. Conserva las cartas disponibles y sustituye únicamente las que faltan." }
+        ?: "Abre primero un mazo de 20 cartas en Mazos.")
+      OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, enabled = !busy,
+        label = { Text("Ejemplo: mazo de Agua fácil de jugar") }, modifier = Modifier.fillMaxWidth())
+      Text("Cartas que puede usar")
+      LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(listOf("") + com.example.data.util.DeckCodec.energyNames + listOf("Dragón", "Incoloro")) { type ->
+          FilterChip(selected = candidateType == type, enabled = !busy, onClick = {
+            candidateType = type; model.candidateType = type; model.proposal.value = null
+          }, label = { Text(type.ifBlank { "Todas" }) })
         }
       }
-      if (!useServer && externalPrompt != null && step != 4) {
-        Text("2. Lleva la consulta a tu IA")
-        Text("Revisa y copia la consulta. Luego abre tu IA, pégala y copia toda su respuesta.")
-        Button(enabled = !busy, onClick = { showCopy = true }, modifier = Modifier.fillMaxWidth()) { Text("Revisar y copiar consulta") }
-        OutlinedButton(onClick = {
-          try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://chatgpt.com"))) }
-          catch (_: Exception) { clipboardMessage = "Abre tu aplicación IA habitual y pega la consulta." }
-        }) { Text("Abrir ChatGPT") }
-        Text("También puedes abrir cualquier otra IA. La app no envía la consulta por ti.")
-        Text("3. Trae la respuesta")
-        Button(enabled = !busy, onClick = {
-          val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-          val value = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
-          if (value.isNullOrBlank()) clipboardMessage = "Copia primero la respuesta completa de tu IA."
-          else if (value.length > 100000) clipboardMessage = "La respuesta es demasiado larga. Pide solo el mazo solicitado."
-          else { responseText = value; step = 3; clipboardMessage = "Respuesta pegada. Pulsa Revisar mazo." }
-        }, modifier = Modifier.fillMaxWidth()) { Text("Pegar respuesta") }
-        if (responseText.isNotBlank()) Text("Respuesta lista · ${responseText.length} caracteres. Pulsa Revisar mazo para ver las cartas.")
-        TextButton(enabled = !busy, onClick = { showResponseEditor = !showResponseEditor; step = 3 }) {
-          Text(if (showResponseEditor) "Ocultar texto de respuesta" else "Pegar o editar manualmente (opcional)")
-        }
-        if (showResponseEditor) OutlinedTextField(responseText, { if (it.length <= 100000) responseText = it },
-          label = { Text("Respuesta de tu IA") }, modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 180.dp))
-        Button(enabled = !busy && responseText.isNotBlank(), onClick = { model.importExternal(responseText) }, modifier = Modifier.fillMaxWidth()) { Text("Revisar mazo") }
-        Text("Si no se acepta, vuelve a tu IA con el motivo del aviso. La consulta ya pide el formato necesario.")
-        TextButton(enabled = !busy, onClick = { responseText = ""; model.clearExternal(); step = 1; clipboardMessage = null }) { Text("Empezar otra consulta") }
-      }
-      clipboardMessage?.let { Text(it) }
+      Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && (!improve || deck?.totalCardCount == 20),
+        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text(if (improve) "Completar con mi IA" else "Crear con mi IA") }
+      Text("Una consulta por pulsación, sin cambio automático de proveedor. No modifica tu colección. La IA no dispone de estadísticas meta actuales verificadas.")
       AdvancedStatus(model)
     }
     proposal?.let { result ->
       item {
-        Text("4. Revisa tu mazo", style = MaterialTheme.typography.titleLarge)
-        Text(result.deck.name, style = MaterialTheme.typography.titleMedium)
-        Text("20 cartas · Energías incluidas: ${result.deck.energyTypes.joinToString()}")
+        Text(result.deck.name, style = MaterialTheme.typography.titleLarge)
+        Text("20 cartas · Energías: ${result.deck.energyTypes.joinToString()}")
         Text(result.deck.strategy)
         Button(enabled = !busy, onClick = { confirmOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Usar este mazo") }
-        Text("Se abre como borrador. Después pulsa Guardar mazo; no cambia tus cantidades.")
-        TextButton(enabled = !busy, onClick = { model.clearExternal(); responseText = ""; step = 1 }) { Text("Crear otra propuesta") }
+        Text("Se abrirá como borrador para que lo revises y guardes.")
       }
       items(result.deck.cards, key = { it.card.id }) { entry ->
         Card(Modifier.fillMaxWidth()) {
@@ -136,21 +127,9 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       items(result.replacements) { Text("${it.count} × ${it.removedId} → ${it.addedId}: ${it.reason}") }
     }
   }
-  if (showCopy) AlertDialog(onDismissRequest = { showCopy = false }, title = { Text("Revisa los datos que vas a copiar") },
-    text = { Column { Text("Incluye cartas, cantidades, objetivo y contexto. No incluye credenciales. Tú eliges quién recibe estos datos.")
-      androidx.compose.foundation.text.selection.SelectionContainer {
-        LazyColumn(Modifier.heightIn(max = 300.dp)) { item { Text(externalPrompt ?: "") } }
-      }
-    } }, confirmButton = { TextButton(onClick = {
-      externalPrompt?.let { prompt ->
-        (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-          .setPrimaryClip(android.content.ClipData.newPlainText("Consulta de mazo", prompt))
-        clipboardMessage = "Consulta copiada. Pégala en tu IA y vuelve con su respuesta."
-      }; showCopy = false
-    }) { Text("Copiar consulta") } }, dismissButton = { TextButton(onClick = { showCopy = false }) { Text("Cancelar") } })
-  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("Enviar contexto al servidor") },
-    text = { Text("Envía cartas, cantidades, efectos, objetivo y contexto a tu servidor y OpenAI. Puede tener coste API. No guarda un mazo automáticamente.") },
-    confirmButton = { TextButton(onClick = { model.askAssistant(replace, deck, "es"); confirmSend = false }) { Text("Enviar") } },
+  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("Consultar ${connection.provider.label}") },
+    text = { Text("Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
+    confirmButton = { TextButton(onClick = { model.askConnected(improve, deck); confirmSend = false }) { Text("Consultar") } },
     dismissButton = { TextButton(onClick = { confirmSend = false }) { Text("Cancelar") } })
   if (confirmOpen) AlertDialog(onDismissRequest = { confirmOpen = false }, title = { Text("Usar este mazo") },
     text = { Text("Reemplaza el borrador abierto; conserva mazos guardados y colección.") },

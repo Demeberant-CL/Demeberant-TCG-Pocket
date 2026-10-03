@@ -53,7 +53,7 @@ El versionCode aumenta con el número de ejecución para admitir actualizaciones
 - Imágenes y detalles requieren conexión y disponibilidad de TCGdex. El resto de Android
   trabaja con datos locales; la web necesita cargar sus archivos al abrirse.
 - Las plantillas A1 y sus etiquetas históricas no son el meta actual. Hay un enlace a torneos.
-- No hay integración real con Gemini ni resultados de IA simulados.
+- Las conexiones IA requieren una clave propia; las pruebas de CI usan respuestas simuladas, sin consultas pagadas.
 - No se incorporan tasas de apertura no verificadas. La calculadora no modela la garantía
   de Pokémon básico en la mano inicial, habilidades ni efectos.
 - La web compilada se entrega como artefacto; no se despliega ni se fusiona en main automáticamente.
@@ -63,14 +63,12 @@ Fuentes y licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ## Módulo avanzado: IA, sandbox, efectos y diagnóstico
 
 En Análisis hay tres nuevas secciones: IA, Sandbox y Efectos.
-IA permite preparar una consulta, revisar y copiar el texto a cualquier asistente y pegar
-su respuesta JSON. La importación valida IDs, cantidades actuales, 20 cartas y sustituciones;
-solo abre un borrador. No requiere una API ni realiza consultas pagadas.
-Opcionalmente utiliza el servidor de `backend/` para conectar a OpenAI Responses API con JSON Schema estricto.
-La app solicita confirmación antes de enviar contexto y solo abre propuestas validadas como borradores.
-La clave API permanece en el servidor; URL y token de acceso se introducen en la pantalla IA.
-El token no se persiste, no se exporta en respaldos ni se registra. Para configurar:
-[backend/README.md](backend/README.md). No se ha desplegado ese servidor.
+IA conecta directamente a Gemini, OpenAI o una API compatible con Chat Completions.
+Configura tu propia clave y modelo, indica tu objetivo y pulsa Crear con mi IA.
+Para sustituir faltantes, abre un mazo de 20 cartas y usa Completar mazo.
+La respuesta se valida contra tu colección y solo se abre como borrador.
+El código del servidor opcional de `backend/` se conserva como herramienta independiente;
+no se ha desplegado y ya no es necesario para la pantalla IA.
 
 Sandbox practica con el mazo abierto de 20 cartas: mano, activo, banca de tres, descartes,
 robo, turnos, marcadores de daño/energía y deshacer. Es un tablero manual de un jugador,
@@ -126,9 +124,7 @@ con opción de personalizarlas. Los costes de ataques y los Pokémon Dragón deb
 Plantillas A1 incluyen ahora su energía. Un mazo guardado conserva sus energías personalizadas;
 los antiguos sin selección reciben una sugerencia al abrirse, sin modificar el original hasta guardar.
 
-IA guía Preparar consulta → revisar/copiar → abrir tu IA → pegar respuesta → revisar cartas →
-usarla como borrador. El servidor es una opción avanzada. No conecta automáticamente una
-suscripción de ChatGPT/Gemini ni hace consultas pagadas. Ajustes permite Guardar diagnóstico TXT
+IA conectada evita copiar consultas o pegar JSON. Ajustes permite Guardar diagnóstico TXT
 mediante el selector de archivos Android además de Compartir.
 
 QR: el usuario informó que 29235 se importó y que 29230/29228/29227 fueron rechazados;
@@ -137,3 +133,11 @@ cartas y una energía válida. La causa del rechazo del juego no está demostrad
 segmento ECI innecesario para ASCII para aproximarse al generador de referencia y se ofrece
 Probar QR alternativo (otra máscara, mismo contenido). Ambas imágenes se decodifican en pruebas;
 su aceptación real requiere una nueva prueba en el juego.
+
+## IA conectada (03-10-2026)
+
+Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el asistente, sin copiar consultas ni pegar JSON. Cada usuario configura su propia clave y modelo; Gemini es la selección inicial, sin garantía de cuota gratuita si habilita facturación. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cambiar proveedor vacía el campo de clave; Guardar reemplaza la conexión anterior.
+
+Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
+
+Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.
