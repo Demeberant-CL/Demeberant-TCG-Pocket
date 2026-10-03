@@ -70,6 +70,7 @@ class DiagnosticSummaryTest {
     ErrorLogManager.saveBriefReport(context, android.net.Uri.fromFile(file), report)
     assertEquals(report, file.readText(Charsets.UTF_8))
     file.delete()
+    Unit
   }
   @Test fun usingProposalRechecksInventoryAfterTheResponseAndDoesNotMutateIt() {
     val pool = (1..10).map { i -> CardWithInventory(PokemonCard("A1-${i.toString().padStart(3,'0')}", "Basic$i",
