@@ -204,3 +204,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Cambiar cantidad mantiene el orden visual de las cartas; prueba cubre aumento, rechazo de cantidad >2 y retirada.
 - La aceptación de una propuesta IA abre el editor directamente. No se realizan consultas IA por navegar o pulsar controles locales.
 - Pendiente comprobación visual en teléfono y compilación CI.
+
+## Acciones IA y pantalla simplificada (2026-10-03)
+- Cabecera fija con perfil/proveedor/modelo activos; configuración en diálogo separado y filtro de cartas desplegable.
+- Crear desde colección; Completar faltantes conserva copias disponibles del objetivo de 20; Mejorar usa la baraja de 1–20 como referencia libre y puede cambiar cartas.
+- Mejora envía reference separado de target; no relaja validación de IDs/cantidades/básicos/evoluciones/energías/20 cartas. Replacements vacío en creación/mejora.
+- Confirmación previa al envío y a reemplazar el borrador; sin consulta automática ni cambio de proveedor por fallo.
+- Prueba nueva de elegibilidad y separación referencia/objetivo. Pendiente CI y teléfono/API real.

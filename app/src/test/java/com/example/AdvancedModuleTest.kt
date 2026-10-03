@@ -220,6 +220,26 @@ class AdvancedModuleTest {
     assertTrue(runCatching { ExternalAiExchange.prompt("", "", emptyList(), null) }.isFailure)
   }
 
+  @Test fun connectedActionsSeparateCompletionFromImprovementReference() {
+    assertTrue(AiDeckAction.CREATE.canUse(null))
+    assertFalse(AiDeckAction.COMPLETE.canUse(null))
+    assertFalse(AiDeckAction.COMPLETE.canUse(19))
+    assertTrue(AiDeckAction.COMPLETE.canUse(20))
+    assertFalse(AiDeckAction.IMPROVE.canUse(0))
+    assertTrue(AiDeckAction.IMPROVE.canUse(1))
+    assertTrue(AiDeckAction.IMPROVE.canUse(20))
+    val cards = candidates()
+    val reference = cards.map { DeckCardEntry(it.card, 2) }
+    val prompt = ExternalAiExchange.prompt("", "Mejorar consistencia", cards, null, reference)
+    val context = JSONObject(prompt.substringAfter("CONTEXTO:\n"))
+    assertEquals(0, context.getJSONArray("target").length())
+    assertEquals(10, context.getJSONArray("reference").length())
+    assertTrue(prompt.contains("puedes cambiar cualquier carta"))
+    assertEquals(20, AiValidator.parse(proposal().toString(), cards).deck.totalCardCount)
+    assertTrue(runCatching { ExternalAiExchange.prompt("", "", cards, reference, reference) }.isFailure)
+    assertTrue(runCatching { ExternalAiExchange.prompt("", "", cards, null, emptyList()) }.isFailure)
+  }
+
   @Test fun externalJsonAcceptsSingleCodeBlockButRejectsProseAndInvalidCollection() {
     val raw = proposal().toString()
     assertEquals(raw, ExternalAiExchange.response("  " + raw + "  "))

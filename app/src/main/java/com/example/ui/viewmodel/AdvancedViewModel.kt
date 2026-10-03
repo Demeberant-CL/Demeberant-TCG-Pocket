@@ -61,11 +61,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     catch (_: Exception) { message.value = "No se pudieron listar modelos. Revisa la clave y URL; puedes introducir el modelo manualmente."; return@task }
     message.value = "${availableModels.value.size} modelos filtrados para texto. Listar no comprueba cuota ni generación. Guarda el modelo elegido; una consulta puede consumir cuota."
   }
-  fun askConnected(replace: Boolean, target: GeneratedDeck?) = task("AI_CONNECTED") {
+  fun askConnected(action: AiDeckAction, target: GeneratedDeck?) = task("AI_CONNECTED") {
     proposal.value = null
     try {
-      val (candidates, requestedTarget) = assistantContext(replace, target, "es")
-      val prompt = ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget)
+      require(action.canUse(target?.totalCardCount)) { "Abre un mazo adecuado para esta acción." }
+      val (candidates, requestedTarget) = assistantContext(action == AiDeckAction.COMPLETE, target, "es")
+      val reference = if (action == AiDeckAction.IMPROVE) target!!.cards else null
+      val prompt = ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget, reference)
       val result = connectedAssistant.request(connection.value, prompt)
       val current = repository.inventoryFlow.first().associateBy { it.card.id }
       val available = candidates.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }

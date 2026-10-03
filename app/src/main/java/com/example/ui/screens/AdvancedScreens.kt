@@ -8,6 +8,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,7 +51,9 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var configure by remember { mutableStateOf(false) }
   var goal by rememberSaveable { mutableStateOf(model.goal) }
   var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
-  var improve by rememberSaveable { mutableStateOf(deck?.archetype == "Limitless") }
+  var actionName by rememberSaveable { mutableStateOf(if (deck?.archetype == "Limitless") AiDeckAction.COMPLETE.name else AiDeckAction.CREATE.name) }
+  val action = AiDeckAction.valueOf(actionName)
+  var showCandidateFilter by rememberSaveable { mutableStateOf(false) }
   var confirmSend by remember { mutableStateOf(false) }
   var confirmDelete by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
@@ -52,32 +62,114 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     profileId = connection.id; profileName = connection.label
     provider = connection.provider; apiKey = connection.apiKey
     modelName = connection.model; url = connection.endpoint
-    configure = connection.apiKey.isBlank()
   }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    item {
-      Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-
-      if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-      else {
-        Text(if (connection.apiKey.isBlank()) "Primero conecta tu IA" else "Proveedor: ${connection.provider.label} · ${connection.model}")
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          items(profiles.entries, key = { it.id }) { saved ->
-            FilterChip(selected = saved.id == connection.id, enabled = !busy, onClick = { model.selectConnection(saved.id) },
-              label = { Text(saved.label) })
+  Column(modifier.fillMaxSize()) {
+    Surface(tonalElevation = 2.dp) {
+      Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+          Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
+          if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
+          else {
+            Text(if (connection.apiKey.isBlank()) "Conecta tu IA para comenzar" else connection.label,
+              style = MaterialTheme.typography.titleSmall)
+            if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}", style = MaterialTheme.typography.bodySmall)
           }
         }
-        TextButton(enabled = !busy, onClick = {
-          profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
-          apiKey = ""; configure = true; model.availableModels.value = emptyList()
-        }) { Text("Añadir proveedor") }
-        TextButton(enabled = !busy, onClick = { configure = !configure }) { Text(if (configure) "Ocultar configuración" else "Configurar IA") }
-        if (configure) {
+        TextButton(enabled = ready && !busy, onClick = { configure = true }) {
+          Icon(Icons.Filled.Settings, contentDescription = null)
+          Spacer(Modifier.width(6.dp))
+          Text("Conexiones")
+        }
+      }
+    }
+    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    item {
+      Text("Elige una acción", style = MaterialTheme.typography.titleMedium)
+      AiDeckAction.entries.forEach { choice ->
+        OutlinedCard(onClick = { actionName = choice.name; model.proposal.value = null }, enabled = !busy,
+          modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+          colors = CardDefaults.outlinedCardColors(containerColor = if (action == choice)
+            MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+          Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(when (choice) {
+              AiDeckAction.CREATE -> Icons.Filled.AutoAwesome
+              AiDeckAction.COMPLETE -> Icons.Filled.AddCircleOutline
+              AiDeckAction.IMPROVE -> Icons.Filled.Tune
+            }, contentDescription = null)
+            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+              Text(choice.label, style = MaterialTheme.typography.titleSmall)
+              Text(choice.description, style = MaterialTheme.typography.bodySmall)
+            }
+            RadioButton(selected = action == choice, onClick = null)
+          }
+        }
+      }
+      if (action != AiDeckAction.CREATE) Text(deck?.let { "Mazo abierto: ${it.name} · ${it.totalCardCount}/20" }
+        ?: "Abre primero un mazo desde Mazos → Editar.")
+      if (!action.canUse(deck?.totalCardCount)) Text(if (action == AiDeckAction.COMPLETE)
+        "Necesitas un objetivo de 20 cartas. Completar faltantes sustituye las que no tienes; no rellena un borrador corto."
+        else "Abre un mazo con al menos una carta para mejorarlo.", color = MaterialTheme.colorScheme.error)
+      OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, enabled = !busy,
+        label = { Text("Objetivo opcional") }, placeholder = { Text("Ej.: más fácil de jugar, priorizar Agua") }, modifier = Modifier.fillMaxWidth())
+      TextButton(onClick = { showCandidateFilter = !showCandidateFilter }) { Text("Filtrar cartas: ${candidateType.ifBlank { "Todas" }}") }
+      if (showCandidateFilter) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(listOf("") + com.example.data.util.DeckCodec.energyNames + listOf("Dragón", "Incoloro")) { type ->
+          FilterChip(selected = candidateType == type, enabled = !busy, onClick = {
+            candidateType = type; model.candidateType = type; model.proposal.value = null
+          }, label = { Text(type.ifBlank { "Todas" }) })
+        }
+      }
+      Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && action.canUse(deck?.totalCardCount),
+        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text("Consultar IA · ${action.label}") }
+
+      AdvancedStatus(model)
+    }
+    proposal?.let { result ->
+      item {
+        Text(result.deck.name, style = MaterialTheme.typography.titleLarge)
+        Text("20 cartas · Energías: ${result.deck.energyTypes.joinToString()}")
+        Text(result.deck.strategy)
+        Button(enabled = !busy, onClick = { confirmOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Usar este mazo") }
+        Text("Se abrirá como borrador para que lo revises y guardes.")
+      }
+      items(result.deck.cards, key = { it.card.id }) { entry ->
+        Card(Modifier.fillMaxWidth()) {
+          Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            DeckThumbnail(entry.card.id, entry.card.name)
+            Column { Text("${entry.count} × ${entry.card.name}"); Text(entry.card.id, style = MaterialTheme.typography.bodySmall) }
+          }
+        }
+      }
+      items(result.replacements) { Text("${it.count} × ${it.removedId} → ${it.addedId}: ${it.reason}") }
+    }
+  }
+  }
+  if (configure) Dialog(onDismissRequest = { configure = false },
+    properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Card(Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 620.dp)) {
+      LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Conexiones y modelos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { configure = false }) { Text("Cerrar") }
+          }
+          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(profiles.entries, key = { it.id }) { saved ->
+              FilterChip(selected = saved.id == connection.id, enabled = !busy,
+                onClick = { model.selectConnection(saved.id) }, label = { Text(saved.label) })
+            }
+          }
+          OutlinedButton(enabled = !busy, onClick = {
+            profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
+            apiKey = ""; model.availableModels.value = emptyList()
+          }) { Text("Añadir proveedor") }
           OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
           com.example.data.ai.AiProvider.entries.forEach { value ->
             FilterChip(selected = provider == value, enabled = !busy, onClick = {
-              provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
-              profileId = java.util.UUID.randomUUID().toString(); profileName = value.label; model.availableModels.value = emptyList()
+              if (provider != value) {
+                provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
+                profileId = java.util.UUID.randomUUID().toString(); profileName = value.label; model.availableModels.value = emptyList()
+              }
             }, label = { Text(value.label) })
           }
           OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
@@ -109,56 +201,20 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }
           if (profileId == connection.id && profiles.entries.any { it.id == profileId })
             TextButton(enabled = !busy, onClick = { confirmDelete = true }) { Text("Eliminar esta conexión") }
-        }
-      }
-      Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = !improve, enabled = !busy, onClick = { improve = false; model.proposal.value = null }, label = { Text("Crear mazo") })
-        FilterChip(selected = improve, enabled = !busy, onClick = { improve = true; model.proposal.value = null }, label = { Text("Completar mazo") })
-      }
-      if (improve) Text(deck?.let { "${it.name} · ${it.totalCardCount}/20. Conserva las cartas disponibles y sustituye únicamente las que faltan." }
-        ?: "Abre primero un mazo de 20 cartas en Mazos.")
-      OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, enabled = !busy,
-        label = { Text("Ejemplo: mazo de Agua fácil de jugar") }, modifier = Modifier.fillMaxWidth())
-      Text("Cartas que puede usar")
-      LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        items(listOf("") + com.example.data.util.DeckCodec.energyNames + listOf("Dragón", "Incoloro")) { type ->
-          FilterChip(selected = candidateType == type, enabled = !busy, onClick = {
-            candidateType = type; model.candidateType = type; model.proposal.value = null
-          }, label = { Text(type.ifBlank { "Todas" }) })
-        }
-      }
-      Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && (!improve || deck?.totalCardCount == 20),
-        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text(if (improve) "Completar con mi IA" else "Crear con mi IA") }
+          AdvancedStatus(model)
+          HelpButton("ia")
 
-      AdvancedStatus(model)
-    }
-    proposal?.let { result ->
-      item {
-        Text(result.deck.name, style = MaterialTheme.typography.titleLarge)
-        Text("20 cartas · Energías: ${result.deck.energyTypes.joinToString()}")
-        Text(result.deck.strategy)
-        Button(enabled = !busy, onClick = { confirmOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Usar este mazo") }
-        Text("Se abrirá como borrador para que lo revises y guardes.")
-      }
-      items(result.deck.cards, key = { it.card.id }) { entry ->
-        Card(Modifier.fillMaxWidth()) {
-          Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            DeckThumbnail(entry.card.id, entry.card.name)
-            Column { Text("${entry.count} × ${entry.card.name}"); Text(entry.card.id, style = MaterialTheme.typography.bodySmall) }
-          }
         }
       }
-      items(result.replacements) { Text("${it.count} × ${it.removedId} → ${it.addedId}: ${it.reason}") }
     }
   }
   if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Eliminar ${connection.label}") },
     text = { Text("Elimina solo esta conexión y su clave guardada. Las demás conexiones y tus mazos se conservan.") },
     confirmButton = { TextButton(onClick = { model.removeConnection(); confirmDelete = false }) { Text("Eliminar") } },
     dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") } })
-  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("Consultar ${connection.provider.label}") },
-    text = { Text("Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
-    confirmButton = { TextButton(onClick = { model.askConnected(improve, deck); confirmSend = false }) { Text("Consultar") } },
+  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("${action.label} · ${connection.provider.label}") },
+    text = { Text("${action.description}\n\nModelo: ${connection.model}. Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
+    confirmButton = { TextButton(onClick = { model.askConnected(action, deck); confirmSend = false }) { Text("Consultar") } },
     dismissButton = { TextButton(onClick = { confirmSend = false }) { Text("Cancelar") } })
   if (confirmOpen) AlertDialog(onDismissRequest = { confirmOpen = false }, title = { Text("Usar este mazo") },
     text = { Text("Reemplaza el borrador abierto; conserva mazos guardados y colección.") },
