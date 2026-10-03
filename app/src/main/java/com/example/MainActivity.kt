@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -64,7 +66,11 @@ class MainActivity : ComponentActivity() {
           Icons.Filled.CardGiftcard, Icons.Filled.Insights)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
-          topBar = { com.example.ui.screens.HelpButton() },
+          topBar = {
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding()) {
+              com.example.ui.screens.HelpButton()
+            }
+          },
           bottomBar = {
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->

@@ -47,6 +47,28 @@ class ExportAndPreferencesTest {
     assertTrue(runCatching { FileProvider.getUriForFile(context, context.packageName + ".fileprovider", private) }.isFailure)
   }
 
+  @Test fun editorSuggestsEnergiesButPreservesCustomAndSavedSelections() {
+    val model = com.example.ui.viewmodel.TcgViewModel(RuntimeEnvironment.getApplication())
+    val store = androidx.lifecycle.ViewModelStore()
+    store.put("editor-test", model)
+    try {
+      model.newManualDeck()
+      model.editDeckQuantity("A1-001", 1)
+      assertEquals(listOf("Planta"), model.generatedDeck.value!!.energyTypes)
+      model.toggleDeckEnergy("Agua")
+      model.editDeckQuantity("A1-033", 1)
+      assertEquals(listOf("Planta", "Agua"), model.generatedDeck.value!!.energyTypes)
+      model.useAutomaticEnergies()
+      assertEquals(listOf("Planta", "Fuego"), model.generatedDeck.value!!.energyTypes)
+      model.loadSavedDeck(com.example.data.local.SavedDeckEntity(name="Legacy",archetype="Manual",strategy="",cardListSerialized="A1-053:2",totalCards=2))
+      assertEquals(listOf("Agua"),model.generatedDeck.value!!.energyTypes)
+      val cards = com.example.data.util.DeckCodec.decode("A1-001:2")
+      model.loadSavedDeck(com.example.data.local.SavedDeckEntity(name="Custom",archetype="Manual",strategy="",cardListSerialized=com.example.data.util.DeckCodec.encode(cards,listOf("Metal")),totalCards=2))
+      model.editDeckQuantity("A1-001",1)
+      assertEquals(listOf("Metal"),model.generatedDeck.value!!.energyTypes)
+    } finally { store.clear() }
+  }
+
   @Test fun diagnosticCanBeSavedAsUtf8TxtWithoutPrivatePayload() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     ErrorLogManager.init(context)
