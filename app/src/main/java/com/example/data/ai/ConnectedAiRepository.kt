@@ -41,9 +41,8 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
       val rows = json.optJSONArray(if (gemini) "models" else "data") ?: JSONArray()
       (0 until minOf(rows.length(), 1000)).mapNotNull { n ->
         val row = rows.optJSONObject(n) ?: return@mapNotNull null
-        if (gemini && !row.optJSONArray("supportedGenerationMethods").toString().contains("generateContent")) return@mapNotNull null
-        row.optString(if (gemini) "name" else "id").removePrefix("models/")
-          .takeIf { it.matches(Regex("[a-zA-Z0-9._:/-]{1,120}")) }
+        val id = row.optString(if (gemini) "name" else "id").removePrefix("models/")
+        id.takeIf { AiModelCompatibility.accepts(config.provider, row, it) }
       }.distinct().sorted()
     }
   }

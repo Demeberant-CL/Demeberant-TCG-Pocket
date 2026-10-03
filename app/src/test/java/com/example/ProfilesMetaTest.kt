@@ -49,13 +49,31 @@ class ProfilesMetaTest {
     val client = okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
       sent = chain.request()
       okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200).message("OK")
-        .body(okhttp3.ResponseBody.create(null, """{"models":[{"name":"models/gemini-test","supportedGenerationMethods":["generateContent"]},{"name":"models/embedding","supportedGenerationMethods":["embedContent"]}]}""" )).build()
+        .body(okhttp3.ResponseBody.create(null, """{"models":[{"name":"models/gemini-2.5-flash","supportedGenerationMethods":["generateContent"]},{"name":"models/embedding","supportedGenerationMethods":["embedContent"]}]}""" )).build()
     }.build()
-    assertEquals(listOf("gemini-test"), ConnectedAiRepository(client).models(AiConnection(apiKey = "test-key")))
+    assertEquals(listOf("gemini-2.5-flash"), ConnectedAiRepository(client).models(AiConnection(apiKey = "test-key")))
     assertEquals("GET", sent!!.method)
     assertEquals("test-key", sent!!.header("x-goog-api-key"))
     assertNull(sent!!.url.query)
     Unit
+  }
+  @Test fun modelCatalogueExcludesSpecializedAndUnsupportedModels() {
+    fun gemini(id: String, method: String = "generateContent") = AiModelCompatibility.accepts(AiProvider.GEMINI,
+      org.json.JSONObject().put("supportedGenerationMethods", org.json.JSONArray().put(method)), id)
+    assertTrue(gemini("gemini-3.8-flash"))
+    assertTrue(gemini("gemini-3.1-pro-preview"))
+    assertFalse(gemini("gemini-2.5-flash-preview-tts"))
+    assertFalse(gemini("gemini-3.1-flash-lite-image"))
+    assertFalse(gemini("gemini-2.5-flash", "generateContentExtra"))
+    assertFalse(gemini("gemma-3-27b-it"))
+    val row = org.json.JSONObject()
+    assertTrue(AiModelCompatibility.accepts(AiProvider.OPENAI, row, "gpt-5.4"))
+    assertFalse(AiModelCompatibility.accepts(AiProvider.OPENAI, row, "gpt-5.4-pro"))
+    assertFalse(AiModelCompatibility.accepts(AiProvider.OPENAI, row, "gpt-audio"))
+    assertFalse(AiModelCompatibility.accepts(AiProvider.COMPATIBLE, row, "text-model"))
+    row.put("supported_endpoints", org.json.JSONArray().put("chat/completions"))
+      .put("architecture", org.json.JSONObject().put("output_modalities", org.json.JSONArray().put("text")))
+    assertTrue(AiModelCompatibility.accepts(AiProvider.COMPATIBLE, row, "text-model"))
   }
   @Test fun metaCacheRoundTripPreservesCardsEnergyAndCounts() {
     val deck = MetaDeck("Sample", 3, 7, 2, 1, mapOf("A1-001" to 2, "P-A-005" to 2), listOf("Planta"), "abc")

@@ -14,6 +14,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.Alignment
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -163,10 +175,32 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
 fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier) {
   var section by rememberSaveable { mutableIntStateOf(-1) }
   val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas")
+  val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      item { Text("Más herramientas", style = MaterialTheme.typography.headlineSmall) }
-      items(labels.size) { n -> OutlinedButton(onClick = { section = n }, modifier = Modifier.fillMaxWidth()) { Text(labels[n]) } }
+      item {
+        Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primaryContainer,
+          MaterialTheme.colorScheme.secondaryContainer)), RoundedCornerShape(24.dp)).padding(20.dp)) {
+          Text("Más herramientas", style = MaterialTheme.typography.headlineSmall)
+          Text("Elige qué quieres hacer", color = MaterialTheme.colorScheme.onSurface)
+        }
+      }
+      items((labels.size + 1) / 2) { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+          for (n in row * 2 until minOf(row * 2 + 2, labels.size)) {
+            ElevatedCard(onClick = { section = n }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp)) {
+              Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 112.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(icons[n], contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+                Text(labels[n], style = MaterialTheme.typography.titleMedium)
+                Text(descriptions[n], style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+            }
+          }
+        }
+      }
     } else {
       TextButton(onClick = { section = -1 }) { Text("← Más herramientas") }
       when (section) {

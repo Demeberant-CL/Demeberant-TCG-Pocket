@@ -102,7 +102,8 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }) { Text("Guardar conexión") }
           OutlinedButton(enabled = !busy && apiKey.isNotBlank(), onClick = {
             model.discoverModels(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName))
-          }) { Text("Probar conexión y ver modelos") }
+          }) { Text("Buscar modelos compatibles") }
+          Text("La lista filtra compatibilidad de texto, no garantiza cuota o acceso. Si tu API no declara capacidades, usa el identificador manual indicado por el proveedor.", style = MaterialTheme.typography.bodySmall)
           LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(models) { name -> FilterChip(selected = name == modelName, onClick = { modelName = name }, label = { Text(name) }) }
           }

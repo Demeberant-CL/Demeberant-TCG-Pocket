@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +29,11 @@ object PocketHelp {
 @Composable
 fun HelpButton(topic: String? = null) {
   var shown by remember { mutableStateOf(false) }
-  TextButton(onClick = { shown = true }) { Text(if (topic == null) "Ayuda y tutoriales" else "?") }
+  TextButton(onClick = { shown = true }) {
+    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(20.dp))
+    Spacer(Modifier.width(6.dp))
+    Text(if (topic == null) "Ayuda y tutoriales" else "Guía")
+  }
   if (shown) HelpDialog(topic) { shown = false }
 }
 

@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -61,8 +63,8 @@ class MainActivity : ComponentActivity() {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
         val labels = listOf("Colección", "Mazos", "Meta", "IA", "Más")
-        val icons = listOf(Icons.Filled.Collections, Icons.Filled.AutoAwesome,
-          Icons.Filled.Insights, Icons.Filled.AutoAwesome, Icons.Filled.CardGiftcard)
+        val icons = listOf(Icons.Filled.Collections, Icons.Filled.Style,
+          Icons.Filled.Insights, Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {

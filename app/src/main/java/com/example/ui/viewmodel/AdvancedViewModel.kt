@@ -55,10 +55,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     profiles.value = next; connection.value = selected; proposal.value = null; availableModels.value = emptyList()
   }
   fun discoverModels(value: AiConnection) = task("AI_MODELS") {
+    availableModels.value = emptyList()
     try { availableModels.value = connectedAssistant.models(value) }
     catch (e: CancellationException) { throw e }
     catch (_: Exception) { message.value = "No se pudieron listar modelos. Revisa la clave y URL; puedes introducir el modelo manualmente."; return@task }
-    message.value = "Conexión comprobada. ${availableModels.value.size} modelos disponibles; generar un mazo puede consumir cuota."
+    message.value = "${availableModels.value.size} modelos filtrados para texto. Listar no comprueba cuota ni generación. Guarda el modelo elegido; una consulta puede consumir cuota."
   }
   fun askConnected(replace: Boolean, target: GeneratedDeck?) = task("AI_CONNECTED") {
     proposal.value = null

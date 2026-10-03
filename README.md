@@ -155,3 +155,6 @@ La conexión anterior se conserva como perfil legado. No se incluyen claves en r
 Meta descarga una muestra pública de Limitless (máximo 12 torneos recientes, 30 días), conserva caché y muestra fecha/fuente.
 Adaptar a mi colección abre el asistente sin consulta automática; los IDs fuera del catálogo bloquean la adaptación.
 Las estadísticas son de esa muestra, no del juego completo. Ayuda y tutoriales está en Más.
+
+
+Modelos y guías (2026-10-03): el listado aplica un filtro conservador de modelos de texto: Gemini requiere generateContent exacto y familia estándar con JSON; OpenAI excluye modelos especializados/solo Responses. Compatible requiere metadatos explícitos de endpoint y salida texto; cuando faltan, el usuario puede introducir el ID manualmente. No se afirma cuota, precio ni éxito de generación por listar modelos; no se hacen probes pagados. Los perfiles existentes no se cambian. Guía usa libro y texto en lugar de ?; Más muestra tarjetas en dos columnas inspiradas en las capturas del juego, y los iconos de Mazos/Más representan su función. Prueba adicional del filtro; revisión real de UI en teléfono pendiente.
