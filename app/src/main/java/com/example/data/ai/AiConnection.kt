@@ -45,6 +45,7 @@ class AiConnectionStore(context: Context, private val keyProvider: () -> SecretK
       .put("key", c.apiKey).put("endpoint", c.endpoint).put("id", c.id).put("label", c.label)) }
     val json = JSONObject().put("version", 2).put("activeId", profiles.activeId).put("profiles", rows)
       .toString().toByteArray(Charsets.UTF_8)
+    require(json.size <= 200000) { "Demasiadas conexiones o datos de configuración." }
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, keyProvider())
     val encrypted = cipher.doFinal(json)

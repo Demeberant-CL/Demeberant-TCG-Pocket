@@ -45,6 +45,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
   var improve by rememberSaveable { mutableStateOf(deck?.archetype == "Limitless") }
   var confirmSend by remember { mutableStateOf(false) }
+  var confirmDelete by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
   val context = androidx.compose.ui.platform.LocalContext.current
   LaunchedEffect(connection) {
@@ -68,7 +69,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         }
         TextButton(enabled = !busy, onClick = {
           profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
-          apiKey = ""; configure = true
+          apiKey = ""; configure = true; model.availableModels.value = emptyList()
         }) { Text("Añadir proveedor") }
         TextButton(enabled = !busy, onClick = { configure = !configure }) { Text(if (configure) "Ocultar configuración" else "Configurar IA") }
         if (configure) {
@@ -76,7 +77,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           com.example.data.ai.AiProvider.entries.forEach { value ->
             FilterChip(selected = provider == value, enabled = !busy, onClick = {
               provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
-              profileId = java.util.UUID.randomUUID().toString(); profileName = value.label
+              profileId = java.util.UUID.randomUUID().toString(); profileName = value.label; model.availableModels.value = emptyList()
             }, label = { Text(value.label) })
           }
           OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
@@ -105,7 +106,8 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(models) { name -> FilterChip(selected = name == modelName, onClick = { modelName = name }, label = { Text(name) }) }
           }
-          TextButton(enabled = !busy, onClick = { apiKey = ""; model.removeConnection() }) { Text("Eliminar conexión") }
+          if (profileId == connection.id && profiles.entries.any { it.id == profileId })
+            TextButton(enabled = !busy, onClick = { confirmDelete = true }) { Text("Eliminar esta conexión") }
         }
       }
       Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
@@ -149,6 +151,10 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       items(result.replacements) { Text("${it.count} × ${it.removedId} → ${it.addedId}: ${it.reason}") }
     }
   }
+  if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Eliminar ${connection.label}") },
+    text = { Text("Elimina solo esta conexión y su clave guardada. Las demás conexiones y tus mazos se conservan.") },
+    confirmButton = { TextButton(onClick = { model.removeConnection(); confirmDelete = false }) { Text("Eliminar") } },
+    dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") } })
   if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("Consultar ${connection.provider.label}") },
     text = { Text("Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
     confirmButton = { TextButton(onClick = { model.askConnected(improve, deck); confirmSend = false }) { Text("Consultar") } },
