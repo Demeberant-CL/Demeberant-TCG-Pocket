@@ -22,22 +22,43 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   private val repository = InventoryRepository.fromDatabase(db)
   private val assistant = AIAssistantRepository()
   private val connectedAssistant = ConnectedAiRepository()
+  private val tournamentRepository = com.example.data.meta.TournamentRepository(application)
+  val metaSnapshot = MutableStateFlow<com.example.data.meta.MetaSnapshot?>(null)
+  fun refreshMeta() = task("META_FETCH") { metaSnapshot.value = tournamentRepository.refresh(); message.value = "Resultados actualizados desde Limitless." }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
+  val profiles = MutableStateFlow(AiProfiles())
+  val availableModels = MutableStateFlow<List<String>>(emptyList())
   val connectionReady = MutableStateFlow(false)
   fun saveConnection(value: AiConnection) = task("AI_CONFIG") {
     require(value.apiKey.isNotBlank() && value.apiKey.length <= 4096 && value.apiKey.all { it.code in 33..126 }) { "Introduce una clave API válida." }
     require(value.model.matches(Regex("[a-zA-Z0-9._:/-]{1,120}")) && value.endpoint.length <= 2000) { "Revisa modelo y URL." }
     withContext(Dispatchers.IO) { connectionStore.save(value) }
+    profiles.value = withContext(Dispatchers.IO) { connectionStore.loadProfiles() }
     connection.value = value
     proposal.value = null
     message.value = "Conexión guardada en este dispositivo. Aún no se ha consultado la API."
   }
   fun removeConnection() = task("AI_CONFIG") {
-    withContext(Dispatchers.IO) { connectionStore.clear() }
-    connection.value = AiConnection()
+    val remaining = profiles.value.entries.filterNot { it.id == connection.value.id }
+    val next = AiProfiles(remaining, remaining.firstOrNull()?.id ?: "")
+    withContext(Dispatchers.IO) { connectionStore.saveProfiles(next) }
+    profiles.value = next
+    connection.value = next.active ?: AiConnection()
     proposal.value = null
     message.value = "Conexión eliminada."
+  }
+  fun selectConnection(id: String) = task("AI_CONFIG") {
+    val selected = profiles.value.entries.first { it.id == id }
+    val next = profiles.value.copy(activeId = id)
+    withContext(Dispatchers.IO) { connectionStore.saveProfiles(next) }
+    profiles.value = next; connection.value = selected; proposal.value = null; availableModels.value = emptyList()
+  }
+  fun discoverModels(value: AiConnection) = task("AI_MODELS") {
+    try { availableModels.value = connectedAssistant.models(value) }
+    catch (e: CancellationException) { throw e }
+    catch (_: Exception) { message.value = "No se pudieron listar modelos. Revisa la clave y URL; puedes introducir el modelo manualmente."; return@task }
+    message.value = "Conexión comprobada. ${availableModels.value.size} modelos disponibles; generar un mazo puede consumir cuota."
   }
   fun askConnected(replace: Boolean, target: GeneratedDeck?) = task("AI_CONNECTED") {
     proposal.value = null
@@ -58,7 +79,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         it.startsWith("Modelo o") || it.startsWith("Hay demasiadas") || it.startsWith("Necesitas al menos") ||
         it.startsWith("La respuesta quedó") || it.startsWith("Introduce tu") || it.startsWith("Revisa el identificador") }
       message.value = safe ?: "No se pudo obtener un mazo válido. Revisa conexión, cartas disponibles y modelo. No se guardó ninguna propuesta."
-      ErrorLogManager.event("AI_CONNECTED", "Connected request failed; private details omitted")
+      val category = when {
+        e is java.io.IOException -> "NETWORK"
+        e.message?.startsWith("Cuota") == true -> "QUOTA"
+        e.message?.startsWith("La API rechazó") == true -> "AUTH"
+        e.message?.startsWith("Modelo o") == true -> "MODEL"
+        e.message?.startsWith("La respuesta quedó") == true -> "INCOMPLETE"
+        else -> "INVALID_DECK"
+      }
+      ErrorLogManager.event("AI_CONNECTED", "category=$category")
     }
   }
   private val filter = MutableStateFlow(RulesFilter())
@@ -70,7 +99,10 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val message = MutableStateFlow<String?>(null)
   init {
     viewModelScope.launch(Dispatchers.IO) {
-      try { connectionStore.load()?.let { connection.value = it } }
+      try { metaSnapshot.value = tournamentRepository.cached() } catch (_: Exception) { }
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }
       catch (_: Exception) { message.value = "No se puede leer la conexión IA. Configúrala de nuevo." }
       finally { connectionReady.value = true }
     }

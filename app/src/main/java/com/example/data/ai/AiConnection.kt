@@ -5,6 +5,8 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.AtomicFile
 import org.json.JSONObject
+import org.json.JSONArray
+import java.util.UUID
 import java.io.File
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -18,16 +20,31 @@ enum class AiProvider(val label: String, val defaultModel: String) {
   COMPATIBLE("Otra API compatible con OpenAI", "")
 }
 data class AiConnection(val provider: AiProvider = AiProvider.GEMINI, val model: String = provider.defaultModel,
-  val apiKey: String = "", val endpoint: String = "") {
+  val apiKey: String = "", val endpoint: String = "", val id: String = UUID.randomUUID().toString(),
+  val label: String = provider.label) {
   override fun toString() = "AiConnection(provider=$provider, credentials=hidden)"
+}
+
+data class AiProfiles(val entries: List<AiConnection> = emptyList(), val activeId: String = "") {
+  val active: AiConnection? get() = entries.firstOrNull { it.id == activeId } ?: entries.firstOrNull()
+  override fun toString() = "AiProfiles(count=${entries.size}, credentials=hidden)"
 }
 
 /** Encrypted by Android Keystore and excluded from Android backup and collection exports. */
 class AiConnectionStore(context: Context, private val keyProvider: () -> SecretKey = ::deviceKey) {
   private val file = AtomicFile(File(context.noBackupFilesDir, "ai-connection.enc"))
-  fun save(connection: AiConnection) {
-    val json = JSONObject().put("provider", connection.provider.name).put("model", connection.model)
-      .put("key", connection.apiKey).put("endpoint", connection.endpoint).toString().toByteArray(Charsets.UTF_8)
+  @Synchronized fun save(connection: AiConnection) {
+    val old = loadProfiles()
+    val entries = old.entries.filterNot { it.id == connection.id } + connection
+    saveProfiles(AiProfiles(entries, connection.id))
+  }
+  @Synchronized fun saveProfiles(profiles: AiProfiles) {
+    require(profiles.entries.size <= 30)
+    val rows = JSONArray()
+    profiles.entries.forEach { c -> rows.put(JSONObject().put("provider", c.provider.name).put("model", c.model)
+      .put("key", c.apiKey).put("endpoint", c.endpoint).put("id", c.id).put("label", c.label)) }
+    val json = JSONObject().put("version", 2).put("activeId", profiles.activeId).put("profiles", rows)
+      .toString().toByteArray(Charsets.UTF_8)
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, keyProvider())
     val encrypted = cipher.doFinal(json)
@@ -35,17 +52,25 @@ class AiConnectionStore(context: Context, private val keyProvider: () -> SecretK
     try { output.write(cipher.iv.size); output.write(cipher.iv); output.write(encrypted); file.finishWrite(output) }
     catch (e: Exception) { file.failWrite(output); throw e }
   }
-  fun load(): AiConnection? {
-    if (!file.baseFile.exists()) return null
+  fun load(): AiConnection? = loadProfiles().active
+  @Synchronized fun loadProfiles(): AiProfiles {
+    if (!file.baseFile.exists()) return AiProfiles()
     val data = file.readFully()
-    require(data.size in 30..16384)
+    require(data.size in 30..200000)
     val ivSize = data[0].toInt() and 255
     require(ivSize == 12)
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.DECRYPT_MODE, keyProvider(), GCMParameterSpec(128, data.copyOfRange(1, 13)))
     val json = JSONObject(cipher.doFinal(data.copyOfRange(13, data.size)).toString(Charsets.UTF_8))
-    return AiConnection(AiProvider.valueOf(json.getString("provider")), json.getString("model"),
-      json.getString("key"), json.getString("endpoint"))
+    fun entry(row: JSONObject) = AiConnection(AiProvider.valueOf(row.getString("provider")), row.getString("model"),
+      row.getString("key"), row.getString("endpoint"), row.optString("id", "legacy-connection"),
+      row.optString("label", row.getString("provider")))
+    val rows = json.optJSONArray("profiles")
+    if (rows == null) { val old = entry(json); return AiProfiles(listOf(old), old.id) }
+    require(rows.length() <= 30)
+    val entries = (0 until rows.length()).map { entry(rows.getJSONObject(it)) }
+    require(entries.map { it.id }.distinct().size == entries.size)
+    return AiProfiles(entries, json.optString("activeId"))
   }
   fun clear() { file.delete() }
   companion object {

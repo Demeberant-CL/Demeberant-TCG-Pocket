@@ -31,6 +31,10 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   val proposal by model.proposal.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   val connection by model.connection.collectAsStateWithLifecycle()
+  val profiles by model.profiles.collectAsStateWithLifecycle()
+  val models by model.availableModels.collectAsStateWithLifecycle()
+  var profileId by remember { mutableStateOf(connection.id) }
+  var profileName by remember { mutableStateOf(connection.label) }
   val ready by model.connectionReady.collectAsStateWithLifecycle()
   var provider by remember { mutableStateOf(connection.provider) }
   var apiKey by remember { mutableStateOf(connection.apiKey) }
@@ -39,11 +43,12 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var configure by remember { mutableStateOf(false) }
   var goal by rememberSaveable { mutableStateOf(model.goal) }
   var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
-  var improve by rememberSaveable { mutableStateOf(false) }
+  var improve by rememberSaveable { mutableStateOf(deck?.archetype == "Limitless") }
   var confirmSend by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
   val context = androidx.compose.ui.platform.LocalContext.current
   LaunchedEffect(connection) {
+    profileId = connection.id; profileName = connection.label
     provider = connection.provider; apiKey = connection.apiKey
     modelName = connection.model; url = connection.endpoint
     configure = connection.apiKey.isBlank()
@@ -51,16 +56,27 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      HelpButton("ia")
-      Text("Crea un mazo usando tus cartas. La IA responde directamente aquí.")
+
       if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
       else {
         Text(if (connection.apiKey.isBlank()) "Primero conecta tu IA" else "Proveedor: ${connection.provider.label} · ${connection.model}")
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          items(profiles.entries, key = { it.id }) { saved ->
+            FilterChip(selected = saved.id == connection.id, enabled = !busy, onClick = { model.selectConnection(saved.id) },
+              label = { Text(saved.label) })
+          }
+        }
+        TextButton(enabled = !busy, onClick = {
+          profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
+          apiKey = ""; configure = true
+        }) { Text("Añadir proveedor") }
         TextButton(enabled = !busy, onClick = { configure = !configure }) { Text(if (configure) "Ocultar configuración" else "Configurar IA") }
         if (configure) {
+          OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
           com.example.data.ai.AiProvider.entries.forEach { value ->
             FilterChip(selected = provider == value, enabled = !busy, onClick = {
               provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
+              profileId = java.util.UUID.randomUUID().toString(); profileName = value.label
             }, label = { Text(value.label) })
           }
           OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
@@ -81,8 +97,14 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }) { Text("Obtener mi clave API") }
           Button(enabled = !busy && apiKey.isNotBlank() && modelName.isNotBlank() &&
             (provider != com.example.data.ai.AiProvider.COMPATIBLE || url.isNotBlank()), onClick = {
-              model.saveConnection(com.example.data.ai.AiConnection(provider, modelName, apiKey, url))
+              model.saveConnection(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName.ifBlank { provider.label }))
           }) { Text("Guardar conexión") }
+          OutlinedButton(enabled = !busy && apiKey.isNotBlank(), onClick = {
+            model.discoverModels(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName))
+          }) { Text("Probar conexión y ver modelos") }
+          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(models) { name -> FilterChip(selected = name == modelName, onClick = { modelName = name }, label = { Text(name) }) }
+          }
           TextButton(enabled = !busy, onClick = { apiKey = ""; model.removeConnection() }) { Text("Eliminar conexión") }
         }
       }
@@ -105,7 +127,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       }
       Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && (!improve || deck?.totalCardCount == 20),
         onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text(if (improve) "Completar con mi IA" else "Crear con mi IA") }
-      Text("Una consulta por pulsación, sin cambio automático de proveedor. No modifica tu colección. La IA no dispone de estadísticas meta actuales verificadas.")
+
       AdvancedStatus(model)
     }
     proposal?.let { result ->

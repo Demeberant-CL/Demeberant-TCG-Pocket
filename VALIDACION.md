@@ -178,3 +178,10 @@ Resumen para portapapeles/compartir texto/guardar TXT breve, máximo 6000 caract
 Regresiones: inundación de 10000 consultas SQL seguida de QR/HTTP 429, agrupación y tamaño máximo, ausencia de mensajes/secretos, informe vacío con límites explícitos, redacción Gemini/JSON, guardado UTF-8 y colección modificada después de una propuesta IA. La apertura del borrador lee la colección actual y se bloquea si faltan copias, sin cambiar cantidades.
 
 Pendiente en teléfono: copiar y pegar el resumen aquí, compartir como texto y guardar el TXT breve. No se afirma solucionar el cargador de adjuntos de ChatGPT. Los resultados completos y el APK de este commit se registran en Actions y la descripción actual del PR.
+
+## Perfiles IA, navegación y torneos
+- La conexión cifrada anterior se lee como perfil legado; guardar o seleccionar conserva los demás perfiles. Se conserva el alias Keystore y el archivo cifrado, sin cambiar firma/applicationId.
+- Descubrimiento de modelos mediante GET autenticado, sin generación pagada; selección manual disponible si el proveedor no expone listado. El listado no garantiza acceso de generación ni precio.
+- Limitless: petición real a /games, /tournaments y standings comprobada el 03-10-2026. POCKET, cartas set/number y energías reconocidos. Muestra hasta 12 torneos/30 días, caché atómica y adaptación solo con IDs conocidos. Estadísticas de registros de participantes, excluyen empates del porcentaje; no equivalen a ranked global. Formato null se admite si no declara reglas especiales; no garantiza ausencia de reglas no declaradas.
+- Ayuda separada en Más, navegación principal Colección/Mazos/Meta/IA/Más e icono vectorial propio.
+- Pendiente en teléfono: migración real del perfil existente, cambio de proveedor/modelo, reinicio, pantalla Meta y nuevos PNG en el juego. No se realizaron consultas pagadas a proveedores IA.

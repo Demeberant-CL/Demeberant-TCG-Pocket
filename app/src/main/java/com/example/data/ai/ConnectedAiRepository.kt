@@ -17,6 +17,36 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
   .connectTimeout(15, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).callTimeout(100, TimeUnit.SECONDS)
   .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false).build(),
   private val allowLocalTests: Boolean = false) {
+  suspend fun models(config: AiConnection): List<String> = withContext(Dispatchers.IO) {
+    require(config.apiKey.isNotBlank()) { "Introduce tu clave API." }
+    val base = when (config.provider) {
+      AiProvider.GEMINI -> "https://generativelanguage.googleapis.com/v1beta/models"
+      AiProvider.OPENAI -> "https://api.openai.com/v1/models"
+      AiProvider.COMPATIBLE -> {
+        require(config.endpoint.endsWith("/chat/completions")) { "La URL debe terminar en /chat/completions." }
+        config.endpoint.removeSuffix("/chat/completions") + "/models"
+      }
+    }
+    val url = base.toHttpUrl()
+    require(url.isHttps || (allowLocalTests && url.host in setOf("localhost", "127.0.0.1")))
+    require(url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null)
+    val builder = Request.Builder().url(url)
+    if (config.provider == AiProvider.GEMINI) builder.header("x-goog-api-key", config.apiKey)
+    else builder.header("Authorization", "Bearer ${config.apiKey}")
+    client.newCall(builder.build()).await().use { response ->
+      require(response.isSuccessful) { "La API no permite listar modelos (HTTP ${response.code}). Puedes introducir el modelo manualmente." }
+      val body = response.body ?: error("La API no devolvió modelos.")
+      val json = JSONObject(body.byteStream().use { it.readBytesBounded(1000000).toString(Charsets.UTF_8) })
+      val gemini = config.provider == AiProvider.GEMINI
+      val rows = json.optJSONArray(if (gemini) "models" else "data") ?: JSONArray()
+      (0 until minOf(rows.length(), 1000)).mapNotNull { n ->
+        val row = rows.optJSONObject(n) ?: return@mapNotNull null
+        if (gemini && !row.optJSONArray("supportedGenerationMethods").toString().contains("generateContent")) return@mapNotNull null
+        row.optString(if (gemini) "name" else "id").removePrefix("models/")
+          .takeIf { it.matches(Regex("[a-zA-Z0-9._:/-]{1,120}")) }
+      }.distinct().sorted()
+    }
+  }
   suspend fun request(config: AiConnection, prompt: String): String = withContext(Dispatchers.IO) {
     require(config.apiKey.isNotBlank() && config.apiKey.length <= 4096) { "Introduce tu clave API." }
     require(config.model.matches(Regex("[a-zA-Z0-9._:/-]{1,120}"))) { "Revisa el identificador del modelo." }

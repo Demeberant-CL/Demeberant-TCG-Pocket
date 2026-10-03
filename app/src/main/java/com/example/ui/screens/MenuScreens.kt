@@ -158,3 +158,25 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
     }
   }
 }
+
+@Composable
+fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier) {
+  var section by rememberSaveable { mutableIntStateOf(-1) }
+  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos")
+  Column(modifier.fillMaxSize()) {
+    if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      item { Text("Más herramientas", style = MaterialTheme.typography.headlineSmall) }
+      items(labels.size) { n -> OutlinedButton(onClick = { section = n }, modifier = Modifier.fillMaxWidth()) { Text(labels[n]) } }
+    } else {
+      TextButton(onClick = { section = -1 }) { Text("← Más herramientas") }
+      when (section) {
+        0 -> HelpScreen(Modifier.weight(1f))
+        1 -> PackRecommenderScreen(main, Modifier.weight(1f))
+        2 -> TradeMenuScreen(main, Modifier.weight(1f))
+        3 -> SandboxScreen(main, advanced, Modifier.weight(1f))
+        4 -> ProbabilityCalculatorScreen(Modifier.weight(1f))
+        else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))
+      }
+    }
+  }
+}

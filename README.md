@@ -148,3 +148,10 @@ Ajustes → Diagnóstico → Copiar diagnóstico para el chat abre un resumen de
 El registro sigue usando una cola limitada; cuenta los eventos omitidos por saturación y no descarta la barrera que espera las escrituras al exportar. Las reglas de redacción se reutilizan y cubren claves Gemini y credenciales JSON entre comillas. La revisión añade una segunda comprobación de cantidades al abrir una propuesta IA, con lectura actual de Room.
 
 No corrige la carga de adjuntos de ChatGPT ni observa errores internos del juego. Si el resumen no muestra fallos, no garantiza que todos los flujos funcionen. Persisten las limitaciones de proveedores reales, datos comunitarios y pruebas físicas descritas arriba.
+
+### Conexiones y meta
+Guarda varias conexiones cifradas, selecciona un perfil y consulta los modelos disponibles desde Configurar IA.
+La conexión anterior se conserva como perfil legado. No se incluyen claves en respaldos de colección.
+Meta descarga una muestra pública de Limitless (máximo 12 torneos recientes, 30 días), conserva caché y muestra fecha/fuente.
+Adaptar a mi colección abre el asistente sin consulta automática; los IDs fuera del catálogo bloquean la adaptación.
+Las estadísticas son de esa muestra, no del juego completo. Ayuda y tutoriales está en Más.

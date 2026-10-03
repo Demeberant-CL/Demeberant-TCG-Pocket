@@ -60,23 +60,17 @@ class MainActivity : ComponentActivity() {
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
-        var analysisStartSection by rememberSaveable { mutableIntStateOf(0) }
-        val labels = listOf("Colección", "Mazos", "Canjes", "Análisis")
+        val labels = listOf("Colección", "Mazos", "Meta", "IA", "Más")
         val icons = listOf(Icons.Filled.Collections, Icons.Filled.AutoAwesome,
-          Icons.Filled.CardGiftcard, Icons.Filled.Insights)
+          Icons.Filled.Insights, Icons.Filled.AutoAwesome, Icons.Filled.CardGiftcard)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
-          topBar = {
-            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding()) {
-              com.example.ui.screens.HelpButton()
-            }
-          },
           bottomBar = {
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
                   selected = selectedTabIndex == index,
-                  onClick = { selectedTabIndex = index; if (index == 3) analysisStartSection = 0 },
+                  onClick = { selectedTabIndex = index },
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp) },
                   colors = NavigationBarItemDefaults.colors(
@@ -95,15 +89,11 @@ class MainActivity : ComponentActivity() {
           val screenModifier = Modifier.padding(innerPadding)
           when (selectedTabIndex) {
             0 -> CollectionScreen(viewModel, screenModifier)
-            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { analysisStartSection = 3; selectedTabIndex = 3 })
-            2 -> com.example.ui.screens.TradeMenuScreen(viewModel, screenModifier)
-            else -> com.example.ui.screens.AnalysisMenuScreen(viewModel, advancedViewModel,
-              onOpenAiDeck = { selectedTabIndex = 1 },
-              onOpenDeck = { name ->
-                viewModel.setDeckPrompt(name)
-                viewModel.generateDeck(name)
-                selectedTabIndex = 1
-              }, modifier = screenModifier, initialSection = analysisStartSection)
+            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 })
+            2 -> com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { selectedTabIndex = 3 }, screenModifier)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { selectedTabIndex = 1 }, screenModifier)
+            else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier)
+
           }
         }
       }

@@ -38,7 +38,10 @@ object DiagnosticSummary {
           else if (status != null && status >= 400) { failures++; pending = Failure(timestamp, "HTTP_ERROR", "HTTP $status") }
         }
         if (tag == "ROOM_QUERY") roomRoutine++
-        if (tag in failureTags) { failures++; pending = Failure(timestamp, tag) }
+        if (tag in failureTags) { failures++; pending = Failure(timestamp, tag)
+          val category = Regex("category=(NETWORK|QUOTA|AUTH|MODEL|INCOMPLETE|INVALID_DECK)\\b").find(line)?.groupValues?.get(1)
+          if (category != null) pending?.type = category
+        }
       } else pending?.let { value ->
         if (exception.matches(line)) value.type = line
         if (value.origin.isEmpty()) frame.matchEntire(line)?.let { value.origin = it.groupValues[1] }
