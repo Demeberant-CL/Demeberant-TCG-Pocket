@@ -37,12 +37,12 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
+fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
   var section by rememberSaveable { mutableIntStateOf(0) }
   Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Editor", "Plantillas A1", "Mis mazos"), section) { section = it }
-    if (section == 0) ManualDeckScreen(viewModel, Modifier.weight(1f))
-    else DeckBuilderScreen(viewModel, Modifier.weight(1f), savedOnly = section == 2,
+    MenuChoices(listOf("Crear y editar", "Mis mazos", "Plantillas A1"), section) { section = it }
+    if (section == 0) ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
+    else DeckBuilderScreen(viewModel, Modifier.weight(1f), savedOnly = section == 1,
       onOpenSavedDeck = { section = 0 })
   }
 }
@@ -50,8 +50,8 @@ fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
 @Composable
 fun AnalysisMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, onOpenDeck: (String) -> Unit,
   onOpenAiDeck: () -> Unit,
-  modifier: Modifier = Modifier) {
-  var section by rememberSaveable { mutableIntStateOf(0) }
+  modifier: Modifier = Modifier, initialSection: Int = 0) {
+  var section by rememberSaveable(initialSection) { mutableIntStateOf(initialSection) }
   Column(modifier.fillMaxSize()) {
     MenuChoices(listOf("Plantillas", "Sobres", "Calculadora", "IA", "Sandbox", "Efectos"), section) { section = it }
     val contentModifier = Modifier.weight(1f)
@@ -100,6 +100,7 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
       verticalArrangement = Arrangement.spacedBy(12.dp)) {
       item {
         Text(title, style = MaterialTheme.typography.titleLarge)
+        HelpButton("canjes")
         Text("Organiza tus propuestas. Comprueba en el juego si cada carta se puede canjear.",
           color = MaterialTheme.colorScheme.onSurfaceVariant)
       }

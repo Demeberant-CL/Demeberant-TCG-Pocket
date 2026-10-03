@@ -115,3 +115,25 @@ El juego valida básicos, evoluciones y reglas especiales; la exportación no af
 ZXing genera QR convencional versión 9/H con margen blanco, sin adornos sobre el código.
 La importación real en el juego sigue pendiente de una prueba en teléfono; las pruebas automáticas
 comparan dos fixtures comunitarios capturados del juego y decodifican la imagen producida.
+
+## Uso guiado y automatización
+
+Ayuda y tutoriales está disponible en toda la app, y cada pantalla principal tiene ayuda contextual.
+Mazos separa Mi mazo y Añadir cartas, muestra imágenes y ofrece Crear con mis cartas por tipo.
+Es un borrador local con cantidades actuales, dos copias por nombre y preevoluciones conocidas;
+no usa una IA ni promete una estrategia óptima. Las energías se sugieren por tipo conocido,
+con opción de personalizarlas. Los costes de ataques y los Pokémon Dragón deben revisarse.
+Plantillas A1 incluyen ahora su energía. Un mazo guardado conserva sus energías personalizadas;
+los antiguos sin selección reciben una sugerencia al abrirse, sin modificar el original hasta guardar.
+
+IA guía Preparar consulta → revisar/copiar → abrir tu IA → pegar respuesta → revisar cartas →
+usarla como borrador. El servidor es una opción avanzada. No conecta automáticamente una
+suscripción de ChatGPT/Gemini ni hace consultas pagadas. Ajustes permite Guardar diagnóstico TXT
+mediante el selector de archivos Android además de Compartir.
+
+QR: el usuario informó que 29235 se importó y que 29230/29228/29227 fueron rechazados;
+estos tres contienen exactamente el mismo payload. Todos se decodifican localmente, con 20
+cartas y una energía válida. La causa del rechazo del juego no está demostrada. Se omite el
+segmento ECI innecesario para ASCII para aproximarse al generador de referencia y se ofrece
+Probar QR alternativo (otra máscara, mismo contenido). Ambas imágenes se decodifican en pruebas;
+su aceptación real requiere una nueva prueba en el juego.

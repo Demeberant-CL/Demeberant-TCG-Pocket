@@ -128,3 +128,30 @@ restauración del modo Sistema y seguimiento del sistema. La nueva prueba de Chr
 el evento asíncrono de cambio de apariencia, sin temporizadores fijos para asumir el resultado.
 La prueba FileProvider limpia únicamente la caché estática del proveedor en Robolectric:
 cada aplicación de prueba tiene un directorio distinto; no cambia la app ni archivos del usuario.
+
+## Seguimiento de pruebas del usuario y simplificación
+
+Reportado por el usuario en teléfono: instalación, temas, filtros, importación CSV,
+guardar/restaurar respaldo, guardar/compartir PNG y compartir TXT correctos. Editor e IA
+resultaron difíciles de usar; se simplifican con acciones, ayudas e imágenes. Se añade guardar TXT.
+Estos resultados son reportados por el usuario, no pruebas físicas realizadas por Codex.
+
+QR 29235: aceptado por el juego según el usuario. 29230, 29228 y 29227: rechazados,
+con exactamente el mismo payload entre los tres. Decodificación local independiente zxing-cpp:
+los cuatro PNG se leen como QR versión 9/H, máscara 1; ambos contenidos tienen 20 cartas,
+una energía y 64 bytes sin sobrantes. El contenido aceptado tiene energía Rayo (4) y el
+rechazado Psíquico (5), ambas admitidas por el formato documentado. Esto no demuestra
+que la energía sea la causa. No se afirma haber corregido la aceptación del juego.
+Pruebas nuevas comparan ambos payloads y decodifican sus nuevas imágenes principal/alternativa.
+Se omite ECI para Base64 ASCII y se cambia la máscara en la alternativa, conservando bytes.
+
+Pruebas nuevas de borrador local: cantidades actuales, límite por nombre incluidas variantes,
+preevolución ausente, datos insuficientes, energías y ausencia de mutación de colección.
+TXT guardado mediante ContentResolver: UTF-8, contenido esperado y ausencia de mensajes privados.
+CI vuelve a ejecutar pruebas Android, Lint, compilaciones y Chromium; resultados finales en PR.
+
+Pendientes de nueva prueba física: editor visual, Crear con mis cartas, sugerencias de energías,
+flujo IA guiado/portapapeles, navegación a la IA, tutoriales, guardar TXT y ambos QR en el juego.
+Datos desconocidos no se inventan. La sugerencia de energías usa el tipo, no costes de ataque
+completos; Dragón/solo Incoloro/datos desconocidos necesitan revisión manual. La causa del
+rechazo del QR y la calidad estratégica siguen pendientes.

@@ -116,6 +116,17 @@ fun CollectionScreen(
   var showSettingsDialog by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
 
+  val diagnosticSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+    if (uri != null) scope.launch {
+      try { ErrorLogManager.saveLogs(context, uri); Toast.makeText(context, "Diagnóstico TXT guardado.", Toast.LENGTH_LONG).show() }
+      catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) {
+        ErrorLogManager.event("LOG_SAVE", "Diagnostic save failed", e)
+        Toast.makeText(context, "No se pudo guardar el diagnóstico. Prueba otra carpeta.", Toast.LENGTH_LONG).show()
+      }
+    }
+  }
+
   // Preferences from DataStore
   val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
 
@@ -498,6 +509,7 @@ fun CollectionScreen(
       onThemeModeChange = viewModel::setThemeMode,
       onDismiss = { showSettingsDialog = false }
     ) {
+          HelpButton()
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
             showSettingsDialog = false
@@ -525,6 +537,11 @@ fun CollectionScreen(
           Column {
             Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(onClick = {
+              showSettingsDialog = false
+              diagnosticSave.launch("diagnostico-tcg-pocket.txt")
+            }, modifier = Modifier.fillMaxWidth()) { Text("Guardar diagnóstico TXT") }
+            HelpButton("diagnostico")
             OutlinedButton(
               onClick = {
                 ErrorLogManager.exportErrorLogs(context)

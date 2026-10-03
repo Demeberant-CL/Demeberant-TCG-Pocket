@@ -136,7 +136,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val current = repository.inventoryFlow.first().associateBy { it.card.id }
     val available = original.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }
     val result = withContext(Dispatchers.Default) {
-      AiValidator.parse(ExternalAiExchange.response(text), available, externalTarget)
+      try { AiValidator.parse(ExternalAiExchange.response(text), available, externalTarget) }
+      catch (e: Exception) {
+        val reason = e.message?.takeIf { it != "Failed requirement." && it != "Check failed." }
+        throw IllegalArgumentException(reason ?: "La respuesta no cumple el mazo solicitado. Pide a tu IA solo el resultado del formato de la consulta, con 20 cartas, cantidades disponibles y energías.")
+      }
     }
     proposal.value = result
     message.value = "Respuesta validada con las cantidades actuales. Revisa el borrador."

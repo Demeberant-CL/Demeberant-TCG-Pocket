@@ -115,7 +115,7 @@ object DeckBuilderEngine {
     if (coreKeywords.none { name -> entries.any { it.card.name.equals(name, true) } }) {
       warnings.add("No tienes piezas del arquetipo solicitado.")
     }
-    return GeneratedDeck(deckName, archetype, strategy, entries, total(), warnings)
+    return GeneratedDeck(deckName, archetype, strategy, entries, total(), warnings, listOf(energyType))
   }
 
   private val evolutionParents = mapOf(

@@ -58,17 +58,19 @@ class MainActivity : ComponentActivity() {
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
+        var analysisStartSection by rememberSaveable { mutableIntStateOf(0) }
         val labels = listOf("Colección", "Mazos", "Canjes", "Análisis")
         val icons = listOf(Icons.Filled.Collections, Icons.Filled.AutoAwesome,
           Icons.Filled.CardGiftcard, Icons.Filled.Insights)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
+          topBar = { com.example.ui.screens.HelpButton() },
           bottomBar = {
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
                   selected = selectedTabIndex == index,
-                  onClick = { selectedTabIndex = index },
+                  onClick = { selectedTabIndex = index; if (index == 3) analysisStartSection = 0 },
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp) },
                   colors = NavigationBarItemDefaults.colors(
@@ -87,7 +89,7 @@ class MainActivity : ComponentActivity() {
           val screenModifier = Modifier.padding(innerPadding)
           when (selectedTabIndex) {
             0 -> CollectionScreen(viewModel, screenModifier)
-            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier)
+            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { analysisStartSection = 3; selectedTabIndex = 3 })
             2 -> com.example.ui.screens.TradeMenuScreen(viewModel, screenModifier)
             else -> com.example.ui.screens.AnalysisMenuScreen(viewModel, advancedViewModel,
               onOpenAiDeck = { selectedTabIndex = 1 },
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.setDeckPrompt(name)
                 viewModel.generateDeck(name)
                 selectedTabIndex = 1
-              }, modifier = screenModifier)
+              }, modifier = screenModifier, initialSection = analysisStartSection)
           }
         }
       }

@@ -45,6 +45,35 @@ class DeckQrTest {
         19460,19460,19470,19470,19480,19480,18700,18700,18670,18670,18690,18690,18680), listOf(8))))
   }
 
+  @Test fun userReportedSuccessAndFailureKeepDifferentPayloadsAndAlternativeDecodes() {
+    // These are observations reported by the user, not claims of acceptance by these tests.
+    val success = PocketDeckPayload(listOf(90,130,170,170), listOf(1050,1060,1060,1100,1110,1070,1080,1860,1890,1890,1900,1900,1910,1920,1930,1930), listOf(4))
+    val failed = PocketDeckPayload(listOf(90,130,170,170), listOf(1150,1160,1180,1190,1330,1330,1350,1350,1360,1360,1860,1890,1890,1900,1900,1910), listOf(5))
+    assertEquals("BJiW2piXApiXKpiXKhAABBoABCQABCQABEwABFYABC4ABDgAB0QAB2IAB2IAB2wAB2wAB3YAB4AAB4oAB4oBBA==",PocketDeckQr.encode(success))
+    assertEquals("BJiW2piXApiXKpiXKhAABH4ABIgABJwABKYABTIABTIABUYABUYABVAABVAAB0QAB2IAB2IAB2wAB2wAB3YBBQ==",PocketDeckQr.encode(failed))
+    for (payload in listOf(success,failed)) {
+      val map=identities().values
+      val rows=payload.trainers.map { n -> map.first { it.kind=="trainer" && it.entity==n } } +
+        payload.pokemon.map { n -> map.first { it.kind=="pokemon" && it.entity==n } }
+      val entries=rows.groupBy { it.id }.map { (_, group) ->
+        val row=group.first()
+        DeckCardEntry(PokemonCard(row.id,row.name,BoosterPack.UNKNOWN,CardRarity.ONE_DIAMOND,0,"", "", ""),group.size)
+      }
+      val deck=GeneratedDeck("Regression","","",entries,20,energyTypes=payload.energies.map { DeckCodec.energyNames[it-1] })
+      val primary=DeckQrImages.create(RuntimeEnvironment.getApplication(),deck)
+      val alternate=DeckQrImages.create(RuntimeEnvironment.getApplication(),deck,true)
+      assertEquals(PocketDeckQr.encode(payload),primary.payload)
+      assertEquals(primary.payload,alternate.payload)
+      for (image in listOf(primary,alternate)) {
+        val bitmap=image.bitmap
+        val pixels=IntArray(bitmap.width*bitmap.height)
+        bitmap.getPixels(pixels,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+        assertEquals(image.payload,MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(bitmap.width,bitmap.height,pixels)))).text)
+      }
+      assertFalse(primary.png.contentEquals(alternate.png))
+    }
+  }
+
   @Test fun bundledMapCoversCatalogueAndDistinguishesTrainerPokemonNamespaces() {
     CardCatalog.loadBundled(RuntimeEnvironment.getApplication())
     val map = identities()

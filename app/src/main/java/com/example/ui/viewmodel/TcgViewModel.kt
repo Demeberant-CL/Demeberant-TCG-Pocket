@@ -231,6 +231,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
           ownedMap = ownedMap
         ) }
         editingDeckId = 0
+        _automaticEnergies.value = false
         _generatedDeck.value = deck
       } catch (e: CancellationException) {
         throw e
@@ -243,6 +244,30 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   private var editingDeckId = 0L
+  private val _automaticEnergies = MutableStateFlow(true)
+  val automaticEnergies = _automaticEnergies.asStateFlow()
+
+  fun useAutomaticEnergies() {
+    _automaticEnergies.value = true
+    _generatedDeck.value = _generatedDeck.value?.let { it.copy(energyTypes = com.example.domain.DeckAutomation.energies(it.cards)) }
+  }
+
+  fun createWithMyCards(type: String) {
+    viewModelScope.launch {
+      try {
+        _isGeneratingDeck.value = true
+        initialization.await()
+        val inventory = repository.inventoryFlow.first()
+        val draft = withContext(Dispatchers.Default) { com.example.domain.DeckAutomation.build(inventory, type) }
+        editingDeckId = 0
+        _automaticEnergies.value = true
+        _generatedDeck.value = draft
+        reportMessage("Borrador preparado con tus cartas. Revisa y pulsa Guardar mazo.")
+      } catch (e: CancellationException) { throw e }
+      catch (e: Exception) { reportMessage(e.message ?: "No se pudo crear el borrador.") }
+      finally { _isGeneratingDeck.value = false }
+    }
+  }
   fun reportMessage(value: String) { _csvStatusMessage.value = value }
 
   fun setQuantity(id: String, quantity: Int) {
@@ -276,12 +301,14 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   fun openAiProposal(deck: GeneratedDeck) {
+    _automaticEnergies.value = false
     editingDeckId = 0
     _generatedDeck.value = deck
     reportMessage("Propuesta de IA abierta como borrador. Revisa y guarda si quieres conservarla.")
   }
 
   fun newManualDeck() {
+    _automaticEnergies.value = true
     editingDeckId = 0
     _generatedDeck.value = GeneratedDeck("Mi mazo", "Manual", "", emptyList(), 0,
       listOf("Mazo incompleto: 0/20 cartas."))
@@ -293,6 +320,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     val deck = _generatedDeck.value ?: return
     val energies = if (value in deck.energyTypes) deck.energyTypes - value else deck.energyTypes + value
     if (energies.size > 3) { reportMessage("Máximo de tres energías."); return }
+    _automaticEnergies.value = false
     _generatedDeck.value = deck.copy(energyTypes = energies)
   }
   fun editDeckQuantity(id: String, count: Int) {
@@ -304,7 +332,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       reportMessage("Máximo de 20 cartas y dos copias por nombre."); return
     }
     _generatedDeck.value = deck.copy(cards = cards, totalCardCount = cards.sumOf { it.count },
-      validationWarnings = DeckBuilderEngine.validate(cards))
+      validationWarnings = DeckBuilderEngine.validate(cards),
+      energyTypes = if (_automaticEnergies.value) com.example.domain.DeckAutomation.energies(cards) else deck.energyTypes)
   }
 
   // Saved Decks Persistence
@@ -341,6 +370,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     try {
       val cardEntries = DeckCodec.decode(savedDeck.cardListSerialized)
       editingDeckId = savedDeck.id
+      val savedEnergies = DeckCodec.energies(savedDeck.cardListSerialized)
+      _automaticEnergies.value = savedEnergies.isEmpty()
       _generatedDeck.value = GeneratedDeck(
         name = savedDeck.name,
         archetype = savedDeck.archetype,
@@ -348,7 +379,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         cards = cardEntries,
         totalCardCount = cardEntries.sumOf { it.count },
         validationWarnings = DeckBuilderEngine.validate(cardEntries),
-        energyTypes = DeckCodec.energies(savedDeck.cardListSerialized)
+        energyTypes = savedEnergies.ifEmpty { com.example.domain.DeckAutomation.energies(cardEntries) }
       )
       _deckBuildPrompt.value = savedDeck.name
     } catch (e: Exception) {

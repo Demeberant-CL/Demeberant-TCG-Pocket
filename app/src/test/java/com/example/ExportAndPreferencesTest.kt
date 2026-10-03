@@ -47,6 +47,18 @@ class ExportAndPreferencesTest {
     assertTrue(runCatching { FileProvider.getUriForFile(context, context.packageName + ".fileprovider", private) }.isFailure)
   }
 
+  @Test fun diagnosticCanBeSavedAsUtf8TxtWithoutPrivatePayload() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    ErrorLogManager.init(context)
+    ErrorLogManager.event("AUDIT_SAVE", "Safe saved event", IllegalArgumentException("PRIVATE_QUERY password=SECRET"))
+    val destination = File(context.cacheDir, "saved-diagnostic.txt")
+    ErrorLogManager.saveLogs(context, android.net.Uri.fromFile(destination))
+    val text = destination.readText(Charsets.UTF_8)
+    assertTrue(text.contains("AUDIT_SAVE"))
+    assertFalse(text.contains("PRIVATE_QUERY"))
+    assertFalse(text.contains("password=SECRET"))
+  }
+
   @Test fun diagnosticTxtExportHasReadGrantAndNoExceptionPayload() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     ErrorLogManager.init(context)

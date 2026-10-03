@@ -84,6 +84,14 @@ object ErrorLogManager {
     flush()
     synchronized(fileLock) { File(context.filesDir, "diagnostics").listFiles()?.all { it.delete() } ?: true }
   }
+  suspend fun saveLogs(context: Context, uri: android.net.Uri) {
+    val content = readLogs(context)
+    withContext(Dispatchers.IO) {
+      val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("Destino no disponible.")
+      output.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+    }
+  }
+
   fun exportErrorLogs(context: Context) {
     scope.launch {
       try {
