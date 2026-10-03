@@ -155,3 +155,10 @@ flujo IA guiado/portapapeles, navegación a la IA, tutoriales, guardar TXT y amb
 Datos desconocidos no se inventan. La sugerencia de energías usa el tipo, no costes de ataque
 completos; Dragón/solo Incoloro/datos desconocidos necesitan revisión manual. La causa del
 rechazo del QR y la calidad estratégica siguen pendientes.
+
+La regresión encontró que una máscara alternativa válida confundía el detector de ZXing.
+Reproducción local con ZXing 3.5.3: para el payload reportado como aceptado, máscaras 0 y 4
+fallan en la detección normal aunque el símbolo es válido; las demás se decodifican. Para
+el payload rechazado por el juego, las ocho se decodifican localmente. La exportación ahora
+prueba máscaras y solo devuelve imágenes que decodifican exactamente el payload; la
+alternativa selecciona la segunda máscara legible. Esta corrección no prueba aceptación en el juego.
