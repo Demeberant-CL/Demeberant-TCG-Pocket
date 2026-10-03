@@ -197,3 +197,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Cartas faltantes a color, sin bloqueo central; cantidades y deseos intactos.
 - Una alternativa inglesa únicamente ante HTTP 404 del recurso traducido. Si falla, etiqueta Imagen no disponible; no se inventan rutas ni se modifican IDs guardados.
 - Pendiente comprobación visual en teléfono y compilación CI.
+
+## Mazos y editor visual (2026-10-03)
+- Mis mazos usa una lista virtualizada con portada, energías guardadas y disponibilidad calculada por ID/cantidad. Eliminar requiere confirmación. Cartas desconocidas no se borran.
+- Editor con Cartas/Energías/Notas, controles +/− accesibles y Guardar fijo abajo. Energías personalizadas, guardado de borrador, avisos y exportación se conservan.
+- Cambiar cantidad mantiene el orden visual de las cartas; prueba cubre aumento, rechazo de cantidad >2 y retirada.
+- La aceptación de una propuesta IA abre el editor directamente. No se realizan consultas IA por navegar o pulsar controles locales.
+- Pendiente comprobación visual en teléfono y compilación CI.

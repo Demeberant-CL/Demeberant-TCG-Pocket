@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
         darkTheme = userPrefs.themeMode.isDark(androidx.compose.foundation.isSystemInDarkTheme())
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+        var deckEditorRequest by rememberSaveable { mutableIntStateOf(0) }
 
         val labels = listOf("Colección", "Mazos", "Meta", "IA", "Más")
         val icons = listOf(Icons.Filled.Collections, Icons.Filled.Style,
@@ -91,9 +92,9 @@ class MainActivity : ComponentActivity() {
           val screenModifier = Modifier.padding(innerPadding)
           when (selectedTabIndex) {
             0 -> CollectionScreen(viewModel, screenModifier)
-            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 })
+            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 }, editorRequest = deckEditorRequest)
             2 -> com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { selectedTabIndex = 3 }, screenModifier)
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { selectedTabIndex = 1 }, screenModifier)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; selectedTabIndex = 1 }, screenModifier)
             else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier)
 
           }

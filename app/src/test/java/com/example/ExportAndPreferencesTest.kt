@@ -86,6 +86,24 @@ class ExportAndPreferencesTest {
     } finally { store.clear() }
   }
 
+  @Test fun editorQuantityChangesPreserveOrderAndKeepDeckLimits() {
+    val model = com.example.ui.viewmodel.TcgViewModel(RuntimeEnvironment.getApplication())
+    val store = androidx.lifecycle.ViewModelStore().apply { put("quantity-test", model) }
+    try {
+      model.newManualDeck()
+      model.editDeckQuantity("A1-001", 1)
+      model.editDeckQuantity("A1-033", 1)
+      model.editDeckQuantity("A1-001", 2)
+      assertEquals(listOf("A1-001", "A1-033"), model.generatedDeck.value!!.cards.map { it.card.id })
+      assertEquals(3, model.generatedDeck.value!!.totalCardCount)
+      model.editDeckQuantity("A1-001", 3)
+      assertEquals(3, model.generatedDeck.value!!.totalCardCount)
+      model.editDeckQuantity("A1-001", 0)
+      assertEquals(listOf("A1-033"), model.generatedDeck.value!!.cards.map { it.card.id })
+      assertEquals(1, model.generatedDeck.value!!.totalCardCount)
+    } finally { store.clear() }
+  }
+
   @Test fun diagnosticCanBeSavedAsUtf8TxtWithoutPrivatePayload() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     ErrorLogManager.init(context)

@@ -358,7 +358,9 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     val deck = _generatedDeck.value ?: return
     val card = CardCatalog.getCardById(id) ?: return
     if (count !in 0..2) return
-    val cards = deck.cards.filter { it.card.id != id } + if (count > 0) listOf(DeckCardEntry(card, count)) else emptyList()
+    val cards = deck.cards.mapNotNull { entry ->
+      if (entry.card.id != id) entry else if (count > 0) entry.copy(count = count) else null
+    } + if (count > 0 && deck.cards.none { it.card.id == id }) listOf(DeckCardEntry(card, count)) else emptyList()
     if (cards.sumOf { it.count } > 20 || cards.groupBy { it.card.rulesName.lowercase() }.any { (_, list) -> list.sumOf { it.count } > 2 }) {
       reportMessage("Máximo de 20 cartas y dos copias por nombre."); return
     }

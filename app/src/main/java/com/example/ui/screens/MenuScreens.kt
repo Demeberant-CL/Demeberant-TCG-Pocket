@@ -49,13 +49,15 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
-  var section by rememberSaveable { mutableIntStateOf(0) }
+fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
+  var section by rememberSaveable(editorRequest) { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
   Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Crear y editar", "Mis mazos", "Plantillas A1"), section) { section = it }
-    if (section == 0) ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
-    else DeckBuilderScreen(viewModel, Modifier.weight(1f), savedOnly = section == 1,
-      onOpenSavedDeck = { section = 0 })
+    MenuChoices(listOf("Mis mazos", "Crear y editar", "Plantillas A1"), section) { section = it }
+    when (section) {
+      0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 })
+      1 -> ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
+      else -> DeckBuilderScreen(viewModel, Modifier.weight(1f))
+    }
   }
 }
 
