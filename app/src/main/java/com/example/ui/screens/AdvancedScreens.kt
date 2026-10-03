@@ -33,6 +33,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   val externalPrompt by model.externalPrompt.collectAsStateWithLifecycle()
   var goal by rememberSaveable { mutableStateOf(model.goal) }
   var responseText by remember { mutableStateOf("") }
+  var showResponseEditor by remember { mutableStateOf(false) }
   var replace by rememberSaveable { mutableStateOf(false) }
   var step by rememberSaveable { mutableIntStateOf(1) }
   var showCopy by remember { mutableStateOf(false) }
@@ -101,7 +102,11 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           else if (value.length > 100000) clipboardMessage = "La respuesta es demasiado larga. Pide solo el mazo solicitado."
           else { responseText = value; step = 3; clipboardMessage = "Respuesta pegada. Pulsa Revisar mazo." }
         }, modifier = Modifier.fillMaxWidth()) { Text("Pegar respuesta") }
-        if (responseText.isNotBlank() || step == 3) OutlinedTextField(responseText, { if (it.length <= 100000) responseText = it },
+        if (responseText.isNotBlank()) Text("Respuesta lista · ${responseText.length} caracteres. Pulsa Revisar mazo para ver las cartas.")
+        TextButton(enabled = !busy, onClick = { showResponseEditor = !showResponseEditor; step = 3 }) {
+          Text(if (showResponseEditor) "Ocultar texto de respuesta" else "Pegar o editar manualmente (opcional)")
+        }
+        if (showResponseEditor) OutlinedTextField(responseText, { if (it.length <= 100000) responseText = it },
           label = { Text("Respuesta de tu IA") }, modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 180.dp))
         Button(enabled = !busy && responseText.isNotBlank(), onClick = { model.importExternal(responseText) }, modifier = Modifier.fillMaxWidth()) { Text("Revisar mazo") }
         Text("Si no se acepta, vuelve a tu IA con el motivo del aviso. La consulta ya pide el formato necesario.")
