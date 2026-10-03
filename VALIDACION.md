@@ -191,3 +191,9 @@ Modelos y guías (2026-10-03): el listado aplica un filtro conservador de modelo
 
 
 Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador, recurso WebP incluido en el APK (sin descargas). Toca el avatar en Colección, elige y confirma Usar avatar; Cancelar conserva la elección previa. DataStore guarda un ID estable, cambiar tema no lo altera. Respaldo JSON incluye avatar; restaurar un respaldo antiguo sin ese campo conserva el avatar actual. IDs desconocidos vuelven al avatar predeterminado. Dos pruebas cubren persistencia/independencia del tema, restauración antigua/nueva y contenido del respaldo. La propuesta de rediseño completa es una referencia visual; este lote implementa el selector de avatares, no todo el rediseño. Verificación visual en teléfono pendiente. Atlas creado mediante generación de imagen con seis retratos originales en cuadrícula 3x2, convertido a WebP para reducir el APK.
+
+## Colección compacta e imágenes (2026-10-03)
+- Encabezado compacto con detalles de perfil desplegables, filtros en buscador, repetidas en la fila de estados y contador de resultados filtrados.
+- Cartas faltantes a color, sin bloqueo central; cantidades y deseos intactos.
+- Una alternativa inglesa únicamente ante HTTP 404 del recurso traducido. Si falla, etiqueta Imagen no disponible; no se inventan rutas ni se modifican IDs guardados.
+- Pendiente comprobación visual en teléfono y compilación CI.

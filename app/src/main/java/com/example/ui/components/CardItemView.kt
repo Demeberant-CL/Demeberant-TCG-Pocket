@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,8 +37,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.network.HttpException
 import com.example.data.model.PokemonCard
 import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
@@ -73,9 +71,7 @@ fun CardItemView(
   val isOwned = ownedCount > 0
   var imageFailed by remember(card.id, imageLanguage) { mutableStateOf(false) }
 
-  val grayscaleMatrix = remember {
-    ColorMatrix().apply { setToSaturation(0f) }
-  }
+  var assetLanguage by remember(card.id, imageLanguage) { mutableStateOf(imageLanguage) }
 
   val typeColor = when (card.type.lowercase()) {
     "planta" -> Color(0xFF10B981)
@@ -109,15 +105,20 @@ fun CardItemView(
     Box(modifier = Modifier.fillMaxSize()) {
       if (!imageFailed) {
         AsyncImage(
-          model = TcgdexHelper.getCardImageUrl(card.id, imageLanguage),
+          model = TcgdexHelper.getCardImageUrl(card.id, assetLanguage),
           contentDescription = card.name,
           contentScale = ContentScale.Crop,
-          colorFilter = if (!isOwned) ColorFilter.colorMatrix(grayscaleMatrix) else null,
-          onError = { imageFailed = true },
+          colorFilter = null,
+          onError = { state ->
+            // Only an absent translated asset justifies one English fallback.
+            if ((state.result.throwable as? HttpException)?.response?.code == 404 && assetLanguage != "en") {
+              assetLanguage = "en"
+            } else imageFailed = true
+          },
           modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(12.dp))
-            .alpha(if (isOwned) 1.0f else 0.5f)
+            .alpha(1f)
         )
       }
 
@@ -126,7 +127,7 @@ fun CardItemView(
         Column(
           modifier = Modifier
             .fillMaxSize()
-            .alpha(if (isOwned) 1.0f else 0.5f)
+            .alpha(1f)
             .background(if (isOwned) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(6.dp),
           verticalArrangement = Arrangement.SpaceBetween
@@ -188,7 +189,7 @@ fun CardItemView(
               color = PocketGold
             )
             Text(
-              text = card.pack.displayName.replace("Sobre ", ""),
+              text = "Imagen no disponible",
               fontSize = 7.sp,
               color = PocketTextMuted
             )
@@ -211,7 +212,7 @@ fun CardItemView(
           .padding(horizontal = 5.dp, vertical = 1.dp)
       ) {
         Text(
-          text = "x$ownedCount",
+          text = if (isOwned) "x$ownedCount" else "Falta",
           fontSize = 10.sp,
           fontWeight = FontWeight.Black,
           color = if (isOwned) Color(0xFFB45309) else Color.White
@@ -238,50 +239,6 @@ fun CardItemView(
         )
       }
 
-      // Center Overlay Lock for Unowned Cards (Quantity = 0)
-      if (!isOwned) {
-        Box(
-          modifier = Modifier
-            .matchParentSize()
-            .background(Color(0xFF0F172A).copy(alpha = 0.35f)),
-          contentAlignment = Alignment.Center
-        ) {
-          Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-          ) {
-            Box(
-              modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF0F172A).copy(alpha = 0.9f))
-                .border(1.dp, Color.White, CircleShape),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = "Falta",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-              )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Box(
-              modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF0F172A).copy(alpha = 0.85f))
-                .padding(horizontal = 4.dp, vertical = 1.dp)
-            ) {
-              Text(
-                text = "x0 • Falta",
-                color = Color.White,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold
-              )
-            }
-          }
-        }
-      }
     }
   }
 }

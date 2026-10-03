@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -107,6 +108,7 @@ fun CollectionScreen(
   val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
   val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
   var showFiltersDialog by remember { mutableStateOf(false) }
+  var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
   var selectedCardId by remember { mutableStateOf<String?>(null) }
@@ -211,98 +213,34 @@ fun CollectionScreen(
     Card(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 14.dp, vertical = 10.dp)
+        .padding(horizontal = 12.dp, vertical = 8.dp)
         .shadow(3.dp, shape = RoundedCornerShape(10.dp), clip = false)
         .testTag("collection_stats_card"),
       shape = RoundedCornerShape(10.dp),
       colors = CardDefaults.cardColors(containerColor = PocketSurface),
       border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
     ) {
-      Column(modifier = Modifier.padding(14.dp)) {
-        // User Profile & Settings
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
-              Modifier.size(48.dp).clip(CircleShape).clickable { showAvatarPicker = true }
-                .border(2.dp, PocketGold, CircleShape), "Cambiar avatar de perfil")
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = "Demeberant",
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = FontWeight.Bold,
-                  color = PocketTextPrimary
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                  modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(PocketGoldLight)
-                    .border(1.dp, PocketGold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
-                ) {
-                  Text(text = "Lv. 34", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFB45309))
-                }
-              }
-              Text(
-                text = "Friend ID: 9824-5495-7457-6397",
-                fontSize = 11.sp,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = PocketTextSecondary
-              )
+      Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
+            Modifier.size(40.dp).clip(CircleShape).clickable { showAvatarPicker = true }
+              .border(2.dp, PocketGold, CircleShape), "Cambiar avatar de perfil")
+          Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
+            Text("Mi colección", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
+              style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
+            if (showProfileDetails) {
+              Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
+              Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
             }
           }
-
-          IconButton(
-            onClick = { showSettingsDialog = true },
-            modifier = Modifier.size(36.dp)
-          ) {
+          IconButton(onClick = { showSettingsDialog = true }) {
             Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = PocketTextSecondary)
           }
         }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Statistical Progress Bar
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Text(
-            text = "Catálogo: $totalOwned / $totalCatalog registradas",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = PocketTextSecondary
-          )
-          Text(
-            text = "$totalCopies copias totales • ${(completionPercent * 100).toInt()}%",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = PocketBluePrimary
-          )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        LinearProgressIndicator(
-          progress = { completionPercent },
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(7.dp)
-            .clip(RoundedCornerShape(4.dp)),
-          color = PocketBluePrimary,
-          trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-
+        LinearProgressIndicator(progress = { completionPercent },
+          modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)),
+          color = PocketBluePrimary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh)
       }
     }
 
@@ -348,9 +286,13 @@ fun CollectionScreen(
         Icon(Icons.Filled.Search, contentDescription = "Buscar", tint = PocketTextSecondary, modifier = Modifier.size(18.dp))
       },
       trailingIcon = {
-        if (searchQuery.isNotBlank()) {
-          IconButton(onClick = { viewModel.setSearchQuery("") }) {
-            Icon(Icons.Filled.Clear, contentDescription = "Borrar", tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
+        Row {
+          if (searchQuery.isNotBlank()) IconButton(onClick = { viewModel.setSearchQuery("") }) {
+            Icon(Icons.Filled.Clear, contentDescription = "Borrar búsqueda")
+          }
+          IconButton(onClick = { showFiltersDialog = true }) {
+            Icon(Icons.Filled.Tune, contentDescription = "Filtros avanzados",
+              tint = if (expansionFilter != null || rarityFilter != null) PocketBluePrimary else PocketTextSecondary)
           }
         }
       },
@@ -366,10 +308,6 @@ fun CollectionScreen(
       )
     )
 
-    TextButton(onClick = { showFiltersDialog = true }, modifier = Modifier.padding(horizontal = 14.dp)) {
-      val active = (if (expansionFilter != null) 1 else 0) + (if (rarityFilter != null) 1 else 0)
-      Text(if (active == 0) "Filtros avanzados" else "Filtros avanzados ($active)")
-    }
     // One collection status is selected at a time.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
@@ -407,25 +345,15 @@ fun CollectionScreen(
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
         )
       }
+      item {
+        PocketPillChip("Repetidas", collectionFilter == com.example.data.util.CollectionFilter.REPEATED,
+          MaterialTheme.colorScheme.secondaryContainer) {
+          viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.REPEATED)
+        }
+      }
     }
-    TextButton(
-      onClick = {
-        viewModel.setCollectionFilter(
-          if (collectionFilter == com.example.data.util.CollectionFilter.REPEATED)
-            com.example.data.util.CollectionFilter.ALL
-          else com.example.data.util.CollectionFilter.REPEATED
-        )
-      },
-      modifier = Modifier.padding(horizontal = 14.dp)
-    ) {
-      Text(
-        if (collectionFilter == com.example.data.util.CollectionFilter.REPEATED)
-          "Ver todas" else "Ver repetidas",
-        color = PocketBluePrimary,
-        fontWeight = FontWeight.SemiBold
-      )
-    }
-    Spacer(modifier = Modifier.height(4.dp))
+    Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+      style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
     // -------------------------------------------------------------
     // GRID DE CARTAS: EXACTAMENTE 3 COLUMNAS
@@ -625,7 +553,7 @@ private fun PocketPillChip(
       .background(bg)
       .border(1.dp, border, RoundedCornerShape(10.dp))
       .clickable { onClick() }
-      .padding(horizontal = 14.dp, vertical = 10.dp)
+      .padding(horizontal = 12.dp, vertical = 8.dp)
   ) {
     Text(
       text = label,
