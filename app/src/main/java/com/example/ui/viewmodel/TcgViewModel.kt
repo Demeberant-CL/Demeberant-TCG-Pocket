@@ -300,7 +300,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun openAiProposal(deck: GeneratedDeck, onOpened: () -> Unit = {}) = viewModelScope.launch {
+  fun openAiProposal(deck: GeneratedDeck, onOpened: () -> Unit = {}, onRejected: (String) -> Unit = {}) = viewModelScope.launch {
     try {
       initialization.await()
       val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
@@ -312,7 +312,9 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       onOpened()
     } catch (e: CancellationException) { throw e }
     catch (_: Exception) {
-      reportMessage("No se abrió la propuesta. Revisa tu colección actual y genera un mazo nuevo.")
+      val reason = "No se abrió la propuesta. Revisa tu colección actual y genera un mazo nuevo."
+      reportMessage(reason)
+      onRejected(reason)
       ErrorLogManager.event("AI_OPEN", "Proposal could not be opened with current inventory")
     }
   }

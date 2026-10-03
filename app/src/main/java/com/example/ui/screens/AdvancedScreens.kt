@@ -133,7 +133,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     dismissButton = { TextButton(onClick = { confirmSend = false }) { Text("Cancelar") } })
   if (confirmOpen) AlertDialog(onDismissRequest = { confirmOpen = false }, title = { Text("Usar este mazo") },
     text = { Text("Reemplaza el borrador abierto; conserva mazos guardados y colección.") },
-    confirmButton = { TextButton(onClick = { proposal?.let { main.openAiProposal(it.deck, onOpenDeck) }; confirmOpen = false }) { Text("Abrir en Mazos") } },
+    confirmButton = { TextButton(onClick = { proposal?.let { main.openAiProposal(it.deck, onOpenDeck) { reason -> model.message.value = reason } }; confirmOpen = false }) { Text("Abrir en Mazos") } },
     dismissButton = { TextButton(onClick = { confirmOpen = false }) { Text("Cancelar") } })
 }
 
