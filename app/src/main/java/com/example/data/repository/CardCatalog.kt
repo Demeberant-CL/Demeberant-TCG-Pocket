@@ -39,6 +39,7 @@ object CardCatalog {
         packNames = packs, source = "Catálogo comunitario · 2026-10-01")
     }
     require(cards.map { it.id }.distinct().size == cards.size)
+    com.example.data.util.TcgdexHelper.loadImageIndex(context)
     bundledCards.putAll(cards.associateBy { it.id })
     sourceRevision = root.getString("revision")
   }

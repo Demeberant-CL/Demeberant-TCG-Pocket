@@ -164,3 +164,8 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 
 
 Inicio (2026-10-03): resumen local de colección, copias y mazos; accesos a la colección, biblioteca, editor, IA, meta y guía. Muestra el avatar y el perfil/proveedor/modelo activos sin consultar la API. El mazo abierto se puede continuar sin reemplazarlo. Barra Inicio/Colección/Mazos/IA/Más; Meta está en Inicio y Más y se actualiza solo con su botón. La fecha de la muestra guardada se presenta en la zona horaria del teléfono.
+
+
+### Imágenes y detalles de cartas
+Las imágenes usan primero TCGdex y, cuando responde 404, una alternativa comunitaria de la misma expansión y número. El índice de 3879 rutas está fijado a flibustier/pokemon-tcg-exchange, revisión 613d6a038e4a68c7014af2d4538c1f6a9ebe8d8b, consultada el 2026-10-03; la descarga es por jsDelivr. Las rutas de imagen no cambian IDs ni cantidades. No todas las cartas tienen imagen disponible.
+Los detalles usan TCGdex, prueban inglés solo si falta la respuesta española y muestran ese idioma en la fuente. Una copia guardada se reutiliza durante 24 horas y puede mostrarse ante un fallo posterior. No se incorporan estadísticas comunitarias contradictorias ni traducciones generadas por IA.

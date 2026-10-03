@@ -25,6 +25,8 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
   var error by remember(item.card.id, language) { mutableStateOf<String?>(null) }
   LaunchedEffect(item.card.id, language) {
     loading = true
+    details = null
+    error = null
     try { details = withContext(Dispatchers.IO) { CardDetailsClient.load(context, item.card.id, language) } }
     catch (e: CancellationException) { throw e }
     catch (e: Exception) { error = "Detalles sin conexión o no disponibles. Puedes editar la colección." }

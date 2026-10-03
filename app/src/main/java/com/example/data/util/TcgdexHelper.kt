@@ -1,12 +1,29 @@
 package com.example.data.util
 
 object TcgdexHelper {
+  @Volatile private var communityImages: Map<String, String> = emptyMap()
+
+  fun loadImageIndex(context: android.content.Context) {
+    val root = org.json.JSONObject(context.assets.open("pocket-image-index.json").bufferedReader().use { it.readText() })
+    val revision = root.getString("revision")
+    require(revision.matches(Regex("[a-f0-9]{40}")))
+    val paths = root.getJSONArray("paths")
+    val images = (0 until paths.length()).associate { i ->
+      val path = paths.getString(i)
+      require(path.matches(Regex("(?:[AB][0-9]+[a-z]*|PROMO-[AB])/[0-9]+\\.webp")))
+      val (set, number) = path.removeSuffix(".webp").split("/")
+      CardId.normalize("$set-$number") to
+        "https://cdn.jsdelivr.net/gh/flibustier/pokemon-tcg-exchange@$revision/public/images/cards-by-set/$path"
+    }
+    communityImages = images
+  }
+
   fun imageCandidates(id: String, language: String = "es", highResolution: Boolean = false): List<String> {
     val primary = getCardImageUrl(id, language)
     val languages = listOf(primary, getCardImageUrl(id, "en")).distinct()
     return languages.flatMap { low ->
       if (highResolution) listOf(low.replace("low.webp", "high.webp"), low) else listOf(low)
-    }
+    } + listOfNotNull(communityImages[CardId.normalize(id)])
   }
 
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {

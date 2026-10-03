@@ -16,7 +16,7 @@ data class CardDetails(val hp: Int?, val category: String, val stage: String, va
   val attacks: List<String>, val retreat: Int?, val source: String, val element: String = "", val abilityText: String = "", val evolvesFrom: String = "")
 
 object CardDetailsClient {
-  fun load(context: Context, id: String, language: String): CardDetails {
+  fun load(context: Context, id: String, language: String, client: okhttp3.OkHttpClient = PocketHttp.detailsClient, baseUrl: String = "https://api.tcgdex.net/v2/"): CardDetails {
     val canonical = CardId.normalize(id)
     val (set, number) = CardId.split(canonical)
     val apiSet = when (set) {
@@ -30,6 +30,8 @@ object CardDetailsClient {
     fun parse(text: String, cached: Boolean): CardDetails {
       val root = JSONObject(text)
       require(root.getString("id").equals(apiId, true)) { "Respuesta de carta incorrecta." }
+      val contentLanguage = root.optString("_pocketLanguage", lang)
+      val source = "TCGdex" + (if (contentLanguage != lang) " · inglés" else "") + (if (cached) " · copia guardada" else "")
       val attacks = root.optJSONArray("attacks")
       return CardDetails(if (root.has("hp")) root.getInt("hp") else null, root.optString("category"),
         root.optString("stage"), root.optString("effect"), if (attacks == null) emptyList() else
@@ -37,7 +39,7 @@ object CardDetailsClient {
           listOf(attack.optString("name"), attack.optString("damage"), attack.optString("effect"))
             .filter { it.isNotBlank() }.joinToString(" · ")
         }, if (root.has("retreat")) root.getInt("retreat") else null,
-        if (cached) "TCGdex · copia en caché" else "TCGdex",
+        source,
         root.optJSONArray("types")?.optString(0) ?: "",
         root.optJSONArray("abilities")?.let { a -> (0 until a.length()).joinToString("\n") { i ->
           val ability = a.getJSONObject(i); ability.optString("name") + " · " + ability.optString("effect")
@@ -51,21 +53,32 @@ object CardDetailsClient {
       try {
         runBlocking(kotlinx.coroutines.Dispatchers.IO) {
           AppDatabase.getDatabase(context).cardRulesDao().upsert(CardRulesEntity(canonical, lang, value.hp,
-            value.element, rules, RoleClassifier.normalize(rules), tags, System.currentTimeMillis(), category = value.category, stage = value.stage, evolvesFrom = value.evolvesFrom))
+            value.element, rules, RoleClassifier.normalize(rules), tags, System.currentTimeMillis(), source = value.source, category = value.category, stage = value.stage, evolvesFrom = value.evolvesFrom))
         }
       } catch (e: Exception) { com.example.data.util.ErrorLogManager.event("RULES_WRITE", "Rules cache write failed", e) }
     }
+    // Reuse verified details for a day; expired copies still work when offline.
+    if (cached != null && System.currentTimeMillis() - cache.lastModified() in 0..86_400_000L) {
+      persist(cached)
+      return cached
+    }
     try {
-      val request = Request.Builder().url("https://api.tcgdex.net/v2/$lang/cards/$apiId").build()
-      PocketHttp.detailsClient.newCall(request).execute().use { response ->
-        require(response.isSuccessful) { "Detalles no disponibles (HTTP ${response.code})." }
-        val body = response.body ?: error("Respuesta vacía.")
-        val text = body.byteStream().use { it.readBytesBounded(256_000).toString(Charsets.UTF_8) }
-        val value = parse(text, false)
-        runCatching { cache.writeText(text) }
-        persist(value)
-        return value
+      val candidates = listOf(lang, "en").distinct()
+      for ((index, candidate) in candidates.withIndex()) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/$candidate/cards/$apiId").build()
+        client.newCall(request).execute().use { response ->
+          if (response.code == 404 && index < candidates.lastIndex) return@use
+          require(response.isSuccessful) { "Detalles no disponibles (HTTP ${response.code})." }
+          val body = response.body ?: error("Respuesta vacía.")
+          val text = body.byteStream().use { it.readBytesBounded(256_000).toString(Charsets.UTF_8) }
+          val annotated = JSONObject(text).put("_pocketLanguage", candidate).toString()
+          val value = parse(annotated, false)
+          runCatching { cache.writeText(annotated) }
+          persist(value)
+          return value
+        }
       }
+      error("Detalles no disponibles.")
     } catch (e: Exception) {
       com.example.data.util.ErrorLogManager.event("DETAILS", "Details unavailable; cache=${cached != null}", e)
       if (cached != null) { persist(cached); return cached }

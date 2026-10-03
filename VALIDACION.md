@@ -224,3 +224,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Carga común en colección, detalle, miniaturas y plantillas; alternativa solo ante HTTP 404, alta resolución a baja antes del inglés; indicador y reintento manual. Cliente de imágenes recupera conexiones sin alterar solicitudes IA.
 - Nueva prueba de orden/identidad de alternativas y separación del cliente de imágenes. Pendiente comprobar visualmente en teléfono.
 - Usuario confirma nueva pantalla y QR funcionando.
+
+### Fuente alternativa de imágenes y detalles reutilizables
+- Índice de 3879 rutas reales de flibustier/pokemon-tcg-exchange, revisión 613d6a038e4a68c7014af2d4538c1f6a9ebe8d8b. CDN con revisión fija, usado solo después de 404 en TCGdex. Verificada visualmente PROMO-B-001; no se afirma comprobación visual individual de todas las imágenes.
+- No se incorporan PS del archivo comunitario cards.extra.json: Bulbasaur A1-001 declara 50 mientras la respuesta TCGdex declara 70. No se fabrican estadísticas ni efectos.
+- Detalles: alternativa inglesa únicamente ante HTTP 404, etiquetada; caché válida durante 24 horas y recuperación de copia anterior ante fallo. Reglas mantienen fuente e idioma indicado en source; la búsqueda textual de una copia inglesa usa su texto original.
+- Tres pruebas nuevas: alternativa y ausencia de segunda descarga, recuperación de caché vencida ante 503 sin cambiar idioma e identidad incorrecta rechazada.
+- Pendiente revisión en teléfono de las nuevas imágenes y detalles. Sin modificaciones de cantidades, IDs, mazos ni claves.

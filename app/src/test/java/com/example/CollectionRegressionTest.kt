@@ -32,9 +32,11 @@ class CollectionRegressionTest {
       "https://assets.tcgdex.net/es/tcgp/B1/132/high.webp",
       "https://assets.tcgdex.net/es/tcgp/B1/132/low.webp",
       "https://assets.tcgdex.net/en/tcgp/B1/132/high.webp",
-      "https://assets.tcgdex.net/en/tcgp/B1/132/low.webp"), urls)
-    assertEquals(1, TcgdexHelper.imageCandidates("PROMO-B-1", "en").size)
-    assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").all { "/P-B/001/" in it })
+      "https://assets.tcgdex.net/en/tcgp/B1/132/low.webp"), urls.take(4))
+    assertEquals(2, TcgdexHelper.imageCandidates("PROMO-B-1", "en").size)
+    assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").take(2).all { "/P-B/001/" in it })
+    assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").last().endsWith("/PROMO-B/1.webp"))
+    assertEquals(2, TcgdexHelper.imageCandidates("PROMO-B-999999", "es").size)
     assertTrue(com.example.data.network.PocketHttp.imageClient.retryOnConnectionFailure)
     assertFalse(com.example.data.network.PocketHttp.client.retryOnConnectionFailure)
   }
