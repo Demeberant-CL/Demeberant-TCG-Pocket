@@ -8,7 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class BackupSnapshot(val cards: List<InventoryCardEntity>, val decks: List<SavedDeckEntity>,
-  val preferences: UserPreferences)
+  val preferences: UserPreferences, val hasAvatarPreference: Boolean = true)
 
 object AppBackup {
   private const val FORMAT = "demeberant-tcg-pocket-backup"
@@ -20,7 +20,7 @@ object AppBackup {
     .put("decks", JSONArray(value.decks.map { deck -> JSONObject().put("name", deck.name)
       .put("archetype", deck.archetype).put("strategy", deck.strategy).put("cards", deck.cardListSerialized)
       .put("total", deck.totalCards).put("createdAt", deck.createdAt) }))
-    .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue)).toString(2)
+    .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue).put("avatar", value.preferences.avatarId)).toString(2)
 
   fun decode(text: String): BackupSnapshot {
     require(text.length <= 8_000_000) { "Respaldo demasiado grande." }
@@ -51,6 +51,7 @@ object AppBackup {
     val prefs = root.getJSONObject("preferences")
     val theme = prefs.getString("theme")
     require(theme in setOf("dark", "blue", "light", "system")) { "Ajustes no válidos." }
-    return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme)))
+    return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme),
+      com.example.data.preferences.ProfileAvatars.normalize(prefs.optString("avatar"))), prefs.has("avatar"))
   }
 }

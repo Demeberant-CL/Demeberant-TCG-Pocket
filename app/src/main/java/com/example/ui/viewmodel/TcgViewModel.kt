@@ -159,6 +159,17 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun setProfileAvatar(id: String) {
+    viewModelScope.launch {
+      try { preferencesRepository.setAvatar(id) }
+      catch (e: CancellationException) { throw e }
+      catch (e: Exception) {
+        ErrorLogManager.event("SETTINGS_WRITE", "Avatar preference could not be saved", e)
+        _csvStatusMessage.value = "No se pudo guardar el avatar."
+      }
+    }
+  }
+
   // Collection Filter Actions
   fun setSearchQuery(query: String) {
     _searchQuery.value = query
@@ -290,7 +301,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       try {
         initialization.await()
         repository.restoreSnapshot(value.cards, value.decks)
-        try { preferencesRepository.restore(value.preferences) }
+        try { preferencesRepository.restore(value.preferences, value.hasAvatarPreference) }
         catch (e: CancellationException) { throw e }
         catch (e: Exception) { reportMessage("Colección y mazos restaurados; no se pudieron restaurar los ajustes."); return@launch }
         reportMessage("Respaldo restaurado sin borrar las cartas ausentes.")

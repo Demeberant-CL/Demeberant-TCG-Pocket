@@ -28,8 +28,15 @@ enum class ThemeMode(val storedValue: String) {
   }
 }
 
-data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM)
+object ProfileAvatars {
+  val ids = listOf("trainer_red", "trainer_teal", "trainer_orange", "trainer_violet", "trainer_green", "trainer_blue")
+  val names = listOf("Entrenador rojo", "Entrenadora turquesa", "Entrenador naranja", "Entrenadora violeta", "Entrenador verde", "Entrenadora azul")
+  fun normalize(id: String?): String = id?.takeIf { it in ids } ?: ids.first()
+}
 
+data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first())
+
+private val avatarKey = stringPreferencesKey("profile_avatar")
 private val themeKey = stringPreferencesKey("theme_name")
 
 internal object SettingsMigration : DataMigration<Preferences> {
@@ -56,9 +63,19 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 class UserPreferencesRepository(private val context: Context) {
   val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.catch { error ->
     if (error is IOException) emit(emptyPreferences()) else throw error
-  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey])) }
+  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey])) }
 
-  suspend fun restore(value: UserPreferences) = setThemeMode(value.themeMode)
+  suspend fun restore(value: UserPreferences, restoreAvatar: Boolean = true) {
+    context.dataStore.edit {
+      it[themeKey] = value.themeMode.storedValue
+      if (restoreAvatar) it[avatarKey] = ProfileAvatars.normalize(value.avatarId)
+    }
+  }
+
+  suspend fun setAvatar(id: String) {
+    require(id in ProfileAvatars.ids) { "Avatar no válido." }
+    context.dataStore.edit { it[avatarKey] = id }
+  }
 
   suspend fun setThemeMode(mode: ThemeMode) {
     context.dataStore.edit { it[themeKey] = mode.storedValue }

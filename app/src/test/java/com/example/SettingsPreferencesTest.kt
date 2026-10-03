@@ -37,6 +37,19 @@ class SettingsPreferencesTest {
     }
   }
 
+  @Test fun avatarBackupRoundTripAndLegacyMissingFieldAreCompatible() {
+    val snapshot = BackupSnapshot(emptyList(), emptyList(), UserPreferences(ThemeMode.DARK, "trainer_green"))
+    val text = AppBackup.encode(snapshot)
+    assertEquals(snapshot, AppBackup.decode(text))
+    val legacy = JSONObject(text)
+    legacy.getJSONObject("preferences").remove("avatar")
+    val restored = AppBackup.decode(legacy.toString())
+    assertFalse(restored.hasAvatarPreference)
+    assertEquals(ThemeMode.DARK, restored.preferences.themeMode)
+    legacy.getJSONObject("preferences").put("avatar", "future-avatar")
+    assertEquals(ProfileAvatars.ids.first(), AppBackup.decode(legacy.toString()).preferences.avatarId)
+  }
+
   @Test fun legacyBackupIgnoresLanguageAndMapsBlueWithoutDroppingCards() {
     val cards = listOf(com.example.data.local.InventoryCardEntity("A1-001", "Bulbasaur", "", "♦", 3, true))
     val snapshot = BackupSnapshot(cards, emptyList(), UserPreferences(ThemeMode.SYSTEM))

@@ -37,6 +37,23 @@ class ExportAndPreferencesTest {
     }
   }
 
+  @Test fun avatarPersistsAndLegacyRestorePreservesIt() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    val repository = UserPreferencesRepository(context)
+    repository.setThemeMode(ThemeMode.DARK)
+    repository.setAvatar("trainer_violet")
+    val reloaded = UserPreferencesRepository(context).userPreferencesFlow.first()
+    assertEquals("trainer_violet", reloaded.avatarId)
+    assertEquals(ThemeMode.DARK, reloaded.themeMode)
+    repository.restore(UserPreferences(ThemeMode.LIGHT), restoreAvatar = false)
+    assertEquals("trainer_violet", repository.userPreferencesFlow.first().avatarId)
+    assertEquals(ThemeMode.LIGHT, repository.userPreferencesFlow.first().themeMode)
+    repository.restore(UserPreferences(ThemeMode.SYSTEM, "trainer_teal"))
+    assertEquals("trainer_teal", repository.userPreferencesFlow.first().avatarId)
+    assertTrue(runCatching { repository.setAvatar("unknown-avatar") }.isFailure)
+    assertEquals("trainer_teal", repository.userPreferencesFlow.first().avatarId)
+  }
+
   @Test fun fileProviderServesQrPngAndRejectsUnrelatedPrivateFile() {
     val context = RuntimeEnvironment.getApplication()
     val file = File(context.cacheDir, "deck_qr/test.png").apply { parentFile!!.mkdirs(); writeBytes(byteArrayOf(1,2,3)) }

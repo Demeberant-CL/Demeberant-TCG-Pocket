@@ -130,6 +130,9 @@ fun CollectionScreen(
 
   // Preferences from DataStore
   val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
+  var showAvatarPicker by remember { mutableStateOf(false) }
+  if (showAvatarPicker) com.example.ui.components.AvatarPickerDialog(userPreferences.avatarId,
+    onSave = { viewModel.setProfileAvatar(it); showAvatarPicker = false }, onClose = { showAvatarPicker = false })
 
   // File Picker Launcher for CSV files
   val csvPickerLauncher = rememberLauncherForActivityResult(
@@ -223,16 +226,9 @@ fun CollectionScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(PocketBluePrimary)
-                .border(2.dp, PocketGold, CircleShape),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(Icons.Filled.Person, contentDescription = "Perfil", tint = Color.White, modifier = Modifier.size(22.dp))
-            }
+            com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
+              Modifier.size(48.dp).clip(CircleShape).clickable { showAvatarPicker = true }
+                .border(2.dp, PocketGold, CircleShape), "Cambiar avatar de perfil")
             Spacer(modifier = Modifier.width(10.dp))
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
