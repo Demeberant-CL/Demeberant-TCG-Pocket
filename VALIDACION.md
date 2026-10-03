@@ -211,3 +211,9 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Mejora envía reference separado de target; no relaja validación de IDs/cantidades/básicos/evoluciones/energías/20 cartas. Replacements vacío en creación/mejora.
 - Confirmación previa al envío y a reemplazar el borrador; sin consulta automática ni cambio de proveedor por fallo.
 - Prueba nueva de elegibilidad y separación referencia/objetivo. Pendiente CI y teléfono/API real.
+
+## Inicio y navegación (2026-10-03)
+- Inicio muestra colección/copias/mazos desde los flujos locales, avatar guardado, borrador abierto y conexión IA activa. Accesos a colección, biblioteca, editor, IA, meta y guía.
+- Barra de cinco destinos: Inicio/Colección/Mazos/IA/Más. Meta accesible desde Inicio y Más con vuelta al origen y botón Atrás. Tutoriales siguen aparte.
+- Entrar en Inicio no consulta IA ni actualiza torneos; solo lee caché local de meta. Navegar al editor conserva el borrador. Biblioteca seleccionada por acceso directo Mis mazos.
+- Pendiente compilación CI y revisión visual en teléfono.

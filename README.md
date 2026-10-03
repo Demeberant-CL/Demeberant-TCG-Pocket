@@ -135,7 +135,7 @@ su aceptación real requiere una nueva prueba en el juego.
 
 ## IA conectada (03-10-2026)
 
-Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el asistente, sin copiar consultas ni pegar JSON. Cada usuario configura su propia clave y modelo; Gemini es la selección inicial, sin garantía de cuota gratuita si habilita facturación. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cambiar proveedor vacía el campo de clave; Guardar reemplaza la conexión anterior.
+Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el asistente, sin copiar consultas ni pegar JSON. Cada usuario configura su propia clave y modelo; Gemini es la selección inicial, sin garantía de cuota gratuita si habilita facturación. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cada perfil conserva su clave y modelo. Cambiar proveedor prepara otra conexión; guardar un perfil existente lo actualiza sin borrar los demás.
 
 Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
 
@@ -150,7 +150,7 @@ El registro sigue usando una cola limitada; cuenta los eventos omitidos por satu
 No corrige la carga de adjuntos de ChatGPT ni observa errores internos del juego. Si el resumen no muestra fallos, no garantiza que todos los flujos funcionen. Persisten las limitaciones de proveedores reales, datos comunitarios y pruebas físicas descritas arriba.
 
 ### Conexiones y meta
-Guarda varias conexiones cifradas, selecciona un perfil y consulta los modelos disponibles desde Configurar IA.
+Guarda varias conexiones cifradas, selecciona un perfil y consulta los modelos disponibles desde IA → Conexiones.
 La conexión anterior se conserva como perfil legado. No se incluyen claves en respaldos de colección.
 Meta descarga una muestra pública de Limitless (máximo 12 torneos recientes, 30 días), conserva caché y muestra fecha/fuente.
 Adaptar a mi colección abre el asistente sin consulta automática; los IDs fuera del catálogo bloquean la adaptación.
@@ -161,3 +161,6 @@ Modelos y guías (2026-10-03): el listado aplica un filtro conservador de modelo
 
 
 Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador, recurso WebP incluido en el APK (sin descargas). Toca el avatar en Colección, elige y confirma Usar avatar; Cancelar conserva la elección previa. DataStore guarda un ID estable, cambiar tema no lo altera. Respaldo JSON incluye avatar; restaurar un respaldo antiguo sin ese campo conserva el avatar actual. IDs desconocidos vuelven al avatar predeterminado. Dos pruebas cubren persistencia/independencia del tema, restauración antigua/nueva y contenido del respaldo. La propuesta de rediseño completa es una referencia visual; este lote implementa el selector de avatares, no todo el rediseño. Verificación visual en teléfono pendiente. Atlas creado mediante generación de imagen con seis retratos originales en cuadrícula 3x2, convertido a WebP para reducir el APK.
+
+
+Inicio (2026-10-03): resumen local de colección, copias y mazos; accesos a la colección, biblioteca, editor, IA, meta y guía. Muestra el avatar y el perfil/proveedor/modelo activos sin consultar la API. El mazo abierto se puede continuar sin reemplazarlo. Barra Inicio/Colección/Mazos/IA/Más; Meta está en Inicio y Más y se actualiza solo con su botón. La fecha de la muestra guardada se presenta en la zona horaria del teléfono.

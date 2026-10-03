@@ -3,20 +3,17 @@ package com.example
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -29,17 +26,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.screens.CollectionScreen
-import com.example.ui.screens.DeckBuilderScreen
-import com.example.ui.screens.MetaDeckAnalyzerScreen
-import com.example.ui.screens.PackRecommenderScreen
-import com.example.ui.screens.ProbabilityCalculatorScreen
 import com.example.ui.theme.PocketAppTheme
-import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketSurface
 import com.example.ui.theme.PocketTextSecondary
 import com.example.ui.viewmodel.TcgViewModel
@@ -62,18 +52,25 @@ class MainActivity : ComponentActivity() {
       ) {
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
         var deckEditorRequest by rememberSaveable { mutableIntStateOf(0) }
+        var moreSection by rememberSaveable { mutableIntStateOf(-1) }
+        var metaReturnTab by rememberSaveable { mutableIntStateOf(0) }
+        BackHandler(enabled = selectedTabIndex == 5) { selectedTabIndex = metaReturnTab }
 
-        val labels = listOf("Colección", "Mazos", "Meta", "IA", "Más")
-        val icons = listOf(Icons.Filled.Collections, Icons.Filled.Style,
-          Icons.Filled.Insights, Icons.Filled.AutoAwesome, Icons.Filled.Menu)
+        val labels = listOf("Inicio", "Colección", "Mazos", "IA", "Más")
+        val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
+          Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
-                  selected = selectedTabIndex == index,
-                  onClick = { selectedTabIndex = index },
+                  selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
+                  onClick = {
+                    if (index == 2) deckEditorRequest = 0
+                    if (index == 4) moreSection = -1
+                    selectedTabIndex = index
+                  },
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp) },
                   colors = NavigationBarItemDefaults.colors(
@@ -91,11 +88,21 @@ class MainActivity : ComponentActivity() {
         ) { innerPadding ->
           val screenModifier = Modifier.padding(innerPadding)
           when (selectedTabIndex) {
-            0 -> CollectionScreen(viewModel, screenModifier)
-            1 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 }, editorRequest = deckEditorRequest)
-            2 -> com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { selectedTabIndex = 3 }, screenModifier)
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; selectedTabIndex = 1 }, screenModifier)
-            else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier)
+            0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
+              onCollection = { selectedTabIndex = 1 },
+              onDecks = { deckEditorRequest = 0; selectedTabIndex = 2 },
+              onEditor = { deckEditorRequest++; selectedTabIndex = 2 },
+              onAi = { selectedTabIndex = 3 }, onMeta = { metaReturnTab = 0; selectedTabIndex = 5 },
+              onGuide = { moreSection = 0; selectedTabIndex = 4 })
+            1 -> CollectionScreen(viewModel, screenModifier)
+            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 }, editorRequest = deckEditorRequest)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; selectedTabIndex = 2 }, screenModifier)
+            5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
+              androidx.compose.material3.TextButton(onClick = { selectedTabIndex = metaReturnTab }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
+              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { selectedTabIndex = 3 }, Modifier.weight(1f))
+            }
+            else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier,
+              initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; selectedTabIndex = 5 })
 
           }
         }
