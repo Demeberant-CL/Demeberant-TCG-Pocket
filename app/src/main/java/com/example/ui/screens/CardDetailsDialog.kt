@@ -23,7 +23,8 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
   var details by remember(item.card.id, language) { mutableStateOf<CardDetails?>(null) }
   var loading by remember { mutableStateOf(true) }
   var error by remember(item.card.id, language) { mutableStateOf<String?>(null) }
-  LaunchedEffect(item.card.id, language) {
+  var retry by remember(item.card.id, language) { mutableStateOf(0) }
+  LaunchedEffect(item.card.id, language, retry) {
     loading = true
     details = null
     error = null
@@ -43,7 +44,12 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
         label = { Text("Copias en mi colección") }, singleLine = true)
       TextButton(onClick = onWishlist) { Text(if (item.isWishlist) "Quitar de Deseos" else "Añadir a Deseos") }
       if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-      error?.let { Text(it) }
+      error?.let {
+        Text(it)
+        OutlinedButton(enabled = !loading, onClick = { loading = true; retry++ }) {
+          Text("Reintentar detalles")
+        }
+      }
       details?.let { value ->
         Text(value.source, style = MaterialTheme.typography.labelSmall)
         value.hp?.let { Text("PS: $it") }

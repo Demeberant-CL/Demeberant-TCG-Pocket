@@ -246,3 +246,8 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Inicio y Más pasan a una columna con letra ampliada o pantalla estrecha. Colección y selector de avatar adaptan columnas al tamaño de letra; biblioteca e IA separan encabezado y acción para evitar competir por ancho.
 - Controles del editor pueden envolver a otra fila; barra inferior admite más altura y etiquetas de hasta dos líneas. Botón de diagnóstico usa altura mínima, sin límite fijo de 38dp. No se limita el tamaño de letra del usuario.
 - Cambios de UI reversibles; se ejecuta la suite existente y lint/build. Pendiente comprobación visual real en ambos temas con letra ampliada; no se afirma revisión en dispositivo ni capturas renderizadas de Android.
+# Reintento de cartas
+
+- Las miniaturas pequeñas usan un botón de recarga con descripción accesible en lugar de un texto comprimido; las imágenes grandes conservan «Reintentar».
+- Los detalles permiten repetir una descarga fallida en la misma ventana. El reintento no reinicia la cantidad escrita ni cambia los datos de colección.
+- La petición sigue usando caché y los límites existentes; no se añaden consultas IA ni reintentos automáticos. Compilación, lint y suite existente mediante CI; disposición final pendiente de revisión en teléfono.

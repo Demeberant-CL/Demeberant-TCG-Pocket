@@ -2,6 +2,8 @@ package com.example.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,10 +24,14 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
   var failed by remember(candidates) { mutableStateOf(false) }
   var loading by remember(candidates) { mutableStateOf(true) }
   var retry by remember(candidates) { mutableStateOf(0) }
-  Box(modifier, contentAlignment = Alignment.Center) {
+  BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+    val compact = maxWidth < 100.dp || maxHeight < 120.dp
+    val retryImage: () -> Unit = { index = 0; failed = false; loading = true; retry++ }
     if (failed) Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
       Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { unavailable() }
-      TextButton(onClick = { index = 0; failed = false; loading = true; retry++ }, contentPadding = PaddingValues(2.dp)) {
+      if (compact) IconButton(onClick = retryImage) {
+        Icon(Icons.Default.Refresh, contentDescription = "Reintentar imagen de $name")
+      } else TextButton(onClick = retryImage, contentPadding = PaddingValues(2.dp)) {
         Text("Reintentar", style = MaterialTheme.typography.labelSmall)
       }
     } else key(retry) {
