@@ -142,4 +142,52 @@ class ExportAndPreferencesTest {
     assertFalse(content.contains("SECRET_API_TOKEN"))
     assertNotNull(send.clipData)
   }
+  @Test fun diagnosticZipContainsReadableUtf8LogsAndBriefSummary() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    ErrorLogManager.init(context)
+    ErrorLogManager.event("QR_EXPORT", "ZIP_CHECK", IllegalArgumentException("PRIVATE_ZIP_QUERY token=SECRET_ZIP_TOKEN"))
+    val destination = File(context.cacheDir, "saved-diagnostic.zip")
+    ErrorLogManager.saveDiagnosticZip(context, android.net.Uri.fromFile(destination))
+    java.util.zip.ZipFile(destination).use { zip ->
+      assertEquals(setOf("diagnostico.txt", "resumen.txt"), zip.entries().asSequence().map { it.name }.toSet())
+      val full = zip.getInputStream(zip.getEntry("diagnostico.txt")).bufferedReader(Charsets.UTF_8).use { it.readText() }
+      val brief = zip.getInputStream(zip.getEntry("resumen.txt")).bufferedReader(Charsets.UTF_8).use { it.readText() }
+      assertTrue(full.contains("ZIP_CHECK"))
+      assertTrue(brief.contains("DIAGNÓSTICO BREVE"))
+      assertTrue(brief.length <= com.example.data.util.DiagnosticSummary.MAX_CHARS)
+      assertFalse((full + brief).contains("PRIVATE_ZIP_QUERY"))
+      assertFalse((full + brief).contains("SECRET_ZIP_TOKEN"))
+    }
+    destination.delete()
+    Unit
+  }
+
+  @Test fun diagnosticZipShareGrantsReadAccessToCompressedFile() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    ErrorLogManager.init(context)
+    ErrorLogManager.exportErrorLogs(context, compressed = true)
+    val shadow = Shadows.shadowOf(context)
+    var chooser: Intent? = null
+    repeat(200) {
+      ShadowLooper.idleMainLooper()
+      if (chooser == null) chooser = shadow.nextStartedActivity
+      if (chooser == null) Thread.sleep(10)
+    }
+    assertNotNull(chooser)
+    @Suppress("DEPRECATION")
+    val send = chooser!!.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+    assertEquals("application/zip", send.type)
+    assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+    assertNotNull(send.clipData)
+    @Suppress("DEPRECATION")
+    val uri = send.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)!!
+    java.util.zip.ZipInputStream(context.contentResolver.openInputStream(uri)!!).use { zip ->
+      assertEquals("diagnostico.txt", zip.nextEntry.name)
+      zip.closeEntry()
+      assertEquals("resumen.txt", zip.nextEntry.name)
+      zip.closeEntry()
+      assertNull(zip.nextEntry)
+    }
+  }
+
 }

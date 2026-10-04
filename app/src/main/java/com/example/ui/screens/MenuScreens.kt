@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Alignment
 
@@ -181,10 +182,12 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   initialSection: Int = -1, onMeta: () -> Unit = {}) {
   var section by rememberSaveable(initialSection) { mutableIntStateOf(initialSection) }
   BackHandler(enabled = section >= 0) { section = -1 }
-  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública")
+  var showDiagnostic by remember { mutableStateOf(false) }
+  if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
+  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item {
@@ -197,7 +200,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
       items((labels.size + 1) / 2) { row ->
         AdaptiveActionRow { cardModifier ->
           for (n in row * 2 until minOf(row * 2 + 2, labels.size)) {
-            ElevatedCard(onClick = { if (n == 6) onMeta() else section = n }, modifier = cardModifier, shape = RoundedCornerShape(24.dp)) {
+            ElevatedCard(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n }, modifier = cardModifier, shape = RoundedCornerShape(24.dp)) {
               Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 112.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icons[n], contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))

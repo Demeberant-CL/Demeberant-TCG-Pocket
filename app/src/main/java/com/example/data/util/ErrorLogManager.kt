@@ -121,17 +121,38 @@ object ErrorLogManager {
     output.bufferedWriter(Charsets.UTF_8).use { it.write(report) }
   }
 
-  fun exportErrorLogs(context: Context) {
+  suspend fun saveDiagnosticZip(context: Context, uri: android.net.Uri) {
+    val full = readLogs(context)
+    val brief = briefReport(context)
+    withContext(Dispatchers.IO) {
+      val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("Destino no disponible.")
+      writeDiagnosticZip(output, full, brief)
+    }
+  }
+
+  private fun writeDiagnosticZip(output: java.io.OutputStream, full: String, brief: String) {
+    java.util.zip.ZipOutputStream(output).use { zip ->
+      for ((name, text) in listOf("diagnostico.txt" to full, "resumen.txt" to brief)) {
+        zip.putNextEntry(java.util.zip.ZipEntry(name))
+        zip.write(text.toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+      }
+    }
+  }
+
+  fun exportErrorLogs(context: Context, compressed: Boolean = false) {
     scope.launch {
       try {
         val content = readLogs(context)
         val directory = File(context.cacheDir, "log_export").apply { mkdirs() }
-        directory.listFiles()?.forEach { it.delete() }
-        val file = File(directory, "error_log_${LocalDate.now()}.txt").apply { writeText(content) }
+        directory.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 86_400_000L }?.forEach { it.delete() }
+        val file = File(directory, "error_log_${LocalDate.now()}_${System.nanoTime()}.${if (compressed) "zip" else "txt"}")
+        if (compressed) writeDiagnosticZip(file.outputStream(), content, briefReport(context))
+        else file.writeText(content, Charsets.UTF_8)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         withContext(Dispatchers.Main) {
           val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"; putExtra(Intent.EXTRA_STREAM, uri)
+            type = if (compressed) "application/zip" else "text/plain"; putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newRawUri("Diagnostic log", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
           }
@@ -139,7 +160,12 @@ object ErrorLogManager {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
       } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { event("LOG_EXPORT", "Export failed", e) }
+      catch (e: Exception) {
+        event("LOG_EXPORT", "Export failed", e)
+        withContext(Dispatchers.Main) {
+          android.widget.Toast.makeText(context, "No se pudo compartir. Guarda el ZIP o copia el resumen.", android.widget.Toast.LENGTH_LONG).show()
+        }
+      }
     }
   }
 }

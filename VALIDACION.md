@@ -251,3 +251,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Las miniaturas pequeñas usan un botón de recarga con descripción accesible en lugar de un texto comprimido; las imágenes grandes conservan «Reintentar».
 - Los detalles permiten repetir una descarga fallida en la misma ventana. El reintento no reinicia la cantidad escrita ni cambia los datos de colección.
 - La petición sigue usando caché y los límites existentes; no se añaden consultas IA ni reintentos automáticos. Compilación, lint y suite existente mediante CI; disposición final pendiente de revisión en teléfono.
+
+## Diagnóstico ZIP y acceso directo
+
+- Más → Diagnóstico abre el resumen para copiar, compartir texto, guardar TXT breve o guardar/compartir ZIP completo. ZIP incluye diagnostico.txt y resumen.txt, UTF-8, sin alterar los registros originales. También accesible desde Ajustes.
+- Contenido de la ventana desplazable para texto grande; guía actualizada. TXT completo se conserva como alternativa. No se afirma corregido el bloqueo de adjuntos de ChatGPT: se proporciona el formato ZIP que el usuario pudo enviar.
+- Prueba nueva abre el ZIP guardado, verifica nombres, texto UTF-8, límite de resumen y ausencia de mensaje privado de excepción. Suite Android/lint/compilación y firma mediante CI.
+- Archivo recibido de 2.459.726 bytes, 11.277 eventos históricos (02–04 octubre UTC). Desde 04 octubre: HTTP 404=156, 503=2, 200=56 y HTTP_FAIL=20; última sesión a las 12:35 UTC contiene 7 HTTP 404. No nuevos QR_EXPORT/AI_EXTERNAL_IMPORT desde 04 octubre. No se deduce éxito universal ni causa exacta de IOException; mensajes privados de excepciones no se registran.

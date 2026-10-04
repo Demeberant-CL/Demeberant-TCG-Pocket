@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
@@ -41,9 +43,18 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
       finally { saving = false }
     }
   }
+  val saveZip = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+    if (uri != null) scope.launch {
+      saving = true
+      try { ErrorLogManager.saveDiagnosticZip(context, uri); message = "Diagnóstico ZIP guardado." }
+      catch (e: CancellationException) { throw e }
+      catch (_: Exception) { message = "No se pudo guardar el ZIP. Prueba otra carpeta o copia el resumen." }
+      finally { saving = false }
+    }
+  }
   AlertDialog(onDismissRequest = onDismiss, title = { Text("Diagnóstico para copiar") },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Copia este resumen y pégalo como mensaje aquí. No necesitas adjuntar un archivo. Añade qué estabas haciendo cuando falló.")
         if (report == null && message == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         report?.let { text ->
@@ -56,6 +67,12 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
           }) { Text("Compartir texto sin archivo") }
           OutlinedButton(enabled = !saving, onClick = { save.launch("resumen-diagnostico-tcg-pocket.txt") }) { Text("Guardar resumen TXT") }
         }
+        HorizontalDivider()
+        Text("Registro completo", style = MaterialTheme.typography.titleSmall)
+        Text("El ZIP incluye el registro técnico y el resumen. Úsalo si el chat no acepta el TXT.", style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(enabled = !saving, onClick = { saveZip.launch("diagnostico-tcg-pocket.zip") }) { Text("Guardar diagnóstico ZIP") }
+        OutlinedButton(enabled = !saving, onClick = { ErrorLogManager.exportErrorLogs(context, compressed = true) }) { Text("Compartir diagnóstico ZIP") }
+        if (saving) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it) }
       }
     }, confirmButton = {
