@@ -37,6 +37,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val message by main.csvStatusMessage.collectAsStateWithLifecycle()
   var chooseAvatar by remember { mutableStateOf(false) }
   val owned = remember(inventory) { inventory.count { it.ownedCount > 0 } }
+  val catalogIds = remember(inventory) { inventory.mapTo(hashSetOf()) { it.card.id } }
   val copies = remember(inventory) { inventory.sumOf { it.ownedCount } }
   val progress = if (inventory.isEmpty()) 0f else owned.toFloat() / inventory.size
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -80,7 +81,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       val refs = remember(saved.cardListSerialized) {
         runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()
       }
-      val canOpen = refs != null && refs.all { ref -> inventory.any { it.card.id == ref.first } }
+      val canOpen = refs != null && refs.all { ref -> ref.first in catalogIds }
       ElevatedCard(onClick = { main.loadSavedDeck(saved); onEditor() }, enabled = canOpen,
         modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp),

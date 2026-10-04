@@ -323,7 +323,7 @@ fun CollectionScreen(
         PocketPillChip(
           label = "Todas",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.ALL,
-          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          activeColor = MaterialTheme.colorScheme.primaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.ALL) }
         )
       }
@@ -331,7 +331,7 @@ fun CollectionScreen(
         PocketPillChip(
           label = "Tengo ($totalOwned)",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.OWNED,
-          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          activeColor = MaterialTheme.colorScheme.primaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.OWNED) }
         )
       }
@@ -339,7 +339,7 @@ fun CollectionScreen(
         PocketPillChip(
           label = "Faltan (${totalCatalog - totalOwned})",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.MISSING,
-          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          activeColor = MaterialTheme.colorScheme.primaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.MISSING) }
         )
       }
@@ -347,13 +347,13 @@ fun CollectionScreen(
         PocketPillChip(
           label = "Deseos",
           isSelected = collectionFilter == com.example.data.util.CollectionFilter.FAVORITES,
-          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          activeColor = MaterialTheme.colorScheme.primaryContainer,
           onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
         )
       }
       item {
         PocketPillChip("Repetidas", collectionFilter == com.example.data.util.CollectionFilter.REPEATED,
-          MaterialTheme.colorScheme.secondaryContainer) {
+          MaterialTheme.colorScheme.primaryContainer) {
           viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.REPEATED)
         }
       }
@@ -580,7 +580,7 @@ private fun PocketPillChip(
 ) {
   val bg = if (isSelected) activeColor else PocketBackground
   val border = if (isSelected) activeColor else PocketBorder
-  val textColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else PocketTextSecondary
+  val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else PocketTextSecondary
 
   Box(
     modifier = Modifier
@@ -589,7 +589,8 @@ private fun PocketPillChip(
       .background(bg)
       .border(1.dp, border, RoundedCornerShape(10.dp))
       .clickable { onClick() }
-      .padding(horizontal = 12.dp, vertical = 8.dp)
+      .heightIn(min = 48.dp)
+      .padding(horizontal = 12.dp, vertical = 10.dp)
   ) {
     Text(
       text = label,
