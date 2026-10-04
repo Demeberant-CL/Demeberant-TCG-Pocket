@@ -33,9 +33,14 @@ class CollectionRegressionTest {
       "https://assets.tcgdex.net/es/tcgp/B1/132/low.webp",
       "https://assets.tcgdex.net/en/tcgp/B1/132/high.webp",
       "https://assets.tcgdex.net/en/tcgp/B1/132/low.webp"), urls.take(4))
-    assertEquals(2, TcgdexHelper.imageCandidates("PROMO-B-1", "en").size)
+    assertEquals(3, TcgdexHelper.imageCandidates("PROMO-B-1", "en").size)
     assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").take(2).all { "/P-B/001/" in it })
-    assertTrue(TcgdexHelper.imageCandidates("PROMO-B-1", "es").last().endsWith("/PROMO-B/1.webp"))
+    val promo = TcgdexHelper.imageCandidates("PROMO-B-1", "es")
+    assertTrue(promo[2].endsWith("/thumbnails/PROMO-B/1.webp"))
+    assertTrue(promo.last().endsWith("/cards-by-set/PROMO-B/1.webp"))
+    val detail = TcgdexHelper.imageCandidates("B1-132", "es", true)
+    assertTrue(detail[4].endsWith("/cards-by-set/B1/132.webp"))
+    assertTrue(detail[5].endsWith("/thumbnails/B1/132.webp"))
     assertEquals(2, TcgdexHelper.imageCandidates("PROMO-B-999999", "es").size)
     assertTrue(com.example.data.network.PocketHttp.imageClient.retryOnConnectionFailure)
     assertFalse(com.example.data.network.PocketHttp.client.retryOnConnectionFailure)

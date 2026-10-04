@@ -2,6 +2,8 @@ package com.example.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
@@ -182,15 +184,13 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
     }
   }
   if (confirmNew) AlertDialog(onDismissRequest = { confirmNew = false }, title = { Text("Empezar un mazo vacío") },
-    text = { Text("Reemplaza el borrador abierto. Los mazos guardados y la colección se conservan.") },
+    text = { Text("Reemplaza el borrador abierto. Los mazos guardados y la colección se conservan.", modifier = Modifier.verticalScroll(rememberScrollState())) },
     confirmButton = { TextButton(onClick = { viewModel.newManualDeck(); adding = true; confirmNew = false }) { Text("Crear vacío") } },
     dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("Cancelar") } })
   if (create) AlertDialog(onDismissRequest = { create = false }, title = { Text("Crear con mis cartas") },
-    text = { Column {
+    text = { Column(Modifier.verticalScroll(rememberScrollState())) {
       Text("Elige un tipo. Se usará tu colección actual, con hasta dos copias por nombre y las preevoluciones conocidas. Reemplaza el borrador abierto, no los mazos guardados.")
-      LazyColumn(Modifier.heightIn(max = 280.dp)) {
-        items(DeckCodec.energyNames) { type -> FilterChip(selected = type == chosenType, onClick = { chosenType = type }, label = { Text(type) }) }
-      }
+      DeckCodec.energyNames.forEach { type -> FilterChip(selected = type == chosenType, onClick = { chosenType = type }, label = { Text(type) }) }
       Text("Es un punto de partida local, no IA. Si faltan cartas quedará incompleto.")
     } }, confirmButton = { TextButton(onClick = { viewModel.createWithMyCards(chosenType); adding = false; create = false }) { Text("Preparar borrador") } },
     dismissButton = { TextButton(onClick = { create = false }) { Text("Cancelar") } })

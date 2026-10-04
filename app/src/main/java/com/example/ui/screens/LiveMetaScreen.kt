@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -37,6 +39,9 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
       snapshot?.let { Text("Limitless · ${runCatching { java.time.Instant.parse(it.updated).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) }.getOrDefault(it.updated)}\n${it.tournaments} torneos · ${it.players} listas válidas · últimos 30 días (hasta 12 torneos)") }
         ?: Text("Pulsa Actualizar meta para descargar resultados públicos.")
       Text("Muestra parcial de torneos; no representa todas las partidas del juego. Los porcentajes se calculan, no los genera la IA.", style = MaterialTheme.typography.bodySmall)
+      snapshot?.takeIf { it.skipped > 0 }?.let {
+        Text("${it.skipped} torneos o listas excluidos por reglas especiales o datos incompletos.", style = MaterialTheme.typography.bodySmall)
+      }
     }
     items(snapshot?.decks ?: emptyList()) { d ->
       val unknown = d.cards.keys.filter { it !in cards }
@@ -55,7 +60,7 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
     }
   }
   selected?.let { d -> AlertDialog(onDismissRequest = { selected = null }, title = { Text("Adaptar ${d.name}") },
-    text = { Text("Abrirá la lista de ejemplo como borrador y el asistente. No guarda ni consulta IA automáticamente. Puede reemplazar el borrador abierto.") },
+    text = { Text("Abrirá la lista de ejemplo como borrador y el asistente. No guarda ni consulta IA automáticamente. Puede reemplazar el borrador abierto.", modifier = Modifier.verticalScroll(rememberScrollState())) },
     confirmButton = { TextButton(onClick = {
       val entries = d.cards.map { (id, count) -> DeckCardEntry(cards.getValue(id).card, count) }
       main.openTournamentDeck(GeneratedDeck(d.name, "Limitless", "Lista de ejemplo: https://play.limitlesstcg.com/tournament/${d.tournamentId}", entries, 20, energyTypes = d.energies))

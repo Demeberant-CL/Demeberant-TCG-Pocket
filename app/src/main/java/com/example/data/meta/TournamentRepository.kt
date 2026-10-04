@@ -17,7 +17,8 @@ data class MetaSnapshot(val updated: String, val tournaments: Int, val players: 
 
 /** Public tournament data only. Never sends collection or AI credentials to Limitless. */
 class TournamentRepository(context: Context, private val client: OkHttpClient = OkHttpClient.Builder()
-  .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build()) {
+  .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build(),
+  private val refreshTimeoutMillis: Long = 90_000L) {
   private val cache = AtomicFile(File(context.filesDir, "pocket-meta.json"))
   suspend fun cached(): MetaSnapshot? = withContext(Dispatchers.IO) {
     if (!cache.baseFile.exists() && !File(cache.baseFile.path + ".bak").exists()) null
@@ -29,18 +30,26 @@ class TournamentRepository(context: Context, private val client: OkHttpClient = 
       return r.body!!.byteStream().use { it.readBytesBounded(2000000).toString(Charsets.UTF_8) }
     }
   }
-  suspend fun refresh(): MetaSnapshot = withContext(Dispatchers.IO) {
+  suspend fun refresh(onProgress: (Int, Int) -> Unit = { _, _ -> }): MetaSnapshot =
+    withTimeoutOrNull(refreshTimeoutMillis) { fetchSnapshot(onProgress) }
+      ?: throw java.io.IOException("La actualización tardó demasiado. Se conserva el meta guardado; vuelve a intentarlo cuando mejore la conexión.")
+
+  private suspend fun fetchSnapshot(onProgress: (Int, Int) -> Unit): MetaSnapshot = withContext(Dispatchers.IO) {
     val tournaments = JSONArray(get("tournaments?game=POCKET&limit=12"))
+    val limit = minOf(tournaments.length(), 12)
     val groups = linkedMapOf<String, MetaDeck>(); var included = 0; var players = 0; var skipped = 0
     val cutoff = Instant.now().minusSeconds(30L * 86400)
-    for (n in 0 until tournaments.length()) {
+    for (n in 0 until limit) {
       ensureActive()
+      onProgress(n + 1, limit)
       val t = tournaments.getJSONObject(n)
+      if (t.optString("game") != "POCKET") { skipped++; continue }
       val date = runCatching { Instant.parse(t.getString("date")) }.getOrNull() ?: continue
       if (date.isBefore(cutoff) || date.isAfter(Instant.now())) continue
       val id = t.getString("id"); require(id.matches(Regex("[a-zA-Z0-9]{1,60}")))
       val details = JSONObject(get("tournaments/$id/details"))
-      if (!details.optBoolean("isPublic") || !details.optBoolean("decklists") ||
+      if (details.optString("game") != "POCKET" || details.optString("id") != id ||
+        !details.optBoolean("isPublic") || !details.optBoolean("decklists") ||
         details.optJSONArray("specialRules")?.length()?.let { it > 0 } == true ||
         details.optJSONArray("bannedCards")?.length()?.let { it > 0 } == true ||
         details.optString("format") !in setOf("STANDARD", "null", "")) { skipped++; continue }
@@ -73,6 +82,7 @@ class TournamentRepository(context: Context, private val client: OkHttpClient = 
       delay(250)
     }
     require(players > 0) { "No hay resultados completos recientes. Se conserva el meta guardado." }
+    ensureActive()
     val snapshot = MetaSnapshot(Instant.now().toString(), included, players, groups.values.sortedByDescending { it.count }, skipped)
     val bytes = encode(snapshot).toString().toByteArray(Charsets.UTF_8)
     val out = cache.startWrite()

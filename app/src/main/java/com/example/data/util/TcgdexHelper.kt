@@ -2,6 +2,7 @@ package com.example.data.util
 
 object TcgdexHelper {
   @Volatile private var communityImages: Map<String, String> = emptyMap()
+  @Volatile private var communityThumbnails: Map<String, String> = emptyMap()
 
   fun loadImageIndex(context: android.content.Context) {
     val root = org.json.JSONObject(context.assets.open("pocket-image-index.json").bufferedReader().use { it.readText() })
@@ -16,6 +17,10 @@ object TcgdexHelper {
         "https://cdn.jsdelivr.net/gh/flibustier/pokemon-tcg-exchange@$revision/public/images/cards-by-set/$path"
     }
     communityImages = images
+    // All indexed paths have a thumbnail in the pinned revision; do not guess for future indices.
+    communityThumbnails = if (root.optString("thumbnailRevision") == revision) images.mapValues { (_, url) ->
+      url.replace("/cards-by-set/", "/cards-by-set/thumbnails/")
+    } else emptyMap()
   }
 
   fun imageCandidates(id: String, language: String = "es", highResolution: Boolean = false): List<String> {
@@ -23,7 +28,10 @@ object TcgdexHelper {
     val languages = listOf(primary, getCardImageUrl(id, "en")).distinct()
     return languages.flatMap { low ->
       if (highResolution) listOf(low.replace("low.webp", "high.webp"), low) else listOf(low)
-    } + listOfNotNull(communityImages[CardId.normalize(id)])
+    } + CardId.normalize(id).let { key ->
+      if (highResolution) listOfNotNull(communityImages[key], communityThumbnails[key])
+      else listOfNotNull(communityThumbnails[key], communityImages[key])
+    }
   }
 
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {

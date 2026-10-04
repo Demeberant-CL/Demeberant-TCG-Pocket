@@ -38,7 +38,20 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun refreshMeta() = task("META_FETCH") {
     metaPreferences.edit().putLong("last-attempt", System.currentTimeMillis()).apply()
-    metaSnapshot.value = tournamentRepository.refresh()
+    message.value = "Consultando torneos… Puedes cancelar y conservar la muestra guardada."
+    try {
+      metaSnapshot.value = tournamentRepository.refresh { current, total ->
+        message.value = "Revisando torneo $current de $total… Puedes cancelar."
+      }
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) {
+      ErrorLogManager.event("META_FETCH", "Tournament refresh failed", e)
+      message.value = when (e) {
+        is java.io.IOException -> "No se pudo completar la descarga. Revisa la conexión y vuelve a intentarlo. Se conserva el meta guardado."
+        else -> "No se obtuvieron resultados completos válidos. Se conserva el meta guardado."
+      }
+      return@task
+    }
     message.value = "Resultados actualizados desde Limitless."
   }
   private val connectionStore = AiConnectionStore(application)
