@@ -54,7 +54,14 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 
 @Composable
 fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
-  var section by rememberSaveable(editorRequest) { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
+  var section by rememberSaveable { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
+  var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
+  LaunchedEffect(editorRequest) {
+    if (appliedEditorRequest != editorRequest) {
+      section = if (editorRequest > 0) 1 else 0
+      appliedEditorRequest = editorRequest
+    }
+  }
   BackHandler(enabled = section != 0) { section = 0 }
   Column(modifier.fillMaxSize()) {
     MenuChoices(listOf("Mis mazos", "Crear y editar", "Plantillas A1"), section) { section = it }
@@ -182,7 +189,14 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
 @Composable
 fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier,
   initialSection: Int = -1, onMeta: () -> Unit = {}) {
-  var section by rememberSaveable(initialSection) { mutableIntStateOf(initialSection) }
+  var section by rememberSaveable { mutableIntStateOf(initialSection) }
+  var appliedInitialSection by rememberSaveable { mutableIntStateOf(initialSection) }
+  LaunchedEffect(initialSection) {
+    if (appliedInitialSection != initialSection) {
+      section = initialSection
+      appliedInitialSection = initialSection
+    }
+  }
   BackHandler(enabled = section >= 0) { section = -1 }
   var showDiagnostic by remember { mutableStateOf(false) }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
