@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Demeberant TCG Pocket</string>
+    <string name="settings_title">Configuración</string>
+    <string name="settings_theme">Tema visual</string>
+    <string name="theme_light">Modo Claro</string>
+    <string name="theme_dark">Modo Oscuro</string>
+    <string name="theme_system">Automático (Sistema)</string>
+    <string name="action_done">Listo</string>
+    <string name="action_close">Cerrar</string>
 </resources>

@@ -66,8 +66,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
@@ -81,7 +79,9 @@ import com.example.ui.viewmodel.TcgViewModel
 @Composable
 fun DeckBuilderScreen(
   viewModel: TcgViewModel,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  savedOnly: Boolean = false,
+  onOpenSavedDeck: () -> Unit = {}
 ) {
   val context = LocalContext.current
   val generatedDeck by viewModel.generatedDeck.collectAsStateWithLifecycle()
@@ -100,6 +100,7 @@ fun DeckBuilderScreen(
       .padding(14.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
+    if (!savedOnly) {
     // Top Prompt & Generation Card
     item {
       Card(
@@ -216,7 +217,7 @@ fun DeckBuilderScreen(
             if (isGenerating) {
               CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
               Spacer(modifier = Modifier.width(8.dp))
-              Text("Generando baraja legal...", fontSize = 12.sp)
+              Text("Generando propuesta...", fontSize = 12.sp)
             } else {
               Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
@@ -275,6 +276,9 @@ fun DeckBuilderScreen(
               }
             }
 
+            deck.validationWarnings.forEach { warning ->
+              Text(warning, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
             Spacer(modifier = Modifier.height(10.dp))
 
             // Strategy box
@@ -282,8 +286,8 @@ fun DeckBuilderScreen(
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFF8FAFC))
-                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(10.dp))
                 .padding(10.dp)
             ) {
               Row(verticalAlignment = Alignment.Top) {
@@ -309,9 +313,8 @@ fun DeckBuilderScreen(
                     .border(1.dp, PocketBorder, RoundedCornerShape(8.dp))
                     .background(PocketSurface)
                 ) {
-                  AsyncImage(
-                    model = TcgdexHelper.getCardImageUrl(entry.card.id),
-                    contentDescription = entry.card.name,
+                  com.example.ui.components.PocketCardImage(
+                    id = entry.card.id, name = entry.card.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                   )
@@ -384,7 +387,8 @@ fun DeckBuilderScreen(
                   .height(38.dp)
                   .testTag("save_deck_db_btn"),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                enabled = deck.validationWarnings.isEmpty()
               ) {
                 Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -435,8 +439,9 @@ fun DeckBuilderScreen(
       }
     }
 
+    }
     // Saved Decks in Room DB Section
-    item {
+    if (savedOnly) item {
       Card(
         modifier = Modifier
           .fillMaxWidth()
@@ -451,7 +456,7 @@ fun DeckBuilderScreen(
             Icon(Icons.Filled.Bookmark, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Mazos Guardados Localmente (${savedDecks.size})",
+              text = "Mis mazos (${savedDecks.size})",
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold,
               color = PocketTextPrimary
@@ -462,7 +467,7 @@ fun DeckBuilderScreen(
 
           if (savedDecks.isEmpty()) {
             Text(
-              text = "No tienes mazos guardados en tu base de datos local. Genera uno y pulsa 'Guardar'.",
+              text = "No tienes mazos guardados. Abre Crear para preparar uno y guardarlo.",
               fontSize = 11.sp,
               color = PocketTextSecondary
             )
@@ -486,7 +491,7 @@ fun DeckBuilderScreen(
 
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                      onClick = { viewModel.loadSavedDeck(saved) },
+                      onClick = { viewModel.loadSavedDeck(saved); onOpenSavedDeck() },
                       modifier = Modifier.size(32.dp)
                     ) {
                       Icon(Icons.Filled.PlayArrow, contentDescription = "Cargar mazo", tint = PocketBluePrimary, modifier = Modifier.size(18.dp))

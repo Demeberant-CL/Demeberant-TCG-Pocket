@@ -12,5 +12,11 @@ data class PokemonCard(
   val isEx: Boolean = false,
   val isFullArt: Boolean = false,
   val isSecretRare: Boolean = false,
-  val isImmersive: Boolean = false
+  val isImmersive: Boolean = false,
+  val rulesName: String = name,
+  val category: String = "unknown",
+  val stage: String = "unknown",
+  val evolvesFrom: String = "",
+  val packNames: List<String> = emptyList(),
+  val source: String = "Datos heredados"
 )

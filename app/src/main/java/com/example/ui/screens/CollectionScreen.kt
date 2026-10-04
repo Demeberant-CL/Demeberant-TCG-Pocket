@@ -8,6 +8,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,12 +38,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,12 +55,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,7 +74,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.model.BoosterPack
+import com.example.data.util.AppBackup
+import com.example.data.util.BackupSnapshot
+import com.example.data.util.readBytesBounded
 import com.example.data.util.ErrorLogManager
 import com.example.ui.components.CardItemView
 import com.example.ui.theme.PocketBackground
@@ -85,6 +90,9 @@ import com.example.ui.theme.PocketTextMuted
 import com.example.ui.theme.PocketTextPrimary
 import com.example.ui.theme.PocketTextSecondary
 import com.example.ui.viewmodel.TcgViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun CollectionScreen(
@@ -92,37 +100,99 @@ fun CollectionScreen(
   modifier: Modifier = Modifier
 ) {
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
   val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-  val selectedPack by viewModel.selectedPackFilter.collectAsStateWithLifecycle()
-  val onlyWishlist by viewModel.onlyWishlistFilter.collectAsStateWithLifecycle()
-  val onlyMissing by viewModel.onlyMissingFilter.collectAsStateWithLifecycle()
+  val collectionFilter by viewModel.collectionFilter.collectAsStateWithLifecycle()
+  val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
+  val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
+  var showFiltersDialog by remember { mutableStateOf(false) }
+  var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
+  var selectedCardId by remember { mutableStateOf<String?>(null) }
+  var pendingRestore by remember { mutableStateOf<BackupSnapshot?>(null) }
+  var pendingBackup by remember { mutableStateOf<String?>(null) }
   var showPasteDialog by remember { mutableStateOf(false) }
   var showSettingsDialog by remember { mutableStateOf(false) }
+  var showDiagnosticReport by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
+
+  val diagnosticSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+    if (uri != null) scope.launch {
+      try { ErrorLogManager.saveLogs(context, uri); Toast.makeText(context, "Diagnóstico TXT guardado.", Toast.LENGTH_LONG).show() }
+      catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) {
+        ErrorLogManager.event("LOG_SAVE", "Diagnostic save failed", e)
+        Toast.makeText(context, "No se pudo guardar el diagnóstico. Prueba otra carpeta.", Toast.LENGTH_LONG).show()
+      }
+    }
+  }
 
   // Preferences from DataStore
   val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
+  var showAvatarPicker by remember { mutableStateOf(false) }
+  if (showAvatarPicker) com.example.ui.components.AvatarPickerDialog(userPreferences.avatarId,
+    onSave = { viewModel.setProfileAvatar(it); showAvatarPicker = false }, onClose = { showAvatarPicker = false })
 
   // File Picker Launcher for CSV files
   val csvPickerLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
   ) { uri: Uri? ->
-    if (uri != null) {
+    if (uri != null) scope.launch {
       try {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val text = inputStream?.bufferedReader()?.use { it.readText() }
-        if (!text.isNullOrBlank()) {
-          viewModel.importCsv(text)
-        } else {
-          Toast.makeText(context, "El archivo CSV está vacío.", Toast.LENGTH_SHORT).show()
+        val text = withContext(Dispatchers.IO) {
+          context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
         }
+        if (!text.isNullOrBlank()) viewModel.importCsv(text)
+        else Toast.makeText(context, "El archivo CSV está vacío.", Toast.LENGTH_SHORT).show()
       } catch (e: Exception) {
         Toast.makeText(context, "Error al leer archivo: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
       }
+    }
+  }
+
+  val csvExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+    if (uri != null) scope.launch {
+      try {
+        val content = viewModel.generateCsvContent()
+        withContext(Dispatchers.IO) {
+          val output = context.contentResolver.openOutputStream(uri)
+            ?: error("No se pudo abrir el destino.")
+          output.bufferedWriter().use { it.write(content) }
+        }
+        Toast.makeText(context, "CSV guardado.", Toast.LENGTH_SHORT).show()
+      } catch (e: Exception) {
+        Toast.makeText(context, "Error al exportar: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+      }
+    }
+  }
+
+  val backupExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    if (uri == null) pendingBackup = null else scope.launch {
+      try {
+        val content = pendingBackup ?: error("Respaldo no preparado.")
+        withContext(Dispatchers.IO) {
+          val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("No se pudo abrir el destino.")
+          output.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+        }
+        Toast.makeText(context, "Respaldo completo guardado.", Toast.LENGTH_LONG).show()
+      } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) { Toast.makeText(context, "Error al guardar: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
+      finally { pendingBackup = null }
+    }
+  }
+  val backupImport = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    if (uri != null) scope.launch {
+      try {
+        pendingRestore = withContext(Dispatchers.IO) {
+          val text = context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
+            ?: error("No se pudo abrir el archivo.")
+          AppBackup.decode(text)
+        }
+      } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+      catch (e: Exception) { Toast.makeText(context, "Respaldo rechazado: ${e.localizedMessage}", Toast.LENGTH_LONG).show() }
     }
   }
 
@@ -143,170 +213,34 @@ fun CollectionScreen(
     Card(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 14.dp, vertical = 10.dp)
-        .shadow(3.dp, shape = RoundedCornerShape(18.dp), clip = false)
+        .padding(horizontal = 12.dp, vertical = 8.dp)
+        .shadow(3.dp, shape = RoundedCornerShape(10.dp), clip = false)
         .testTag("collection_stats_card"),
-      shape = RoundedCornerShape(18.dp),
+      shape = RoundedCornerShape(10.dp),
       colors = CardDefaults.cardColors(containerColor = PocketSurface),
       border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
     ) {
-      Column(modifier = Modifier.padding(14.dp)) {
-        // User Profile & Settings
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(PocketBluePrimary)
-                .border(2.dp, PocketGold, CircleShape),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(Icons.Filled.Person, contentDescription = "Perfil", tint = Color.White, modifier = Modifier.size(22.dp))
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = "Demeberant",
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = FontWeight.Bold,
-                  color = PocketTextPrimary
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                  modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(PocketGoldLight)
-                    .border(1.dp, PocketGold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
-                ) {
-                  Text(text = "Lv. 34", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFB45309))
-                }
-              }
-              Text(
-                text = "Friend ID: 9824-5495-7457-6397",
-                fontSize = 11.sp,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = PocketTextSecondary
-              )
+      Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
+            Modifier.size(40.dp).clip(CircleShape).clickable { showAvatarPicker = true }
+              .border(2.dp, PocketGold, CircleShape), "Cambiar avatar de perfil")
+          Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
+            Text("Mi colección", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
+              style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
+            if (showProfileDetails) {
+              Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
+              Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
             }
           }
-
-          IconButton(
-            onClick = { showSettingsDialog = true },
-            modifier = Modifier.size(36.dp)
-          ) {
+          IconButton(onClick = { showSettingsDialog = true }) {
             Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = PocketTextSecondary)
           }
         }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Statistical Progress Bar
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Text(
-            text = "Álbum: $totalOwned / $totalCatalog registradas",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = PocketTextSecondary
-          )
-          Text(
-            text = "$totalCopies copias totales • ${(completionPercent * 100).toInt()}%",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = PocketBluePrimary
-          )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        LinearProgressIndicator(
-          progress = { completionPercent },
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(7.dp)
-            .clip(RoundedCornerShape(4.dp)),
-          color = PocketBluePrimary,
-          trackColor = Color(0xFFE2E8F0)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // CSV Action Buttons (Import & Export)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-          Button(
-            onClick = {
-              try {
-                csvPickerLauncher.launch("*/*")
-              } catch (_: Exception) {
-                showPasteDialog = true
-              }
-            },
-            modifier = Modifier
-              .weight(1f)
-              .height(38.dp)
-              .testTag("import_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary, contentColor = Color.White)
-          ) {
-            Icon(Icons.Filled.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Cargar CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-          }
-
-          OutlinedButton(
-            onClick = { showPasteDialog = true },
-            modifier = Modifier
-              .height(38.dp)
-              .testTag("paste_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = PocketTextPrimary)
-          ) {
-            Text("Pegar CSV", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-          }
-
-          Button(
-            onClick = {
-              val csvContent = viewModel.generateCsvContent()
-              val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-              val clip = ClipData.newPlainText("Demeberant TCG Pocket CSV", csvContent)
-              clipboard.setPrimaryClip(clip)
-
-              val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, csvContent)
-                type = "text/csv"
-              }
-              try {
-                context.startActivity(Intent.createChooser(sendIntent, "Exportar Colección CSV"))
-              } catch (_: Exception) {
-                Toast.makeText(context, "CSV copiado al portapapeles con éxito", Toast.LENGTH_SHORT).show()
-              }
-            },
-            modifier = Modifier
-              .weight(1f)
-              .height(38.dp)
-              .testTag("export_csv_btn"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A), contentColor = Color.White)
-          ) {
-            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Exportar CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-          }
-        }
+        LinearProgressIndicator(progress = { completionPercent },
+          modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)),
+          color = PocketBluePrimary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh)
       }
     }
 
@@ -317,8 +251,8 @@ fun CollectionScreen(
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 4.dp)
           .clip(RoundedCornerShape(10.dp))
-          .background(Color(0xFFECFDF5))
-          .border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(10.dp))
+          .background(MaterialTheme.colorScheme.tertiaryContainer)
+          .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
           .padding(horizontal = 12.dp, vertical = 8.dp)
       ) {
         Row(
@@ -327,12 +261,12 @@ fun CollectionScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(text = msg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF065F46))
+            Text(text = msg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
           }
           IconButton(onClick = { viewModel.clearCsvStatusMessage() }, modifier = Modifier.size(20.dp)) {
-            Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Color(0xFF065F46), modifier = Modifier.size(14.dp))
+            Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(14.dp))
           }
         }
       }
@@ -352,9 +286,13 @@ fun CollectionScreen(
         Icon(Icons.Filled.Search, contentDescription = "Buscar", tint = PocketTextSecondary, modifier = Modifier.size(18.dp))
       },
       trailingIcon = {
-        if (searchQuery.isNotBlank()) {
-          IconButton(onClick = { viewModel.setSearchQuery("") }) {
-            Icon(Icons.Filled.Clear, contentDescription = "Borrar", tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
+        Row {
+          if (searchQuery.isNotBlank()) IconButton(onClick = { viewModel.setSearchQuery("") }) {
+            Icon(Icons.Filled.Clear, contentDescription = "Borrar búsqueda")
+          }
+          IconButton(onClick = { showFiltersDialog = true }) {
+            Icon(Icons.Filled.Tune, contentDescription = "Filtros avanzados",
+              tint = if (expansionFilter != null || rarityFilter != null) PocketBluePrimary else PocketTextSecondary)
           }
         }
       },
@@ -370,86 +308,55 @@ fun CollectionScreen(
       )
     )
 
-    // Pill Filters
+    // One collection status is selected at a time.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
       item {
-        val isAllSelected = selectedPack == null && !onlyWishlist && !onlyMissing
         PocketPillChip(
-          label = "Todos los Sets",
-          isSelected = isAllSelected,
-          activeColor = PocketBluePrimary,
-          onClick = {
-            viewModel.setPackFilter(null)
-            if (onlyWishlist) viewModel.toggleOnlyWishlist()
-            if (onlyMissing) viewModel.toggleOnlyMissing()
-          }
+          label = "Todas",
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.ALL,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.ALL) }
         )
       }
-
       item {
         PocketPillChip(
-          label = "Poseídas ($totalOwned)",
-          isSelected = onlyWishlist.not() && onlyMissing.not() && selectedPack == null,
-          activeColor = Color(0xFF10B981),
-          onClick = {
-            if (onlyMissing) viewModel.toggleOnlyMissing()
-          }
+          label = "Tengo ($totalOwned)",
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.OWNED,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.OWNED) }
         )
       }
-
       item {
         PocketPillChip(
-          label = "Faltantes (${totalCatalog - totalOwned})",
-          isSelected = onlyMissing,
-          activeColor = PocketRed,
-          onClick = { viewModel.toggleOnlyMissing() }
+          label = "Faltan (${totalCatalog - totalOwned})",
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.MISSING,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.MISSING) }
         )
       }
-
       item {
         PocketPillChip(
-          label = "Favoritas",
-          isSelected = onlyWishlist,
-          activeColor = PocketGold,
-          onClick = { viewModel.toggleOnlyWishlist() }
+          label = "Deseos",
+          isSelected = collectionFilter == com.example.data.util.CollectionFilter.FAVORITES,
+          activeColor = MaterialTheme.colorScheme.secondaryContainer,
+          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
         )
       }
-
       item {
-        PocketPillChip(
-          label = "Charizard",
-          isSelected = selectedPack == BoosterPack.CHARIZARD,
-          activeColor = Color(0xFFEA580C),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.CHARIZARD) null else BoosterPack.CHARIZARD) }
-        )
-      }
-
-      item {
-        PocketPillChip(
-          label = "Mewtwo",
-          isSelected = selectedPack == BoosterPack.MEWTWO,
-          activeColor = Color(0xFF9333EA),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.MEWTWO) null else BoosterPack.MEWTWO) }
-        )
-      }
-
-      item {
-        PocketPillChip(
-          label = "Pikachu",
-          isSelected = selectedPack == BoosterPack.PIKACHU,
-          activeColor = Color(0xFFCA8A04),
-          onClick = { viewModel.setPackFilter(if (selectedPack == BoosterPack.PIKACHU) null else BoosterPack.PIKACHU) }
-        )
+        PocketPillChip("Repetidas", collectionFilter == com.example.data.util.CollectionFilter.REPEATED,
+          MaterialTheme.colorScheme.secondaryContainer) {
+          viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.REPEATED)
+        }
       }
     }
-
-    Spacer(modifier = Modifier.height(4.dp))
+    Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+      style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
     // -------------------------------------------------------------
-    // GRID DE CARTAS: EXACTAMENTE 3 COLUMNAS
+    // GRID DE CARTAS: ADAPTADO A ANCHO Y TAMAÑO DE TEXTO
     // -------------------------------------------------------------
     if (filteredCards.isEmpty()) {
       Box(
@@ -466,7 +373,7 @@ fun CollectionScreen(
       }
     } else {
       LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive((100f * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -477,124 +384,108 @@ fun CollectionScreen(
             card = item.card,
             ownedCount = item.ownedCount,
             isWishlist = item.isWishlist,
-            onToggleWishlist = { viewModel.toggleWishlist(item.card.id) }
+            onToggleWishlist = { viewModel.toggleWishlist(item.card.id) },
+            imageLanguage = "es",
+            onClick = { selectedCardId = item.card.id }
           )
         }
       }
     }
   }
 
-  // Settings & Preferences Modal Dialog
-  if (showSettingsDialog) {
+  selectedCardId?.let { id -> fullInventory.find { it.card.id == id }?.let { item ->
+    CardDetailsDialog(item, "es", { selectedCardId = null },
+      { viewModel.setQuantity(id, it) }, { viewModel.toggleWishlist(id) })
+  } }
+  pendingRestore?.let { backup ->
+    AlertDialog(onDismissRequest = { pendingRestore = null }, title = { Text("Restaurar respaldo") },
+      text = { Text("${backup.cards.size} registros · ${backup.cards.sumOf { it.quantity }} copias · ${backup.decks.size} mazos.\n\nSe reemplazan cantidades y deseos de las cartas incluidas. Las demás cartas y los mazos existentes se conservan. También se restauran los ajustes.") },
+      confirmButton = { TextButton(onClick = { viewModel.restoreBackup(backup); pendingRestore = null }) { Text("Restaurar") } },
+      dismissButton = { TextButton(onClick = { pendingRestore = null }) { Text("Cancelar") } })
+  }
+
+  if (showFiltersDialog) {
+    val expansions = fullInventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted()
     AlertDialog(
-      onDismissRequest = { showSettingsDialog = false },
-      title = {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Filled.Settings, contentDescription = null, tint = PocketBluePrimary)
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("Ajustes y Preferencias", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+      onDismissRequest = { showFiltersDialog = false },
+      title = { Text("Filtros avanzados") },
+      text = {
+        Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+          Text("Expansión", fontWeight = FontWeight.Bold)
+          FilterChip(selected = expansionFilter == null, onClick = { viewModel.setExpansionFilter(null) }, label = { Text("Todas las expansiones") })
+          expansions.forEach { code ->
+            FilterChip(selected = expansionFilter == code, onClick = { viewModel.setExpansionFilter(code) }, label = { Text(code) })
+          }
+          Text("Rareza", fontWeight = FontWeight.Bold)
+          FilterChip(selected = rarityFilter == null, onClick = { viewModel.setRarityFilter(null) }, label = { Text("Todas las rarezas") })
+          com.example.data.model.CardRarity.entries.forEach { rarity ->
+            FilterChip(selected = rarityFilter == rarity, onClick = { viewModel.setRarityFilter(rarity) }, label = { Text("${rarity.symbol} · ${rarity.displayName}") })
+          }
         }
       },
-      text = {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-          // Language selector
-          Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(Icons.Filled.Translate, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Idioma Principal (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            listOf(
-              "es" to "Español Neutro",
-              "en" to "English",
-              "ja" to "日本語"
-            ).forEach { (code, label) ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .clickable { viewModel.setLanguage(code) }
-                  .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                RadioButton(
-                  selected = userPreferences.language == code,
-                  onClick = { viewModel.setLanguage(code) }
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
-              }
-            }
-          }
+      confirmButton = { TextButton(onClick = { showFiltersDialog = false }) { Text("Ver cartas") } },
+      dismissButton = { TextButton(onClick = { viewModel.setExpansionFilter(null); viewModel.setRarityFilter(null) }) { Text("Limpiar filtros") } }
+    )
+  }
 
-          // Theme selector
-          Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(Icons.Filled.Palette, contentDescription = null, tint = PocketTextSecondary, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Tema Visual & Modo Oscuro (DataStore)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            listOf(
-              "dark" to "Neón Oscuro (Por Defecto)",
-              "blue" to "Azul Pokémon Clásico",
-              "light" to "Modo Claro"
-            ).forEach { (themeKey, label) ->
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .clickable { viewModel.setThemeName(themeKey) }
-                  .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                RadioButton(
-                  selected = userPreferences.themeName == themeKey,
-                  onClick = { viewModel.setThemeName(themeKey) }
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(label, fontSize = 13.sp, color = PocketTextPrimary)
-              }
-            }
-          }
+  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
 
+  if (showSettingsDialog) {
+    SettingsScreen(
+      themeMode = userPreferences.themeMode,
+      onThemeModeChange = viewModel::setThemeMode,
+      onDismiss = { showSettingsDialog = false }
+    ) {
+          HelpButton()
+          Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
+          OutlinedButton(onClick = {
+            showSettingsDialog = false
+            try { csvPickerLauncher.launch("*/*") } catch (_: Exception) { showPasteDialog = true }
+          }, modifier = Modifier.fillMaxWidth()) { Text("Importar CSV") }
+          OutlinedButton(onClick = { showSettingsDialog = false; showPasteDialog = true },
+            modifier = Modifier.fillMaxWidth()) { Text("Pegar CSV") }
+          OutlinedButton(onClick = { showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
+            modifier = Modifier.fillMaxWidth()) { Text("Exportar colección CSV") }
+          Text("El CSV contiene cantidades y Deseos. El respaldo JSON incluye también mazos y ajustes.", fontSize = 12.sp)
+          OutlinedButton(onClick = {
+            showSettingsDialog = false
+            scope.launch {
+              try {
+                pendingBackup = viewModel.generateBackupContent()
+                backupExport.launch("respaldo-tcg-pocket.json")
+              } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+              catch (e: Exception) { Toast.makeText(context, "No se pudo preparar el respaldo.", Toast.LENGTH_LONG).show() }
+            }
+          }, modifier = Modifier.fillMaxWidth()) { Text("Guardar respaldo completo") }
+          OutlinedButton(onClick = { showSettingsDialog = false; backupImport.launch("*/*") },
+            modifier = Modifier.fillMaxWidth()) { Text("Restaurar respaldo completo") }
+          Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
           // Error Logging Export Section
           Column {
-            Text("Diagnóstico & Registro de Errores", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
+            Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
             Spacer(modifier = Modifier.height(6.dp))
+            Button(onClick = { showSettingsDialog = false; showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth()) { Text("Copiar diagnóstico para el chat") }
+            Text("Resumen breve sin adjuntos. El TXT completo queda disponible abajo.", fontSize = 12.sp)
+            OutlinedButton(onClick = {
+              showSettingsDialog = false
+              diagnosticSave.launch("diagnostico-tcg-pocket.txt")
+            }, modifier = Modifier.fillMaxWidth()) { Text("Guardar diagnóstico TXT") }
+            HelpButton("diagnostico")
             OutlinedButton(
               onClick = {
                 ErrorLogManager.exportErrorLogs(context)
               },
               modifier = Modifier
                 .fillMaxWidth()
-                .height(38.dp),
+                .heightIn(min = 48.dp),
               shape = RoundedCornerShape(8.dp)
             ) {
               Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Exportar Log de Errores", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              Text("Compartir diagnóstico TXT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
-        }
-      },
-      confirmButton = {
-        Button(
-          onClick = {
-            showSettingsDialog = false
-          },
-          colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
-        ) {
-          Text("Listo")
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { showSettingsDialog = false }) {
-          Text("Cerrar")
-        }
-      }
-    )
+    }
   }
 
   // CSV Paste Modal Dialog
@@ -605,7 +496,7 @@ fun CollectionScreen(
       text = {
         Column {
           Text(
-            text = "Pega aquí tus líneas en formato 'Set,ID,Nombre,Rareza,Cantidad,Registrada' o 'card_id,quantity':",
+            text = "Pega aquí tus líneas en formato 'Set,ID,Nombre,Rareza,Cantidad,Registrada' :",
             fontSize = 12.sp,
             color = PocketTextSecondary
           )
@@ -651,18 +542,18 @@ private fun PocketPillChip(
   activeColor: Color,
   onClick: () -> Unit
 ) {
-  val bg = if (isSelected) activeColor else PocketSurface
+  val bg = if (isSelected) activeColor else PocketBackground
   val border = if (isSelected) activeColor else PocketBorder
-  val textColor = if (isSelected) Color.White else PocketTextPrimary
+  val textColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else PocketTextSecondary
 
   Box(
     modifier = Modifier
-      .clip(RoundedCornerShape(18.dp))
-      .shadow(if (isSelected) 2.dp else 1.dp, RoundedCornerShape(18.dp), clip = false)
+      .clip(RoundedCornerShape(10.dp))
+      .shadow(if (isSelected) 2.dp else 1.dp, RoundedCornerShape(10.dp), clip = false)
       .background(bg)
-      .border(1.dp, border, RoundedCornerShape(18.dp))
+      .border(1.dp, border, RoundedCornerShape(10.dp))
       .clickable { onClick() }
-      .padding(horizontal = 10.dp, vertical = 5.dp)
+      .padding(horizontal = 12.dp, vertical = 8.dp)
   ) {
     Text(
       text = label,
