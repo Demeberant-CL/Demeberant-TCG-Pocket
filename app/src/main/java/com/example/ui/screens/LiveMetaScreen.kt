@@ -15,6 +15,9 @@ import com.example.data.meta.TournamentRepository
 @Composable
 fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Unit, modifier: Modifier = Modifier) {
   val snapshot by model.metaSnapshot.collectAsStateWithLifecycle()
+  val autoRefresh by model.autoMetaRefresh.collectAsStateWithLifecycle()
+  val metaReady by model.metaReady.collectAsStateWithLifecycle()
+  LaunchedEffect(autoRefresh, metaReady) { model.refreshMetaIfNeeded() }
   val busy by model.busy.collectAsStateWithLifecycle()
   val message by model.message.collectAsStateWithLifecycle()
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
@@ -23,10 +26,15 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Meta de torneos", style = MaterialTheme.typography.headlineSmall)
+      Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Text("Actualizar al abrir", modifier = Modifier.weight(1f))
+        Switch(checked = autoRefresh, onCheckedChange = model::setAutoMetaRefresh)
+      }
+      Text("Opcional: descarga si la muestra tiene más de 6 horas. Ante un fallo conserva la copia y espera al menos 15 minutos antes de otro intento automático.", style = MaterialTheme.typography.bodySmall)
       Button(onClick = model::refreshMeta, enabled = !busy) { Text("Actualizar meta") }
       if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); TextButton(onClick = model::cancel) { Text("Cancelar") } }
       message?.let { Text(it) }
-      snapshot?.let { Text("Limitless · ${it.updated}\n${it.tournaments} torneos · ${it.players} listas válidas · últimos 30 días (hasta 12 torneos)") }
+      snapshot?.let { Text("Limitless · ${runCatching { java.time.Instant.parse(it.updated).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) }.getOrDefault(it.updated)}\n${it.tournaments} torneos · ${it.players} listas válidas · últimos 30 días (hasta 12 torneos)") }
         ?: Text("Pulsa Actualizar meta para descargar resultados públicos.")
       Text("Muestra parcial de torneos; no representa todas las partidas del juego. Los porcentajes se calculan, no los genera la IA.", style = MaterialTheme.typography.bodySmall)
     }

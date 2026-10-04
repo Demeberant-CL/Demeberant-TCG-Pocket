@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.ui.components.AdaptiveActionRow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.Dialog
@@ -242,9 +243,9 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
     state?.let { board ->
       item {
         Text("Turno ${board.turn} · Mazo ${board.drawPile.size} · Mano ${board.hand.size} · Descartes ${board.discard.size}")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          OutlinedButton(enabled = board.drawPile.isNotEmpty(), onClick = { model.updateBoard(SandboxEngine::draw) }) { Text("Robar") }
-          OutlinedButton(onClick = { model.updateBoard(SandboxEngine::nextTurn) }) { Text("Siguiente turno") }
+        AdaptiveActionRow { actionModifier ->
+          OutlinedButton(modifier = actionModifier, enabled = board.drawPile.isNotEmpty(), onClick = { model.updateBoard(SandboxEngine::draw) }) { Text("Robar") }
+          OutlinedButton(modifier = actionModifier, onClick = { model.updateBoard(SandboxEngine::nextTurn) }) { Text("Siguiente turno") }
         }
         TextButton(onClick = model::undoMove) { Text("Deshacer") }
         Text("Activo", style = MaterialTheme.typography.titleMedium)
@@ -316,9 +317,9 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
       Text("Solo consulta reglas obtenidas de TCGdex y almacenadas en Room. Las etiquetas de rol se estiman por palabras clave; pueden tener falsos positivos.")
       OutlinedTextField(query, { query = it }, label = { Text("Nombre o código para indexar y buscar") }, modifier = Modifier.fillMaxWidth())
       OutlinedTextField(keyword, { keyword = it }, label = { Text("Texto del ataque o habilidad") }, modifier = Modifier.fillMaxWidth())
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(minHp, { if (it.length <= 3 && it.all(Char::isDigit)) minHp = it }, label = { Text("PS mínimo") }, modifier = Modifier.weight(1f))
-        OutlinedTextField(maxHp, { if (it.length <= 3 && it.all(Char::isDigit)) maxHp = it }, label = { Text("PS máximo") }, modifier = Modifier.weight(1f))
+      AdaptiveActionRow { fieldModifier ->
+        OutlinedTextField(minHp, { if (it.length <= 3 && it.all(Char::isDigit)) minHp = it }, label = { Text("PS mínimo") }, modifier = fieldModifier)
+        OutlinedTextField(maxHp, { if (it.length <= 3 && it.all(Char::isDigit)) maxHp = it }, label = { Text("PS máximo") }, modifier = fieldModifier)
       }
       OutlinedTextField(element, { element = it }, label = { Text("Tipo exacto de TCGdex (ej. Grass)") }, modifier = Modifier.fillMaxWidth())
       LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

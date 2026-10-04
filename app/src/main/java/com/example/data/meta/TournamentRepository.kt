@@ -20,7 +20,8 @@ class TournamentRepository(context: Context, private val client: OkHttpClient = 
   .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build()) {
   private val cache = AtomicFile(File(context.filesDir, "pocket-meta.json"))
   suspend fun cached(): MetaSnapshot? = withContext(Dispatchers.IO) {
-    if (!cache.baseFile.exists()) null else parse(JSONObject(cache.readFully().toString(Charsets.UTF_8)))
+    if (!cache.baseFile.exists() && !File(cache.baseFile.path + ".bak").exists()) null
+    else parse(JSONObject(cache.openRead().use { it.readBytesBounded(2_000_000).toString(Charsets.UTF_8) }))
   }
   private suspend fun get(path: String): String {
     client.newCall(Request.Builder().url("https://play.limitlesstcg.com/api/$path").build()).await().use { r ->

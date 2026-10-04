@@ -24,7 +24,23 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   private val connectedAssistant = ConnectedAiRepository()
   private val tournamentRepository = com.example.data.meta.TournamentRepository(application)
   val metaSnapshot = MutableStateFlow<com.example.data.meta.MetaSnapshot?>(null)
-  fun refreshMeta() = task("META_FETCH") { metaSnapshot.value = tournamentRepository.refresh(); message.value = "Resultados actualizados desde Limitless." }
+  private val metaPreferences = application.getSharedPreferences("pocket-meta-preferences", android.content.Context.MODE_PRIVATE)
+  val autoMetaRefresh = MutableStateFlow(metaPreferences.getBoolean("auto-refresh", false))
+  val metaReady = MutableStateFlow(false)
+  fun setAutoMetaRefresh(enabled: Boolean) {
+    metaPreferences.edit().putBoolean("auto-refresh", enabled).apply()
+    autoMetaRefresh.value = enabled
+  }
+  fun refreshMetaIfNeeded() {
+    if (!autoMetaRefresh.value || !metaReady.value || busy.value) return
+    if (com.example.data.meta.MetaRefreshPolicy.shouldRefresh(metaSnapshot.value?.updated,
+        metaPreferences.getLong("last-attempt", 0), System.currentTimeMillis())) refreshMeta()
+  }
+  fun refreshMeta() = task("META_FETCH") {
+    metaPreferences.edit().putLong("last-attempt", System.currentTimeMillis()).apply()
+    metaSnapshot.value = tournamentRepository.refresh()
+    message.value = "Resultados actualizados desde Limitless."
+  }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
   val profiles = MutableStateFlow(AiProfiles())
@@ -104,6 +120,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   init {
     viewModelScope.launch(Dispatchers.IO) {
       try { metaSnapshot.value = tournamentRepository.cached() } catch (_: Exception) { }
+      finally { metaReady.value = true }
     }
     viewModelScope.launch(Dispatchers.IO) {
       try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }

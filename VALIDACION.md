@@ -258,3 +258,12 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Contenido de la ventana desplazable para texto grande; guía actualizada. TXT completo se conserva como alternativa. No se afirma corregido el bloqueo de adjuntos de ChatGPT: se proporciona el formato ZIP que el usuario pudo enviar.
 - Prueba nueva abre el ZIP guardado, verifica nombres, texto UTF-8, límite de resumen y ausencia de mensaje privado de excepción. Suite Android/lint/compilación y firma mediante CI.
 - Archivo recibido de 2.459.726 bytes, 11.277 eventos históricos (02–04 octubre UTC). Desde 04 octubre: HTTP 404=156, 503=2, 200=56 y HTTP_FAIL=20; última sesión a las 12:35 UTC contiene 7 HTTP 404. No nuevos QR_EXPORT/AI_EXTERNAL_IMPORT desde 04 octubre. No se deduce éxito universal ni causa exacta de IOException; mensajes privados de excepciones no se registran.
+
+## Revisión integral: imágenes, meta y pantallas secundarias
+
+- La fuente comunitaria permanece en revisión 613d6a038e4a68c7014af2d4538c1f6a9ebe8d8b; no hay revisión nueva en main al consultar. No se amplía artificialmente la cobertura de 3879 rutas ni se inventan imágenes para las 438 restantes.
+- Caché negativa de imágenes por sesión, solo HTTP 404, máximo 4096 rutas y 24 horas; celdas recreadas omiten fuentes ya ausentes. Reintentar restablece todas las fuentes de esa carta. Fallos transitorios no se añaden a la caché negativa.
+- Meta: opción persistente desactivada por defecto «Actualizar al abrir». Usa la API pública existente de Limitless si la muestra tiene al menos 6 horas; separa intentos automáticos por 15 minutos. Solo al entrar en la pantalla, sin servicio en segundo plano ni IA automática. Conserva datos previos si falla. Fecha presentada en zona local.
+- Caché meta recupera respaldo AtomicFile .bak tras interrupción; lectura limitada a 2 MB. No se añaden fuentes no verificadas ni backend.
+- Acciones del simulador y campos PS de filtros por efectos adaptan columnas a letra grande/pantallas estrechas.
+- Tres pruebas nuevas cubren caducidad/reintento de imágenes 404, límite temporal del meta y reapertura de repositorio con escritura interrumpida. Suite existente verifica persistencia de conexiones cifradas, modelo/proveedor/clave, recuperación .bak y rechazo de corrupción sin sobrescribir. No sustituye prueba física de reinicio/actualización en teléfono ni validación visual final.
