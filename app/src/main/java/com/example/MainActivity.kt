@@ -121,10 +121,10 @@ class MainActivity : ComponentActivity() {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
               onCollection = { navigateTo(1) },
-              onDecks = { deckEditorRequest = 0; navigateTo(2) },
+              onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
               onEditor = { deckEditorRequest++; navigateTo(2) },
               onAi = { navigateTo(3) }, onMeta = { metaReturnTab = 0; navigateTo(5) },
-              onGuide = { moreSection = 0; navigateTo(4) })
+              onGuide = { screenStates.removeState(4); moreSection = 0; navigateTo(4) })
             1 -> CollectionScreen(viewModel, screenModifier)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)
