@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.components.AdaptiveActionRow
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
@@ -194,9 +195,9 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
         }
       }
       items((labels.size + 1) / 2) { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        AdaptiveActionRow { cardModifier ->
           for (n in row * 2 until minOf(row * 2 + 2, labels.size)) {
-            ElevatedCard(onClick = { if (n == 6) onMeta() else section = n }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp)) {
+            ElevatedCard(onClick = { if (n == 6) onMeta() else section = n }, modifier = cardModifier, shape = RoundedCornerShape(24.dp)) {
               Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 112.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icons[n], contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))

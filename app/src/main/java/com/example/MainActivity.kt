@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Collections
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.screens.CollectionScreen
 import com.example.ui.theme.PocketAppTheme
@@ -62,7 +64,7 @@ class MainActivity : ComponentActivity() {
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
-            NavigationBar(containerColor = PocketSurface, modifier = Modifier.testTag("main_bottom_nav")) {
+            NavigationBar(containerColor = PocketSurface, modifier = Modifier.heightIn(min = (80f + 28f * (androidx.compose.ui.platform.LocalDensity.current.fontScale - 1f).coerceAtLeast(0f)).dp).testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
                   selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
@@ -72,7 +74,7 @@ class MainActivity : ComponentActivity() {
                     selectedTabIndex = index
                   },
                   icon = { Icon(icons[index], contentDescription = label) },
-                  label = { Text(label, fontSize = 12.sp) },
+                  label = { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,

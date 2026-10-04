@@ -137,7 +137,7 @@ fun CardItemView(
               fontSize = 11.sp,
               fontWeight = FontWeight.Bold,
               textAlign = TextAlign.Center,
-              color = if (isOwned) PocketTextPrimary else Color(0xFF64748B),
+              color = PocketTextPrimary,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )

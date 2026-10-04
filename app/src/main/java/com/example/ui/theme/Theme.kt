@@ -13,11 +13,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-  primary = Color(0xFF0284C7),
+  primary = Color(0xFF0369A1),
   onPrimary = Color.White,
   primaryContainer = Color(0xFFE0F2FE),
   onPrimaryContainer = Color(0xFF0369A1),
-  secondary = PocketGold,
+  secondary = Color(0xFF92400E),
+  onSecondary = Color.White,
+  secondaryContainer = PocketGoldLight,
+  onSecondaryContainer = Color(0xFF78350F),
   background = Color(0xFFF8FAFC),
   surface = Color.White,
   onBackground = Color(0xFF0F172A),

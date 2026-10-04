@@ -65,8 +65,8 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   }
   Column(modifier.fillMaxSize()) {
     Surface(tonalElevation = 2.dp) {
-      Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+      Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth()) {
           Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
           if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
           else {

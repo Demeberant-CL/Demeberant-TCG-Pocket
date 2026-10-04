@@ -239,3 +239,10 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Cambio y eliminación de perfil leen el estado cifrado actual en disco. Entradas duplicadas o selección inválida se rechazan antes de escribir. Errores de lectura/cifrado no borran el archivo ni las otras conexiones.
 - Cuatro pruebas nuevas: recreación del almacén y proveedor/modelo/claves, recuperación de escritura interrumpida, conservación ante corrupción y lectura en el límite de tamaño. Esto simula reapertura en pruebas; no equivale a verificar reinicio/actualización real del teléfono.
 - Usuario confirma IA funcionando en dispositivo. No se hacen nuevas consultas con claves reales ni se modifican proveedores/modelos elegidos.
+
+
+### Contraste y letras grandes
+- Azul primario claro y texto secundario con contraste mayor; parejas onSecondary/secondaryContainer explícitas. Texto de fichas sin imagen e información de importación usan colores del tema.
+- Inicio y Más pasan a una columna con letra ampliada o pantalla estrecha. Colección y selector de avatar adaptan columnas al tamaño de letra; biblioteca e IA separan encabezado y acción para evitar competir por ancho.
+- Controles del editor pueden envolver a otra fila; barra inferior admite más altura y etiquetas de hasta dos líneas. Botón de diagnóstico usa altura mínima, sin límite fijo de 38dp. No se limita el tamaño de letra del usuario.
+- Cambios de UI reversibles; se ejecuta la suite existente y lint/build. Pendiente comprobación visual real en ambos temas con letra ampliada; no se afirma revisión en dispositivo ni capturas renderizadas de Android.

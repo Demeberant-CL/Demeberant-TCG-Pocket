@@ -251,8 +251,8 @@ fun CollectionScreen(
           .fillMaxWidth()
           .padding(horizontal = 14.dp, vertical = 4.dp)
           .clip(RoundedCornerShape(10.dp))
-          .background(Color(0xFFECFDF5))
-          .border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(10.dp))
+          .background(MaterialTheme.colorScheme.tertiaryContainer)
+          .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
           .padding(horizontal = 12.dp, vertical = 8.dp)
       ) {
         Row(
@@ -261,12 +261,12 @@ fun CollectionScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(text = msg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF065F46))
+            Text(text = msg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
           }
           IconButton(onClick = { viewModel.clearCsvStatusMessage() }, modifier = Modifier.size(20.dp)) {
-            Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Color(0xFF065F46), modifier = Modifier.size(14.dp))
+            Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(14.dp))
           }
         }
       }
@@ -356,7 +356,7 @@ fun CollectionScreen(
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
     // -------------------------------------------------------------
-    // GRID DE CARTAS: EXACTAMENTE 3 COLUMNAS
+    // GRID DE CARTAS: ADAPTADO A ANCHO Y TAMAÑO DE TEXTO
     // -------------------------------------------------------------
     if (filteredCards.isEmpty()) {
       Box(
@@ -373,7 +373,7 @@ fun CollectionScreen(
       }
     } else {
       LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive((100f * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -477,7 +477,7 @@ fun CollectionScreen(
               },
               modifier = Modifier
                 .fillMaxWidth()
-                .height(38.dp),
+                .heightIn(min = 48.dp),
               shape = RoundedCornerShape(8.dp)
             ) {
               Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))

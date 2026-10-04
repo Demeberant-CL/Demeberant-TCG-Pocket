@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.util.DeckCodec
 import com.example.ui.viewmodel.TcgViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
   val deck by viewModel.generatedDeck.collectAsStateWithLifecycle()
@@ -87,7 +88,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
       } }
       if (tab == 0) {
         item {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FilterChip(selected = !adding, onClick = { adding = false }, label = { Text("Mi mazo (${current.totalCardCount})") })
             FilterChip(selected = adding, onClick = { adding = true }, label = { Text("Añadir cartas") })
           }

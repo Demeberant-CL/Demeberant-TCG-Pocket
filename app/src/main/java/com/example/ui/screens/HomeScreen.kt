@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.AvatarPickerDialog
+import com.example.ui.components.AdaptiveActionRow
 import com.example.ui.components.ProfileAvatar
 import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
@@ -77,14 +78,14 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     item {
       Text("Accesos rápidos", style = MaterialTheme.typography.titleMedium)
       Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          HomeAction("Colección", "$owned cartas registradas", Icons.Filled.Collections, Modifier.weight(1f), onCollection)
-          HomeAction("Mis mazos", "${decks.size} guardados", Icons.Filled.Style, Modifier.weight(1f), onDecks)
+        AdaptiveActionRow { cardModifier ->
+          HomeAction("Colección", "$owned cartas registradas", Icons.Filled.Collections, cardModifier, onCollection)
+          HomeAction("Mis mazos", "${decks.size} guardados", Icons.Filled.Style, cardModifier, onDecks)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          HomeAction("Crear / editar", "Prepara tu baraja", Icons.Filled.Edit, Modifier.weight(1f), onEditor)
+        AdaptiveActionRow { cardModifier ->
+          HomeAction("Crear / editar", "Prepara tu baraja", Icons.Filled.Edit, cardModifier, onEditor)
           HomeAction("Mi IA", if (ready && connection.apiKey.isNotBlank()) connection.provider.label else "Configura tu conexión",
-            Icons.Filled.AutoAwesome, Modifier.weight(1f), onAi)
+            Icons.Filled.AutoAwesome, cardModifier, onAi)
         }
       }
     }
@@ -132,7 +133,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       ElevatedCard(onClick = onGuide, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
           Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.primary)
-          Column {
+          Column(Modifier.weight(1f)) {
             Text("Guía y tutoriales", style = MaterialTheme.typography.titleMedium)
             Text("Aprende a usar cada función", style = MaterialTheme.typography.bodySmall)
           }

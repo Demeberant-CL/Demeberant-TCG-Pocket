@@ -24,8 +24,8 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
   var pendingDelete by remember { mutableStateOf<SavedDeckEntity?>(null) }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Mis mazos (${decks.size})", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
         Button(onClick = onEdit) { Text("Crear / editar") }
       }
       if (decks.isEmpty()) Text("Guarda tu primera baraja desde el editor. Puedes empezar con tus cartas o consultar tu IA.")

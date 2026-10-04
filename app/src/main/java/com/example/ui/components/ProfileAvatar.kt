@@ -44,7 +44,7 @@ fun ProfileAvatar(id: String, modifier: Modifier = Modifier, description: String
 fun AvatarPickerDialog(current: String, onSave: (String) -> Unit, onClose: () -> Unit) {
   var selected by rememberSaveable(current) { mutableStateOf(ProfileAvatars.normalize(current)) }
   AlertDialog(onDismissRequest = onClose, title = { Text("Elige tu avatar") }, text = {
-    LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
+    LazyVerticalGrid(columns = GridCells.Adaptive((80f * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp), modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
       horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
       items(ProfileAvatars.ids.size) { n ->
         val id = ProfileAvatars.ids[n]
