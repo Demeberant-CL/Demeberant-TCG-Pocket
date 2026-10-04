@@ -5,6 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.ui.components.AdaptiveActionRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -58,7 +62,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -70,7 +73,6 @@ import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
 import com.example.ui.theme.PocketGold
-import com.example.ui.theme.PocketRed
 import com.example.ui.theme.PocketSurface
 import com.example.ui.theme.PocketTextPrimary
 import com.example.ui.theme.PocketTextSecondary
@@ -92,6 +94,7 @@ fun DeckBuilderScreen(
 
   var showSaveDialog by remember { mutableStateOf(false) }
   var customDeckNameInput by remember { mutableStateOf("") }
+  var pendingDelete by remember { mutableStateOf<com.example.data.local.SavedDeckEntity?>(null) }
 
   LazyColumn(
     modifier = modifier
@@ -166,7 +169,7 @@ fun DeckBuilderScreen(
               checked = onlyFromInventory,
               onCheckedChange = { viewModel.toggleOnlyFromInventoryDeck() },
               colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = PocketBluePrimary
               ),
               modifier = Modifier.testTag("only_inventory_switch")
@@ -208,14 +211,14 @@ fun DeckBuilderScreen(
             onClick = { viewModel.generateDeck() },
             modifier = Modifier
               .fillMaxWidth()
-              .height(44.dp)
+              .heightIn(min = 48.dp)
               .testTag("generate_deck_btn"),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary),
             enabled = !isGenerating
           ) {
             if (isGenerating) {
-              CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+              CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
               Spacer(modifier = Modifier.width(8.dp))
               Text("Generando propuesta...", fontSize = 12.sp)
             } else {
@@ -246,7 +249,7 @@ fun DeckBuilderScreen(
               horizontalArrangement = Arrangement.SpaceBetween,
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Column {
+              Column(Modifier.weight(1f)) {
                 Text(
                   text = deck.name,
                   style = MaterialTheme.typography.titleMedium,
@@ -264,14 +267,14 @@ fun DeckBuilderScreen(
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(8.dp))
-                  .background(Color(0xFFFEF3C7))
+                  .background(MaterialTheme.colorScheme.secondaryContainer)
                   .padding(horizontal = 8.dp, vertical = 4.dp)
               ) {
                 Text(
                   text = "${deck.totalCardCount}/20 Cartas",
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Black,
-                  color = Color(0xFFB45309)
+                  color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
               }
             }
@@ -323,14 +326,14 @@ fun DeckBuilderScreen(
                       .align(Alignment.TopEnd)
                       .padding(2.dp)
                       .clip(RoundedCornerShape(4.dp))
-                      .background(PocketGold)
+                      .background(MaterialTheme.colorScheme.secondaryContainer)
                       .padding(horizontal = 4.dp, vertical = 1.dp)
                   ) {
                     Text(
                       text = "x${entry.count}",
                       fontSize = 9.sp,
                       fontWeight = FontWeight.Black,
-                      color = Color(0xFF78350F)
+                      color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                   }
                 }
@@ -348,7 +351,7 @@ fun DeckBuilderScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                   Box(
                     modifier = Modifier
                       .clip(RoundedCornerShape(4.dp))
@@ -372,22 +375,18 @@ fun DeckBuilderScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Actions: Save to Room DB, Copy, Share
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            // Stack actions when enlarged text would squeeze their labels.
+            AdaptiveActionRow { actionModifier ->
               Button(
                 onClick = {
                   customDeckNameInput = deck.name
                   showSaveDialog = true
                 },
-                modifier = Modifier
-                  .weight(1f)
-                  .height(38.dp)
+                modifier = actionModifier
+                  .heightIn(min = 48.dp)
                   .testTag("save_deck_db_btn"),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 enabled = deck.validationWarnings.isEmpty()
               ) {
                 Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(15.dp))
@@ -403,9 +402,8 @@ fun DeckBuilderScreen(
                   clipboard.setPrimaryClip(clip)
                   Toast.makeText(context, "Mazo copiado al portapapeles", Toast.LENGTH_SHORT).show()
                 },
-                modifier = Modifier
-                  .weight(1f)
-                  .height(38.dp),
+                modifier = actionModifier
+                  .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(10.dp)
               ) {
                 Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp))
@@ -423,9 +421,8 @@ fun DeckBuilderScreen(
                   }
                   context.startActivity(Intent.createChooser(sendIntent, "Compartir Mazo TCG Pocket"))
                 },
-                modifier = Modifier
-                  .weight(1f)
-                  .height(38.dp),
+                modifier = actionModifier
+                  .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
               ) {
@@ -492,16 +489,16 @@ fun DeckBuilderScreen(
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                       onClick = { viewModel.loadSavedDeck(saved); onOpenSavedDeck() },
-                      modifier = Modifier.size(32.dp)
+                      modifier = Modifier.size(48.dp)
                     ) {
                       Icon(Icons.Filled.PlayArrow, contentDescription = "Cargar mazo", tint = PocketBluePrimary, modifier = Modifier.size(18.dp))
                     }
 
                     IconButton(
-                      onClick = { viewModel.deleteSavedDeck(saved.id) },
-                      modifier = Modifier.size(32.dp)
+                      onClick = { pendingDelete = saved },
+                      modifier = Modifier.size(48.dp)
                     ) {
-                      Icon(Icons.Filled.Delete, contentDescription = "Eliminar mazo", tint = PocketRed, modifier = Modifier.size(18.dp))
+                      Icon(Icons.Filled.Delete, contentDescription = "Eliminar mazo", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                     }
                   }
                 }
@@ -513,13 +510,21 @@ fun DeckBuilderScreen(
     }
   }
 
+  pendingDelete?.let { saved ->
+    AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text("Eliminar mazo") },
+      text = { Text("¿Eliminar «${saved.name}»? Las cartas de tu colección se conservan.",
+        modifier = Modifier.verticalScroll(rememberScrollState())) },
+      confirmButton = { TextButton(onClick = { viewModel.deleteSavedDeck(saved.id); pendingDelete = null }) { Text("Eliminar") } },
+      dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancelar") } })
+  }
+
   // Save Deck Modal Dialog
   if (showSaveDialog) {
     AlertDialog(
       onDismissRequest = { showSaveDialog = false },
       title = { Text("Guardar Mazo", fontWeight = FontWeight.Bold) },
       text = {
-        Column {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
           Text("Ingresa un nombre para almacenar este mazo en tu base de datos local:", fontSize = 12.sp, color = PocketTextSecondary)
           Spacer(modifier = Modifier.height(8.dp))
           OutlinedTextField(

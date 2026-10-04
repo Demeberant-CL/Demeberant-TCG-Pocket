@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -163,17 +166,13 @@ fun MetaDeckAnalyzerScreen(
   }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MetaDeckInsightCard(
   insight: MetaDeckInsight,
   onBuildDeckClick: () -> Unit
 ) {
-  val tierColor = when (insight.tier) {
-    "Tier S" -> Color(0xFFDC2626) // Red
-    "Tier A+" -> Color(0xFFD97706) // Amber
-    "Tier A" -> Color(0xFF2563EB) // Blue
-    else -> Color(0xFF4B5563)
-  }
+  val tierColor = MaterialTheme.colorScheme.secondary
 
   Card(
     modifier = Modifier
@@ -223,11 +222,10 @@ private fun MetaDeckInsightCard(
 
       Spacer(modifier = Modifier.height(10.dp))
 
-      // Progress Completion Bar
-      Row(
+      // Let the percentage wrap when system text is enlarged.
+      FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         Text(
           text = "Cartas clave en tu colección:",
@@ -239,7 +237,7 @@ private fun MetaDeckInsightCard(
           text = "${insight.completionRatePercent}%",
           fontSize = 12.sp,
           fontWeight = FontWeight.Black,
-          color = if (insight.completionRatePercent >= 75) Color(0xFF10B981) else PocketBluePrimary
+          color = PocketBluePrimary
         )
       }
 
@@ -251,7 +249,7 @@ private fun MetaDeckInsightCard(
           .fillMaxWidth()
           .height(6.dp)
           .clip(RoundedCornerShape(3.dp)),
-        color = if (insight.completionRatePercent >= 75) Color(0xFF10B981) else PocketBluePrimary,
+        color = PocketBluePrimary,
         trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
       )
 
@@ -267,7 +265,7 @@ private fun MetaDeckInsightCard(
       Text(
         text = "Poseídas: ${insight.ownedCardsSummary}",
         fontSize = 10.sp,
-        color = Color(0xFF059669)
+        color = MaterialTheme.colorScheme.primary
       )
 
       Spacer(modifier = Modifier.height(8.dp))
@@ -286,7 +284,7 @@ private fun MetaDeckInsightCard(
         onClick = onBuildDeckClick,
         modifier = Modifier
           .fillMaxWidth()
-          .height(36.dp),
+          .heightIn(min = 48.dp),
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
       ) {
