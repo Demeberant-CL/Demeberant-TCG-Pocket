@@ -117,7 +117,7 @@ fun CollectionScreen(
   var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
-  var selectedCardId by remember { mutableStateOf<String?>(null) }
+  var selectedCardId by rememberSaveable { mutableStateOf<String?>(null) }
   var pendingRestore by remember { mutableStateOf<BackupSnapshot?>(null) }
   var pendingBackup by remember { mutableStateOf<String?>(null) }
   var showPasteDialog by remember { mutableStateOf(false) }

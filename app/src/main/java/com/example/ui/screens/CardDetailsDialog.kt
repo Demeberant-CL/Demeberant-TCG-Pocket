@@ -1,6 +1,13 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -19,7 +26,9 @@ import kotlinx.coroutines.withContext
 fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -> Unit,
   onSave: (Int) -> Unit, onWishlist: () -> Unit) {
   val context = LocalContext.current
-  var quantity by remember(item.card.id, item.ownedCount) { mutableStateOf(item.ownedCount.toString()) }
+  val focusManager = LocalFocusManager.current
+  val imageHeight = (LocalConfiguration.current.screenHeightDp * 0.35f).coerceIn(120f, 240f).dp
+  var quantity by rememberSaveable(item.card.id, item.ownedCount) { mutableStateOf(item.ownedCount.toString()) }
   var details by remember(item.card.id, language) { mutableStateOf<CardDetails?>(null) }
   var loading by remember { mutableStateOf(true) }
   var error by remember(item.card.id, language) { mutableStateOf<String?>(null) }
@@ -37,11 +46,13 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
     Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp)) {
       com.example.ui.components.PocketCardImage(id = item.card.id, name = item.card.name, language = language,
-        highResolution = true, modifier = Modifier.fillMaxWidth().height(240.dp))
+        highResolution = true, modifier = Modifier.fillMaxWidth().height(imageHeight))
       Text("${item.card.id} · ${item.card.rarity.displayName}")
       Text(item.card.packNames.joinToString(", ").ifBlank { "Sin datos de sobre" })
       OutlinedTextField(value = quantity, onValueChange = { if (it.length <= 5 && it.all(Char::isDigit)) quantity = it },
-        label = { Text("Copias en mi colección") }, singleLine = true)
+        label = { Text("Copias en mi colección") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }))
       TextButton(onClick = onWishlist) { Text(if (item.isWishlist) "Quitar de Deseos" else "Añadir a Deseos") }
       if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
       error?.let {

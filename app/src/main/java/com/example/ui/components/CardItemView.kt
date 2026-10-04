@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -194,24 +195,15 @@ fun CardItemView(
         )
       }
 
-      // Wishlist Heart Icon Top-Left
-      Box(
-        modifier = Modifier
-          .align(Alignment.TopStart)
-          .padding(4.dp)
-          .size(22.dp)
-          .clip(CircleShape)
-          .background(Color.White.copy(alpha = 0.85f))
-          .clickable { onToggleWishlist() }
-          .testTag("wishlist_btn_${card.id}"),
-        contentAlignment = Alignment.Center
-      ) {
-        Icon(
-          imageVector = if (isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-          contentDescription = if (isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
-          tint = if (isWishlist) PocketRed else PocketTextMuted,
-          modifier = Modifier.size(13.dp)
-        )
+      // A full touch target with a small visible badge keeps the card art readable.
+      IconButton(onClick = onToggleWishlist,
+        modifier = Modifier.align(Alignment.TopStart).size(48.dp).testTag("wishlist_btn_${card.id}")) {
+        Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.85f)),
+          contentAlignment = Alignment.Center) {
+          Icon(imageVector = if (isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            contentDescription = if (isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
+            tint = if (isWishlist) PocketRed else Color(0xFF59616F), modifier = Modifier.size(14.dp))
+        }
       }
 
     }
