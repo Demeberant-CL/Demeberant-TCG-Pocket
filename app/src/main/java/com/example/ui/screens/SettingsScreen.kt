@@ -28,6 +28,7 @@ fun SettingsScreen(
     text = {
       Column(Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        com.example.ui.components.AppVersionLabel()
         Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.titleSmall)
         Column(Modifier.selectableGroup()) {
           ThemeMode.entries.forEach { mode ->

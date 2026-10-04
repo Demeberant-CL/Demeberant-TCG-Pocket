@@ -55,6 +55,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 @Composable
 fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
   var section by rememberSaveable(editorRequest) { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
+  BackHandler(enabled = section != 0) { section = 0 }
   Column(modifier.fillMaxSize()) {
     MenuChoices(listOf("Mis mazos", "Crear y editar", "Plantillas A1"), section) { section = it }
     when (section) {
@@ -88,6 +89,7 @@ fun AnalysisMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmod
 fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   var section by rememberSaveable { mutableIntStateOf(0) }
+  BackHandler(enabled = section != 0) { section = 0 }
   var reserveTwo by rememberSaveable { mutableStateOf(true) }
   var copied by remember { mutableStateOf(false) }
   val context = LocalContext.current
@@ -196,6 +198,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
           Text("Más herramientas", style = MaterialTheme.typography.headlineSmall)
           Text("Elige qué quieres hacer", color = MaterialTheme.colorScheme.onSurface)
         }
+        com.example.ui.components.AppVersionLabel(Modifier.padding(top = 8.dp))
       }
       items((labels.size + 1) / 2) { row ->
         AdaptiveActionRow { cardModifier ->

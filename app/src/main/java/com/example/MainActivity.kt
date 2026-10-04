@@ -9,6 +9,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Collections
@@ -23,6 +25,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -52,11 +56,33 @@ class MainActivity : ComponentActivity() {
       PocketAppTheme(
         darkTheme = userPrefs.themeMode.isDark(androidx.compose.foundation.isSystemInDarkTheme())
       ) {
-        var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+        var navigation by rememberSaveable { mutableStateOf(listOf(0)) }
+        val selectedTabIndex = navigation.last()
+        val screenStates = rememberSaveableStateHolder()
+        var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
+        fun navigateTo(destination: Int) {
+          showExitConfirmation = false
+          navigation = com.example.ui.AppNavigation.open(navigation, destination)
+        }
         var deckEditorRequest by rememberSaveable { mutableIntStateOf(0) }
         var moreSection by rememberSaveable { mutableIntStateOf(-1) }
         var metaReturnTab by rememberSaveable { mutableIntStateOf(0) }
-        BackHandler(enabled = selectedTabIndex == 5) { selectedTabIndex = metaReturnTab }
+        // Dialogs and screen-local handlers get priority over this root handler.
+        BackHandler {
+          if (navigation.size > 1) navigation = com.example.ui.AppNavigation.back(navigation)
+          else showExitConfirmation = true
+        }
+        if (showExitConfirmation) androidx.compose.material3.AlertDialog(
+          onDismissRequest = { showExitConfirmation = false },
+          title = { Text("¿Salir de la app?") },
+          text = { Text("Puedes seguir usando la app o salir. Tu colección, mazos y conexiones guardados se conservan.",
+            modifier = Modifier.verticalScroll(rememberScrollState())) },
+          confirmButton = { androidx.compose.material3.TextButton(onClick = {
+            showExitConfirmation = false
+            this@MainActivity.finish()
+          }) { Text("Salir") } },
+          dismissButton = { androidx.compose.material3.TextButton(onClick = { showExitConfirmation = false }) { Text("Continuar") } }
+        )
 
         val labels = listOf("Inicio", "Colección", "Mazos", "IA", "Más")
         val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
@@ -69,9 +95,11 @@ class MainActivity : ComponentActivity() {
                 NavigationBarItem(
                   selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
                   onClick = {
-                    if (index == 2) deckEditorRequest = 0
-                    if (index == 4) moreSection = -1
-                    selectedTabIndex = index
+                    if (selectedTabIndex != index) {
+                      if (index == 2) deckEditorRequest = 0
+                      if (index == 4) moreSection = -1
+                      navigateTo(index)
+                    }
                   },
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
@@ -89,23 +117,25 @@ class MainActivity : ComponentActivity() {
           }
         ) { innerPadding ->
           val screenModifier = Modifier.padding(innerPadding)
+          screenStates.SaveableStateProvider(selectedTabIndex) {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
-              onCollection = { selectedTabIndex = 1 },
-              onDecks = { deckEditorRequest = 0; selectedTabIndex = 2 },
-              onEditor = { deckEditorRequest++; selectedTabIndex = 2 },
-              onAi = { selectedTabIndex = 3 }, onMeta = { metaReturnTab = 0; selectedTabIndex = 5 },
-              onGuide = { moreSection = 0; selectedTabIndex = 4 })
+              onCollection = { navigateTo(1) },
+              onDecks = { deckEditorRequest = 0; navigateTo(2) },
+              onEditor = { deckEditorRequest++; navigateTo(2) },
+              onAi = { navigateTo(3) }, onMeta = { metaReturnTab = 0; navigateTo(5) },
+              onGuide = { moreSection = 0; navigateTo(4) })
             1 -> CollectionScreen(viewModel, screenModifier)
-            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { selectedTabIndex = 3 }, editorRequest = deckEditorRequest)
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; selectedTabIndex = 2 }, screenModifier)
+            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
-              androidx.compose.material3.TextButton(onClick = { selectedTabIndex = metaReturnTab }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
-              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { selectedTabIndex = 3 }, Modifier.weight(1f))
+              androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
+              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { navigateTo(3) }, Modifier.weight(1f))
             }
             else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier,
-              initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; selectedTabIndex = 5 })
+              initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; navigateTo(5) })
 
+          }
           }
         }
       }
