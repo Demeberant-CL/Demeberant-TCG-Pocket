@@ -231,3 +231,11 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Detalles: alternativa inglesa únicamente ante HTTP 404, etiquetada; caché válida durante 24 horas y recuperación de copia anterior ante fallo. Reglas mantienen fuente e idioma indicado en source; la búsqueda textual de una copia inglesa usa su texto original.
 - Tres pruebas nuevas: alternativa y ausencia de segunda descarga, recuperación de caché vencida ante 503 sin cambiar idioma e identidad incorrecta rechazada.
 - Pendiente revisión en teléfono de las nuevas imágenes y detalles. Sin modificaciones de cantidades, IDs, mazos ni claves.
+
+
+### Persistencia de conexiones IA
+- Lectura recupera el respaldo .bak de AtomicFile incluso si falta el archivo base tras una escritura interrumpida. Se conserva el nombre ai-connection.enc y el alias Keystore pocket-ai-user-key.
+- Límite de lectura considera los 29 bytes de envoltura AES-GCM además de los 200000 bytes de JSON admitidos al guardar; lectura acotada.
+- Cambio y eliminación de perfil leen el estado cifrado actual en disco. Entradas duplicadas o selección inválida se rechazan antes de escribir. Errores de lectura/cifrado no borran el archivo ni las otras conexiones.
+- Cuatro pruebas nuevas: recreación del almacén y proveedor/modelo/claves, recuperación de escritura interrumpida, conservación ante corrupción y lectura en el límite de tamaño. Esto simula reapertura en pruebas; no equivale a verificar reinicio/actualización real del teléfono.
+- Usuario confirma IA funcionando en dispositivo. No se hacen nuevas consultas con claves reales ni se modifican proveedores/modelos elegidos.

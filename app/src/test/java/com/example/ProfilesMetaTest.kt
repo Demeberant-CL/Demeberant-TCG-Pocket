@@ -14,6 +14,79 @@ import javax.crypto.spec.SecretKeySpec
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ProfilesMetaTest {
+  @Test fun reopenedStoreKeepsSelectedProviderModelAndAllKeys() {
+    val context = RuntimeEnvironment.getApplication()
+    val key = SecretKeySpec(ByteArray(32) { 3 }, "AES")
+    val store = AiConnectionStore(context) { key }
+    store.clear()
+    try {
+      store.save(AiConnection(apiKey = "gemini-secret", model = "saved-gemini-model", id = "g"))
+      store.save(AiConnection(AiProvider.OPENAI, "saved-openai-model", "openai-secret", id = "o"))
+      store.select("g")
+      val reopened = AiConnectionStore(context) { key }
+      assertEquals("g", reopened.loadProfiles().activeId)
+      assertEquals("saved-gemini-model", reopened.load()!!.model)
+      assertEquals("openai-secret", reopened.loadProfiles().entries.first { it.id == "o" }.apiKey)
+      reopened.remove("o")
+      assertEquals("gemini-secret", AiConnectionStore(context) { key }.load()!!.apiKey)
+      assertEquals("g", store.loadProfiles().activeId)
+    } finally { store.clear() }
+  }
+
+  @Test fun interruptedWriteRecoversBackupWhenBaseFileIsAbsent() {
+    val context = RuntimeEnvironment.getApplication()
+    val key = SecretKeySpec(ByteArray(32) { 4 }, "AES")
+    val store = AiConnectionStore(context) { key }
+    store.clear()
+    try {
+      store.save(AiConnection(apiKey = "recover-secret", id = "g"))
+      val base = java.io.File(context.noBackupFilesDir, "ai-connection.enc")
+      val backup = java.io.File(base.path + ".bak")
+      assertTrue(base.renameTo(backup))
+      assertEquals("recover-secret", AiConnectionStore(context) { key }.load()!!.apiKey)
+      assertTrue(base.exists())
+    } finally { store.clear() }
+  }
+
+  @Test fun corruptCredentialsAndInvalidUpdatesNeverOverwriteSavedFile() {
+    val context = RuntimeEnvironment.getApplication()
+    val key = SecretKeySpec(ByteArray(32) { 5 }, "AES")
+    val store = AiConnectionStore(context) { key }
+    store.clear()
+    try {
+      val entry = AiConnection(apiKey = "preserved-secret", id = "g")
+      store.save(entry)
+      val file = java.io.File(context.noBackupFilesDir, "ai-connection.enc")
+      val original = file.readBytes()
+      assertTrue(runCatching { store.saveProfiles(AiProfiles(listOf(entry, entry), "g")) }.isFailure)
+      assertArrayEquals(original, file.readBytes())
+      val damaged = original.copyOf().also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
+      file.writeBytes(damaged)
+      assertTrue(runCatching { store.remove("g") }.isFailure)
+      assertTrue(runCatching { store.select("g") }.isFailure)
+      assertTrue(runCatching { store.save(AiConnection(apiKey = "another-secret")) }.isFailure)
+      assertArrayEquals(damaged, file.readBytes())
+    } finally { store.clear() }
+  }
+
+  @Test fun maximumSupportedPlaintextCanBeReadWithEncryptionOverhead() {
+    val context = RuntimeEnvironment.getApplication()
+    val key = SecretKeySpec(ByteArray(32) { 6 }, "AES")
+    val store = AiConnectionStore(context) { key }
+    store.clear()
+    try {
+      val entry = AiConnection(apiKey = "key", id = "g", label = "")
+      val row = org.json.JSONObject().put("provider", entry.provider.name).put("model", entry.model)
+        .put("key", entry.apiKey).put("endpoint", entry.endpoint).put("id", entry.id).put("label", "")
+      val overhead = org.json.JSONObject().put("version", 2).put("activeId", "g")
+        .put("profiles", org.json.JSONArray().put(row)).toString().toByteArray().size
+      val value = entry.copy(label = "x".repeat(200000 - overhead))
+      store.save(value)
+      assertEquals(200029L, java.io.File(context.noBackupFilesDir, "ai-connection.enc").length())
+      assertEquals(value, AiConnectionStore(context) { key }.load())
+    } finally { store.clear() }
+  }
+
   @Test fun switchingAndUpdatingProfilesPreservesIndependentSecrets() {
     val store = AiConnectionStore(RuntimeEnvironment.getApplication()) { SecretKeySpec(ByteArray(32) { 8 }, "AES") }
     store.clear()

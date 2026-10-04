@@ -7,6 +7,7 @@ import android.util.AtomicFile
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.UUID
+import com.example.data.util.readBytesBounded
 import java.io.File
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -40,6 +41,8 @@ class AiConnectionStore(context: Context, private val keyProvider: () -> SecretK
   }
   @Synchronized fun saveProfiles(profiles: AiProfiles) {
     require(profiles.entries.size <= 30)
+    require(profiles.entries.map { it.id }.distinct().size == profiles.entries.size && profiles.entries.all { it.id.isNotBlank() })
+    require(if (profiles.entries.isEmpty()) profiles.activeId.isEmpty() else profiles.entries.any { it.id == profiles.activeId })
     val rows = JSONArray()
     profiles.entries.forEach { c -> rows.put(JSONObject().put("provider", c.provider.name).put("model", c.model)
       .put("key", c.apiKey).put("endpoint", c.endpoint).put("id", c.id).put("label", c.label)) }
@@ -53,11 +56,24 @@ class AiConnectionStore(context: Context, private val keyProvider: () -> SecretK
     try { output.write(cipher.iv.size); output.write(cipher.iv); output.write(encrypted); file.finishWrite(output) }
     catch (e: Exception) { file.failWrite(output); throw e }
   }
+  @Synchronized fun select(id: String): AiProfiles {
+    val saved = loadProfiles()
+    require(saved.entries.any { it.id == id }) { "La conexión ya no está guardada." }
+    return saved.copy(activeId = id).also(::saveProfiles)
+  }
+  @Synchronized fun remove(id: String): AiProfiles {
+    val saved = loadProfiles()
+    require(saved.entries.any { it.id == id }) { "La conexión ya no está guardada." }
+    val remaining = saved.entries.filterNot { it.id == id }
+    val active = if (saved.activeId == id) remaining.firstOrNull()?.id ?: "" else saved.activeId
+    return AiProfiles(remaining, active).also(::saveProfiles)
+  }
   fun load(): AiConnection? = loadProfiles().active
   @Synchronized fun loadProfiles(): AiProfiles {
-    if (!file.baseFile.exists()) return AiProfiles()
-    val data = file.readFully()
-    require(data.size in 30..200000)
+    // AtomicFile may recover its last complete write from .bak after interruption.
+    if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return AiProfiles()
+    val data = file.openRead().use { it.readBytesBounded(200029) }
+    require(data.size in 30..200029)
     val ivSize = data[0].toInt() and 255
     require(ivSize == 12)
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
@@ -71,7 +87,9 @@ class AiConnectionStore(context: Context, private val keyProvider: () -> SecretK
     require(rows.length() <= 30)
     val entries = (0 until rows.length()).map { entry(rows.getJSONObject(it)) }
     require(entries.map { it.id }.distinct().size == entries.size)
-    return AiProfiles(entries, json.optString("activeId"))
+    val activeId = json.optString("activeId").takeIf { id -> entries.any { it.id == id } }
+      ?: entries.firstOrNull()?.id.orEmpty()
+    return AiProfiles(entries, activeId)
   }
   fun clear() { file.delete() }
   companion object {

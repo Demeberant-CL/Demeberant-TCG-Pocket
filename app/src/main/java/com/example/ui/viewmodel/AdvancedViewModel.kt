@@ -31,28 +31,29 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val availableModels = MutableStateFlow<List<String>>(emptyList())
   val connectionReady = MutableStateFlow(false)
   fun saveConnection(value: AiConnection) = task("AI_CONFIG") {
+    require(connectionReady.value) { "Espera a que se carguen las conexiones guardadas." }
     require(value.apiKey.isNotBlank() && value.apiKey.length <= 4096 && value.apiKey.all { it.code in 33..126 }) { "Introduce una clave API válida." }
     require(value.model.matches(Regex("[a-zA-Z0-9._:/-]{1,120}")) && value.endpoint.length <= 2000) { "Revisa modelo y URL." }
     withContext(Dispatchers.IO) { connectionStore.save(value) }
     profiles.value = withContext(Dispatchers.IO) { connectionStore.loadProfiles() }
     connection.value = value
+    availableModels.value = emptyList()
     proposal.value = null
     message.value = "Conexión guardada en este dispositivo. Aún no se ha consultado la API."
   }
   fun removeConnection() = task("AI_CONFIG") {
-    val remaining = profiles.value.entries.filterNot { it.id == connection.value.id }
-    val next = AiProfiles(remaining, remaining.firstOrNull()?.id ?: "")
-    withContext(Dispatchers.IO) { connectionStore.saveProfiles(next) }
+    require(connectionReady.value) { "Espera a que se carguen las conexiones guardadas." }
+    val next = withContext(Dispatchers.IO) { connectionStore.remove(connection.value.id) }
     profiles.value = next
     connection.value = next.active ?: AiConnection()
+    availableModels.value = emptyList()
     proposal.value = null
     message.value = "Conexión eliminada."
   }
   fun selectConnection(id: String) = task("AI_CONFIG") {
-    val selected = profiles.value.entries.first { it.id == id }
-    val next = profiles.value.copy(activeId = id)
-    withContext(Dispatchers.IO) { connectionStore.saveProfiles(next) }
-    profiles.value = next; connection.value = selected; proposal.value = null; availableModels.value = emptyList()
+    require(connectionReady.value) { "Espera a que se carguen las conexiones guardadas." }
+    val next = withContext(Dispatchers.IO) { connectionStore.select(id) }
+    profiles.value = next; connection.value = next.active!!; proposal.value = null; availableModels.value = emptyList()
   }
   fun discoverModels(value: AiConnection) = task("AI_MODELS") {
     availableModels.value = emptyList()
@@ -106,7 +107,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
     viewModelScope.launch(Dispatchers.IO) {
       try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }
-      catch (_: Exception) { message.value = "No se puede leer la conexión IA. Configúrala de nuevo." }
+      catch (_: Exception) { message.value = "No se pudieron leer las conexiones IA. El archivo guardado se conserva; reinicia la app para intentar recuperarlo." }
       finally { connectionReady.value = true }
     }
   }
