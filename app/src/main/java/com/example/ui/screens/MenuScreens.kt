@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.components.AdaptiveActionRow
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
@@ -64,7 +63,13 @@ fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAsk
   }
   BackHandler(enabled = section != 0) { section = 0 }
   Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Mis mazos", "Crear y editar", "Plantillas A1"), section) { section = it }
+    if (section == 1) {
+      TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
+    } else {
+      MenuChoices(listOf("Mis mazos", "Plantillas A1"), if (section == 0) 0 else 1) {
+        section = if (it == 0) 0 else 2
+      }
+    }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 })
       1 -> ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
@@ -214,16 +219,16 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
         }
         com.example.ui.components.AppVersionLabel(Modifier.padding(top = 8.dp))
       }
-      items((labels.size + 1) / 2) { row ->
-        AdaptiveActionRow { cardModifier ->
-          for (n in row * 2 until minOf(row * 2 + 2, labels.size)) {
-            ElevatedCard(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n }, modifier = cardModifier, shape = RoundedCornerShape(24.dp)) {
-              Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 112.dp),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(icons[n], contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
-                Text(labels[n], style = MaterialTheme.typography.titleMedium)
-                Text(descriptions[n], style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-              }
+      items(labels.size) { n ->
+        ElevatedCard(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n },
+          modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+          Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+              Text(labels[n], style = MaterialTheme.typography.titleMedium)
+              Text(descriptions[n], style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
           }
         }

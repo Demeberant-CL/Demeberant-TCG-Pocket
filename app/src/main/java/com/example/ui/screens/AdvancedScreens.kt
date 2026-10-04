@@ -66,7 +66,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   }
   Column(modifier.fillMaxSize()) {
     Surface(tonalElevation = 2.dp) {
-      Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Column(Modifier.fillMaxWidth()) {
           Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
           if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -90,7 +90,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         OutlinedCard(onClick = { actionName = choice.name; model.proposal.value = null }, enabled = !busy,
           modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
           colors = CardDefaults.outlinedCardColors(containerColor = if (action == choice)
-            MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+            MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)) {
           Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(when (choice) {
               AiDeckAction.CREATE -> Icons.Filled.AutoAwesome

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -34,6 +35,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
@@ -57,6 +60,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +103,8 @@ fun CollectionScreen(
   viewModel: TcgViewModel,
   modifier: Modifier = Modifier
 ) {
+  var listView by rememberSaveable { mutableStateOf(false) }
+  var largeCards by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
@@ -311,7 +317,7 @@ fun CollectionScreen(
     // One collection status is selected at a time.
     LazyRow(
       contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(6.dp)
+      horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
       item {
         PocketPillChip(
@@ -352,6 +358,11 @@ fun CollectionScreen(
         }
       }
     }
+    LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+      item { FilterChip(selected = !listView, onClick = { listView = false }, label = { Text("Cuadrícula") }) }
+      item { FilterChip(selected = listView, onClick = { listView = true }, label = { Text("Lista") }) }
+      if (!listView) item { FilterChip(selected = largeCards, onClick = { largeCards = !largeCards }, label = { Text("Cartas grandes") }) }
+    }
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
@@ -371,9 +382,34 @@ fun CollectionScreen(
           fontSize = 13.sp
         )
       }
+    } else if (listView) {
+      LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(filteredCards.size, key = { filteredCards[it].card.id }) { index ->
+          val item = filteredCards[index]
+          Card(Modifier.fillMaxWidth().clickable { selectedCardId = item.card.id }) {
+            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+              verticalAlignment = Alignment.CenterVertically) {
+              com.example.ui.components.PocketCardImage(item.card.id, item.card.name,
+                modifier = Modifier.size(width = 48.dp, height = 68.dp))
+              Column(Modifier.weight(1f)) {
+                Text(item.card.name, style = MaterialTheme.typography.titleMedium)
+                Text("${item.card.id} · ${item.card.type}", style = MaterialTheme.typography.bodySmall)
+                Text(if (item.ownedCount > 0) "Tengo ${item.ownedCount}" else "Falta",
+                  style = MaterialTheme.typography.bodyMedium)
+              }
+              IconButton(onClick = { viewModel.toggleWishlist(item.card.id) }) {
+                Icon(if (item.isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                  if (item.isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
+                  tint = if (item.isWishlist) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+            }
+          }
+        }
+      }
     } else {
       LazyVerticalGrid(
-        columns = GridCells.Adaptive((100f * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
+        columns = GridCells.Adaptive(((if (largeCards) 150f else 100f) * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -7,23 +7,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.AvatarPickerDialog
-import com.example.ui.components.AdaptiveActionRow
+import com.example.data.util.DeckCodec
 import com.example.ui.components.ProfileAvatar
 import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
@@ -34,14 +28,11 @@ import java.time.format.FormatStyle
 
 @Composable
 fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier,
-  onCollection: () -> Unit, onDecks: () -> Unit, onEditor: () -> Unit,
-  onAi: () -> Unit, onMeta: () -> Unit, onGuide: () -> Unit) {
+  onDecks: () -> Unit, onEditor: () -> Unit, onMeta: () -> Unit) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val decks by main.savedDecks.collectAsStateWithLifecycle()
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
   val prefs by main.userPreferences.collectAsStateWithLifecycle()
-  val connection by advanced.connection.collectAsStateWithLifecycle()
-  val ready by advanced.connectionReady.collectAsStateWithLifecycle()
   val snapshot by advanced.metaSnapshot.collectAsStateWithLifecycle()
   val message by main.csvStatusMessage.collectAsStateWithLifecycle()
   var chooseAvatar by remember { mutableStateOf(false) }
@@ -52,7 +43,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     item {
       Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(
         MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.secondaryContainer)),
-        RoundedCornerShape(24.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        RoundedCornerShape(20.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
           ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
@@ -76,19 +67,36 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
     } }
     item {
-      Text("Accesos rápidos", style = MaterialTheme.typography.titleMedium)
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AdaptiveActionRow { cardModifier ->
-          HomeAction("Colección", "$owned cartas registradas", Icons.Filled.Collections, cardModifier, onCollection)
-          HomeAction("Mis mazos", "${decks.size} guardados", Icons.Filled.Style, cardModifier, onDecks)
-        }
-        AdaptiveActionRow { cardModifier ->
-          HomeAction("Crear / editar", "Prepara tu baraja", Icons.Filled.Edit, cardModifier, onEditor)
-          HomeAction("Mi IA", if (ready && connection.apiKey.isNotBlank()) connection.provider.label else "Configura tu conexión",
-            Icons.Filled.AutoAwesome, cardModifier, onAi)
-        }
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Mazos recientes", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = onDecks) { Text("Ver todos") }
+      }
+      if (decks.isEmpty()) {
+        Text("Todavía no hay mazos guardados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = onEditor) { Text("Abrir editor") }
       }
     }
+    decks.take(3).forEach { saved -> item(key = "recent_${saved.id}") {
+      val refs = remember(saved.cardListSerialized) {
+        runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()
+      }
+      val canOpen = refs != null && refs.all { ref -> inventory.any { it.card.id == ref.first } }
+      ElevatedCard(onClick = { main.loadSavedDeck(saved); onEditor() }, enabled = canOpen,
+        modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically) {
+          if (androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f) {
+            refs?.firstOrNull()?.let { (id, _) -> DeckThumbnail(id, "Portada de ${saved.name}") }
+          }
+          Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(saved.name, style = MaterialTheme.typography.titleMedium)
+            Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodyMedium)
+            Text(if (canOpen) "Abrir mazo" else "Lista no disponible en el catálogo actual",
+              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        }
+      }
+    } }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
       ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -99,18 +107,6 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         }
       }
     } }
-    item {
-      ElevatedCard(onClick = onAi, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-          Column(Modifier.weight(1f)) {
-            Text("Tu asistente", style = MaterialTheme.typography.titleMedium)
-            Text(if (!ready) "Cargando conexión guardada…" else if (connection.apiKey.isBlank()) "Conecta Gemini, OpenAI u otra API compatible"
-              else "${connection.label}\n${connection.provider.label} · ${connection.model}", style = MaterialTheme.typography.bodySmall)
-          }
-        }
-      }
-    }
     item {
       ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -129,28 +125,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         }
       }
     }
-    item {
-      ElevatedCard(onClick = onGuide, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = MaterialTheme.colorScheme.primary)
-          Column(Modifier.weight(1f)) {
-            Text("Guía y tutoriales", style = MaterialTheme.typography.titleMedium)
-            Text("Aprende a usar cada función", style = MaterialTheme.typography.bodySmall)
-          }
-        }
-      }
-    }
+
   }
   if (chooseAvatar) AvatarPickerDialog(prefs.avatarId, onSave = { main.setProfileAvatar(it); chooseAvatar = false }, onClose = { chooseAvatar = false })
-}
-
-@Composable
-private fun HomeAction(title: String, description: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-  ElevatedCard(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(24.dp)) {
-    Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 100.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-      Text(title, style = MaterialTheme.typography.titleMedium)
-      Text(description, style = MaterialTheme.typography.bodySmall)
-    }
-  }
 }

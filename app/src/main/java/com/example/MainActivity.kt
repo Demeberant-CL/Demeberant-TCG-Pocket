@@ -104,9 +104,9 @@ class MainActivity : ComponentActivity() {
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer,
-                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
+                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),
@@ -120,11 +120,9 @@ class MainActivity : ComponentActivity() {
           screenStates.SaveableStateProvider(selectedTabIndex) {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
-              onCollection = { navigateTo(1) },
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
               onEditor = { deckEditorRequest++; navigateTo(2) },
-              onAi = { navigateTo(3) }, onMeta = { metaReturnTab = 0; navigateTo(5) },
-              onGuide = { screenStates.removeState(4); moreSection = 0; navigateTo(4) })
+              onMeta = { metaReturnTab = 0; navigateTo(5) })
             1 -> CollectionScreen(viewModel, screenModifier)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)

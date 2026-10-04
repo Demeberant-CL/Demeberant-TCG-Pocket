@@ -6,7 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +20,7 @@ import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
 fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onEdit: () -> Unit) {
+  val draft by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val decks by viewModel.savedDecks.collectAsStateWithLifecycle()
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val owned = remember(inventory) { inventory.associate { it.card.id to it.ownedCount } }
@@ -29,7 +30,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onEdit) { Text("Crear / editar") }
+        Button(onClick = onEdit) { Text(if (draft == null || draft?.cards?.isEmpty() == true) "Nuevo mazo" else "Continuar borrador") }
       }
       if (decks.isEmpty()) Text("Guarda tu primera baraja desde el editor. Puedes empezar con tus cartas o consultar tu IA.")
     }
@@ -38,17 +39,18 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       val energies = remember(saved.cardListSerialized) { runCatching { DeckCodec.energies(saved.cardListSerialized) }.getOrDefault(emptyList()) }
       val total = refs?.sumOf { it.second } ?: saved.totalCards
       val available = refs?.sumOf { (id, count) -> minOf(count, owned[id] ?: 0) }
+      var showMenu by remember(saved.id) { mutableStateOf(false) }
       ElevatedCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
           // Keep the text column usable on narrow phones and with enlarged system text.
           if (LocalDensity.current.fontScale < 1.3f) {
             refs?.firstOrNull()?.let { (id, _) -> DeckThumbnail(id, cards[id]?.name ?: "Portada del mazo") }
           }
-          Column(Modifier.weight(1f)) {
+          Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(saved.name, style = MaterialTheme.typography.titleMedium)
             Text("$total/20 cartas" + if (total < 20) " · Borrador" else "", style = MaterialTheme.typography.bodySmall)
             Text("Energías: " + energies.joinToString().ifBlank { "Por revisar en el editor" }, style = MaterialTheme.typography.bodySmall)
-            if (available != null) Text("Tienes $available/$total copias" + if (available < total) " · Faltan ${total-available}" else "",
+            if (available != null) Text(if (available < total) "Faltan ${total-available} copias · $available/$total disponibles" else "$available/$total copias disponibles",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             if (refs == null) Text("No se pudo interpretar la lista guardada. El mazo se conserva.", style = MaterialTheme.typography.bodySmall)
@@ -56,7 +58,12 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
               OutlinedButton(enabled = refs != null && refs.all { cards.containsKey(it.first) },
                 onClick = { viewModel.loadSavedDeck(saved); onEdit() }) { Text("Editar") }
               Spacer(Modifier.weight(1f))
-              IconButton(onClick = { pendingDelete = saved }) { Icon(Icons.Filled.Delete, "Eliminar ${saved.name}") }
+              Box {
+                IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                  DropdownMenuItem(text = { Text("Eliminar mazo") }, onClick = { showMenu = false; pendingDelete = saved })
+                }
+              }
             }
             if (refs != null && refs.any { !cards.containsKey(it.first) }) Text("Hay cartas fuera del catálogo actual.", style = MaterialTheme.typography.bodySmall)
           }
