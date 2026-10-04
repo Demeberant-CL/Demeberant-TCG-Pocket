@@ -267,3 +267,9 @@ Avatares de perfil (2026-10-03): seis personajes originales de estilo entrenador
 - Caché meta recupera respaldo AtomicFile .bak tras interrupción; lectura limitada a 2 MB. No se añaden fuentes no verificadas ni backend.
 - Acciones del simulador y campos PS de filtros por efectos adaptan columnas a letra grande/pantallas estrechas.
 - Tres pruebas nuevas cubren caducidad/reintento de imágenes 404, límite temporal del meta y reapertura de repositorio con escritura interrumpida. Suite existente verifica persistencia de conexiones cifradas, modelo/proveedor/clave, recuperación .bak y rechazo de corrupción sin sobrescribir. No sustituye prueba física de reinicio/actualización en teléfono ni validación visual final.
+
+## Reglas de respaldo Android
+
+- Manifest conecta fullBackupContent (API 26–30) y dataExtractionRules (API 31+) con XML explícito. Conserva allowBackup y el respaldo predeterminado de datos de usuario; excluye únicamente diagnostics/ y pocket-meta.json con envolturas AtomicFile. No cambia colección, mazos, avatar, preferencias ni appId.
+- Las conexiones IA permanecen en noBackupFilesDir: según Android, esa ubicación y las cachés no participan en Auto Backup. No se afirma portabilidad de claves Keystore entre dispositivos. Documentación primaria: https://developer.android.com/identity/data/autobackup .
+- Prueba Robolectric lee recursos XML compilados y verifica exclusiones idénticas para respaldo antiguo, nube y transferencia, sin excluir dominios de base de datos/preferencias ni añadir allowlist. CI verifica manifest/recursos compilan. No se ha ejecutado una restauración real del servicio de respaldo Android.
