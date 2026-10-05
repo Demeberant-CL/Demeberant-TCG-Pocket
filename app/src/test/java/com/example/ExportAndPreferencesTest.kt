@@ -104,6 +104,44 @@ class ExportAndPreferencesTest {
     } finally { store.clear() }
   }
 
+  @Test fun unsavedDraftGuardDetectsReplacementRiskAndClearedSavedDeck() {
+    val model = com.example.ui.viewmodel.TcgViewModel(RuntimeEnvironment.getApplication())
+    val store = androidx.lifecycle.ViewModelStore().apply { put("draft-guard", model) }
+    try {
+      model.newManualDeck()
+      assertFalse(model.hasUnsavedDeckChanges())
+      model.editDeckQuantity("A1-001", 1)
+      assertTrue(model.hasUnsavedDeckChanges())
+      model.loadSavedDeck(com.example.data.local.SavedDeckEntity(id=7, name="Mi mazo", archetype="Manual",
+        strategy="", cardListSerialized="A1-001:1", totalCards=1))
+      assertFalse(model.hasUnsavedDeckChanges())
+      model.editDeckQuantity("A1-001", 0)
+      assertTrue(model.hasUnsavedDeckChanges())
+      model.newManualDeck()
+      assertFalse(model.hasUnsavedDeckChanges())
+    } finally { store.clear() }
+  }
+
+  @Test fun unsavedDraftGuardIncludesNotesAndCustomEnergiesAndAllowsUndo() {
+    val model = com.example.ui.viewmodel.TcgViewModel(RuntimeEnvironment.getApplication())
+    val store = androidx.lifecycle.ViewModelStore().apply { put("draft-fields", model) }
+    try {
+      model.loadSavedDeck(com.example.data.local.SavedDeckEntity(id=9, name="Guardado", archetype="Manual",
+        strategy="Original", cardListSerialized=com.example.data.util.DeckCodec.encode(
+          com.example.data.util.DeckCodec.decode("A1-001:1"), listOf("Planta")), totalCards=1))
+      model.editDeckStrategy("Nueva estrategia")
+      assertTrue(model.hasUnsavedDeckChanges())
+      model.editDeckStrategy("Original")
+      assertFalse(model.hasUnsavedDeckChanges())
+      model.toggleDeckEnergy("Agua")
+      assertTrue(model.hasUnsavedDeckChanges())
+      model.toggleDeckEnergy("Agua")
+      assertFalse(model.hasUnsavedDeckChanges())
+      model.editDeckName("Otro nombre")
+      assertTrue(model.hasUnsavedDeckChanges())
+    } finally { store.clear() }
+  }
+
   @Test fun diagnosticCanBeSavedAsUtf8TxtWithoutPrivatePayload() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     ErrorLogManager.init(context)

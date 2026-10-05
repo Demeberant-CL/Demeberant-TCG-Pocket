@@ -93,6 +93,15 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   // Deck Builder
   private val _generatedDeck = MutableStateFlow<GeneratedDeck?>(null)
   val generatedDeck = _generatedDeck.asStateFlow()
+  private var savedDraftSnapshot: GeneratedDeck? = null
+
+  fun hasUnsavedDeckChanges(): Boolean {
+    val current = _generatedDeck.value ?: return false
+    if (editingDeckId == 0L && current.cards.isEmpty() && current.strategy.isBlank() && current.name == "Mi mazo") return false
+    val saved = savedDraftSnapshot?.takeIf { editingDeckId > 0L } ?: return true
+    return current.name != saved.name || current.strategy != saved.strategy ||
+      current.archetype != saved.archetype || current.cards != saved.cards || current.energyTypes != saved.energyTypes
+  }
 
   private val _deckBuildPrompt = MutableStateFlow("Pikachu ex Turbo")
   val deckBuildPrompt = _deckBuildPrompt.asStateFlow()
@@ -389,6 +398,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
           totalCards = deck.totalCardCount
         )
         editingDeckId = repository.saveDeck(entity)
+        savedDraftSnapshot = deck
         _csvStatusMessage.value = "¡Mazo '${entity.name}' guardado correctamente en tu base de datos!"
       } catch (e: CancellationException) {
         throw e
@@ -414,6 +424,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         validationWarnings = DeckBuilderEngine.validate(cardEntries),
         energyTypes = savedEnergies.ifEmpty { com.example.domain.DeckAutomation.energies(cardEntries) }
       )
+      savedDraftSnapshot = _generatedDeck.value
       _deckBuildPrompt.value = savedDeck.name
     } catch (e: Exception) {
       reportMessage("Error al abrir mazo: ${e.localizedMessage}")

@@ -29,6 +29,7 @@ import java.time.format.FormatStyle
 @Composable
 fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier,
   onDecks: () -> Unit, onEditor: () -> Unit, onMeta: () -> Unit) {
+  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val decks by main.savedDecks.collectAsStateWithLifecycle()
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
@@ -82,7 +83,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()
       }
       val canOpen = refs != null && refs.all { ref -> ref.first in catalogIds }
-      ElevatedCard(onClick = { main.loadSavedDeck(saved); onEditor() }, enabled = canOpen,
+      ElevatedCard(onClick = { openSavedDeck(saved) }, enabled = canOpen,
         modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp),
           verticalAlignment = Alignment.CenterVertically) {

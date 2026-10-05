@@ -20,6 +20,7 @@ import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
 fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onEdit: () -> Unit) {
+  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(viewModel, onEdit)
   val draft by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val decks by viewModel.savedDecks.collectAsStateWithLifecycle()
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
@@ -56,7 +57,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
             if (refs == null) Text("No se pudo interpretar la lista guardada. El mazo se conserva.", style = MaterialTheme.typography.bodySmall)
             Row(verticalAlignment = Alignment.CenterVertically) {
               OutlinedButton(enabled = refs != null && refs.all { cards.containsKey(it.first) },
-                onClick = { viewModel.loadSavedDeck(saved); onEdit() }) { Text("Editar") }
+                onClick = { openSavedDeck(saved) }) { Text("Editar") }
               Spacer(Modifier.weight(1f))
               Box {
                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }
