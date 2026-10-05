@@ -188,7 +188,7 @@ public final class MainActivity extends Activity {
     private void openBrowser(String url) {
         destroyBrowser();
         LinearLayout content = column();
-        content.addView(label("Pokémon Zone · Lectura", 20));
+        
         status = label("Cargando perfil…", 14);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         content.addView(status);
@@ -205,8 +205,12 @@ public final class MainActivity extends Activity {
         row.addView(button("Volver", this::home));
         row.addView(button("Navegador externo", () -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))));
         content.addView(controls);
-        addTraceControls(content);
-        content.addView(label("Solo se leen elementos cargados. Una colección parcial nunca se considera completa.", 13));
+        HorizontalScrollView traceControls = new HorizontalScrollView(this);
+        LinearLayout traceRow = new LinearLayout(this);
+        traceRow.setOrientation(LinearLayout.HORIZONTAL);
+        addTraceControls(traceRow);
+        traceControls.addView(traceRow);
+        content.addView(traceControls);
         browser = new WebView(this);
         WebSettings settings = browser.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -214,7 +218,10 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setBlockNetworkImage(true);
+        settings.setBlockNetworkImage(false);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
         settings.setSupportMultipleWindows(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         CookieManager.getInstance().setAcceptThirdPartyCookies(browser, false);
