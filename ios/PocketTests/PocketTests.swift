@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import SQLite3
 @testable import Pocket
 
 final class PocketTests: XCTestCase {
@@ -128,7 +129,19 @@ final class PocketTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at:url.deletingLastPathComponent()) }
         let db = Database(url:url); var old = LocalState(); old.draft.name = "First"; try await db.save(old)
         var next = old; next.draft.name = "Second"; try await db.save(next)
-        let loaded = try await db.load(); XCTAssertEqual(loaded.draft.name,"Second")
+        var raw: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &raw), SQLITE_OK)
+        XCTAssertEqual(sqlite3_exec(raw, "UPDATE state SET current=X'7b' WHERE id=1", nil, nil, nil), SQLITE_OK)
+        sqlite3_close(raw)
+        let loaded = try await db.load(); XCTAssertEqual(loaded.draft.name,"First")
+    }
+    func testDatabaseFailedWritePreservesExistingData() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:dir) }
+        try FileManager.default.createDirectory(at:dir,withIntermediateDirectories:true)
+        let file = dir.appendingPathComponent("blocked"); try Data("keep".utf8).write(to:file)
+        do { try await Database(url:file.appendingPathComponent("state.sqlite")).save(LocalState()); XCTFail("Expected write failure") } catch {}
+        XCTAssertEqual(try String(contentsOf:file,encoding:.utf8),"keep")
     }
     func testAIRejectsUnknownIDsAndCollectionOverflow() throws {
         let content = completeContent(), catalog = completeCatalog(), owned = Dictionary(uniqueKeysWithValues:content.cards.map { ($0.id,2) })

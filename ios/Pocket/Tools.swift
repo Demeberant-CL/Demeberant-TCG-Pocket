@@ -62,7 +62,7 @@ enum CollectionCSV {
 struct PackCoverage: Identifiable {
     var set: String; var pack: String; var missing: Int; var wishes: Int; var targets: [String]
     var score: Int { missing + wishes*3 + targets.count*5 }
-    var id: String { set + "|" + pack }
+    var id: String { self.set + "|" + pack }
 }
 enum Insights {
     static func coverage(catalog: [Card], inventory: [String:Inventory], targets: Set<String>) -> [PackCoverage] {

@@ -31,14 +31,17 @@ actor Database {
         for column in [Int32(0), Int32(1)] {
             if let bytes = sqlite3_column_blob(stmt, column) {
                 let data = Data(bytes: bytes, count: Int(sqlite3_column_bytes(stmt, column)))
-                if let state = try? JSONDecoder().decode(LocalState.self, from: data), state.schema == 1 {
-                    _ = try Backup.decode(state.backup.data())
-                    try state.draft.content.validateStructure()
-                    return state
-                }
+                if let state = try? Self.validatedState(data) { return state }
             }
         }
         throw PocketError("Datos locales dañados. No se inicializó una colección vacía sobre ellos.")
+    }
+    private static func validatedState(_ data: Data) throws -> LocalState {
+        let state = try JSONDecoder().decode(LocalState.self, from: data)
+        try require(state.schema == 1, "Esquema local no compatible.")
+        _ = try Backup.decode(state.backup.data())
+        try state.draft.content.validateStructure()
+        return state
     }
     func save(_ state: LocalState) throws {
         let data = try JSONEncoder().encode(state)
@@ -86,6 +89,7 @@ enum Secrets {
     private(set) var byID: [String: Card] = [:]
     private(set) var identities: [String: QRIdentity] = [:]
     let database: Database
+    private var writeWaiters: [CheckedContinuation<Void, Never>] = []
     init(url: URL? = nil) {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         database = Database(url: url ?? root.appendingPathComponent("Pocket/state.sqlite"))
@@ -110,8 +114,15 @@ enum Secrets {
         } catch { self.error = "No se pudieron cargar los datos. \(error.localizedDescription)" }
     }
     func commit(_ mutate: (inout LocalState) throws -> Void) async -> Bool {
-        guard ready && !writing else { return false }
-        writing = true; defer { writing = false }
+        guard ready else { return false }
+        while writing { await withCheckedContinuation { writeWaiters.append($0) } }
+        if Task.isCancelled { return false }
+        writing = true
+        defer {
+            writing = false
+            let pending = writeWaiters; writeWaiters.removeAll()
+            pending.forEach { $0.resume() }
+        }
         do {
             var next = state
             try mutate(&next)

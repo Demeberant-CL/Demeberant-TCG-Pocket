@@ -3,8 +3,6 @@ on:
   push:
     branches: ['ios/**']
     paths: ['ios/**', '.github/workflows/ios-native.yml']
-  pull_request:
-    paths: ['ios/**', '.github/workflows/ios-native.yml']
   workflow_dispatch:
 permissions:
   contents: read
