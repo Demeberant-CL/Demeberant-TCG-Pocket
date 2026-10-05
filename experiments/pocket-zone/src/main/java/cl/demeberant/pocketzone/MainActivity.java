@@ -158,7 +158,8 @@ public final class MainActivity extends Activity {
             preview = null;
             openBrowser(profileUrl);
         }));
-        content.addView(button("Conectar cuenta de Pokémon Zone", () -> openBrowser("https://www.pokemon-zone.com/accounts/login/")));
+        content.addView(button("Conectar Google + Nintendo", this::connectInBrowser));
+        content.addView(button("Acceso con contraseña en visor", () -> openBrowser("https://www.pokemon-zone.com/accounts/login/")));
         content.addView(label("Primero actualiza tus datos en Pokémon Zone desde tu navegador. Aquí solo se lee lo publicado; no se sincroniza con Nintendo ni con el juego.", 16));
         content.addView(label("Puedes probar el acceso con usuario y contraseña de Pokémon Zone desde Conectar cuenta. Google y Discord requieren navegador externo; su sesión no se transfiere a este visor.", 15));
         content.addView(label("Diagnóstico del proceso: activa el registro y navega por Pokémon Zone. Guarda pasos, rutas anonimizadas y errores; nunca guarda contraseñas, formularios, cookies o tokens.", 15));
@@ -199,6 +200,7 @@ public final class MainActivity extends Activity {
         controls.addView(row);
         readButton = button("Leer datos visibles", this::readPage);
         readButton.setEnabled(false);
+        row.addView(button("Google + Nintendo", this::connectInBrowser));
         row.addView(button("Mi cuenta", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/settings/"); }));
         row.addView(button("Acceso con contraseña", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/accounts/login/"); }));
         row.addView(readButton);
@@ -492,6 +494,18 @@ public final class MainActivity extends Activity {
             try { startActivityForResult(intent, EXPORT_TRACE); }
             catch (Exception e) { pendingExport = null; message("No se pudo abrir el selector de archivos."); }
         }));
+    }
+
+    private void connectInBrowser() {
+        new AlertDialog.Builder(this).setTitle("Conectar Google y Nintendo")
+            .setMessage("Se abrirá Mi cuenta de Pokémon Zone en tu navegador. Allí puedes entrar con Google y seguir Sync your data para vincular Nintendo o actualizar los datos. Al terminar, vuelve a esta app y abre tu perfil para leer las cartas publicadas. El registro de esta prueba no captura los pasos que realices en el navegador ni transfiere su sesión al visor.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Abrir Mi cuenta", (dialog, which) -> {
+                try {
+                    trace.add("account_control", "https://www.pokemon-zone.com/settings/", 0);
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pokemon-zone.com/settings/")));
+                } catch (android.content.ActivityNotFoundException e) { message("No se encontró un navegador para abrir Pokémon Zone."); }
+            }).show();
     }
 
     private void saveTrace() {
