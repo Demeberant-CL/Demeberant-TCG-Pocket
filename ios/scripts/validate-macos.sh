@@ -29,6 +29,7 @@ PY
 )
 printf 'Simulator UDID: %s\n' "$simulator_id"
 xcodebuild -project Pocket.xcodeproj -scheme Pocket -destination 'generic/platform=iOS Simulator' -derivedDataPath validation/DerivedData CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
+codesign -d --entitlements :- validation/DerivedData/Build/Products/Debug-iphonesimulator/Pocket.app > validation/codesign-entitlements.plist 2> validation/codesign-report.txt
 set +e
 xcodebuild -project Pocket.xcodeproj -scheme Pocket -destination "platform=iOS Simulator,id=$simulator_id" -derivedDataPath validation/DerivedData -resultBundlePath validation/PocketTests.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test
 test_status=$?

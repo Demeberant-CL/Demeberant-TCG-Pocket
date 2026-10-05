@@ -28,6 +28,8 @@ jobs:
           path: |
             ios/validation/xcodebuild.log
             ios/validation/simulators.json
+            ios/validation/codesign-entitlements.plist
+            ios/validation/codesign-report.txt
             ios/validation/test-summary.json
             ios/validation/screenshots
           retention-days: 14

@@ -12,9 +12,11 @@ final class PocketUITests: XCTestCase {
         let app = XCUIApplication(); app.launch(); XCTAssertTrue(app.tabBars.buttons["Colección"].waitForExistence(timeout:20)); app.tabBars.buttons["Colección"].tap()
         app.buttons["Filtros"].tap(); XCTAssertTrue(app.buttons["collectionStatus"].exists)
         XCUIDevice.shared.orientation = .landscapeLeft
+        waitForOrientation(app,landscape:true)
         XCTAssertTrue(app.tabBars.buttons["Más"].exists)
         let shot = XCTAttachment(screenshot:app.screenshot()); shot.name = "collection-landscape"; shot.lifetime = .keepAlways; add(shot)
         XCUIDevice.shared.orientation = .portrait
+        waitForOrientation(app,landscape:false)
     }
     func testTutorialsAndVersionRemainAccessible() {
         let app = XCUIApplication(); app.launch(); XCTAssertTrue(app.tabBars.buttons["Más"].waitForExistence(timeout:20)); app.tabBars.buttons["Más"].tap()
@@ -22,7 +24,7 @@ final class PocketUITests: XCTestCase {
         app.staticTexts["Tutoriales"].tap(); XCTAssertTrue(app.staticTexts["Migrar desde Android"].exists)
     }
     func testTextSizesThemesAndAccessibilityDescriptions() throws {
-        for (label,category) in [("100","UICTContentSizeCategoryL"),("130","UICTContentSizeCategoryXXXL"),("200","UICTContentSizeCategoryAccessibilityXXXL")] {
+        for (label,category) in [("100","UICTContentSizeCategoryL"),("130","UICTContentSizeCategoryXXXL"),("200","UICTContentSizeCategoryAccessibilityL")] {
             for theme in ["Light","Dark"] {
                 let app = XCUIApplication()
                 app.launchArguments = ["-UIPreferredContentSizeCategoryName",category,"-AppleInterfaceStyle",theme]
@@ -38,5 +40,32 @@ final class PocketUITests: XCTestCase {
                 app.terminate()
             }
         }
+    }
+    func testDraftTextSurvivesKeyboardRotationAndRestart() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Mazos"].waitForExistence(timeout:20)); app.tabBars.buttons["Mazos"].tap()
+        app.buttons.matching(NSPredicate(format:"label BEGINSWITH %@","Continuar borrador")).firstMatch.tap()
+        let name = app.textFields["Nombre del mazo"]
+        XCTAssertTrue(name.waitForExistence(timeout:5)); name.tap(); name.typeText(" · prueba UI")
+        let value = name.value as? String
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForOrientation(app,landscape:true)
+        XCTAssertEqual(name.value as? String,value)
+        XCUIDevice.shared.orientation = .portrait
+        waitForOrientation(app,landscape:false)
+        app.buttons["Cerrar"].tap(); app.buttons["Conservar borrador y cerrar"].tap()
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Mazos"].waitForExistence(timeout:20)); app.tabBars.buttons["Mazos"].tap()
+        app.buttons.matching(NSPredicate(format:"label BEGINSWITH %@","Continuar borrador")).firstMatch.tap()
+        XCTAssertEqual(app.textFields["Nombre del mazo"].value as? String,value)
+        app.buttons["Cerrar"].tap(); app.buttons["Conservar borrador y cerrar"].tap()
+    }
+    func waitForOrientation(_ app: XCUIApplication, landscape: Bool) {
+        let expected = XCTNSPredicateExpectation(predicate:NSPredicate { object,_ in
+            guard let window = object as? XCUIElement else { return false }
+            return landscape ? window.frame.width > window.frame.height : window.frame.height > window.frame.width
+        },object:app.windows.firstMatch)
+        XCTAssertEqual(XCTWaiter.wait(for:[expected],timeout:10),.completed)
+        Thread.sleep(forTimeInterval:1)
     }
 }

@@ -62,11 +62,11 @@ struct CollectionView: View {
     var filterPanel: some View {
         ScrollView {
             VStack(spacing:8) {
-                Picker("Estado",selection:$status) { ForEach(["Todas","Tengo","Faltan","Deseos","Repetidas"],id:\.self) { Text($0) } }.pickerStyle(.menu).accessibilityIdentifier("collectionStatus")
-                Picker("Expansión",selection:$expansion) { Text("Todas").tag("Todas"); ForEach(Array(Set(store.catalog.map(\.set))).sorted(),id:\.self) { Text($0) } }.pickerStyle(.menu)
-                Picker("Rareza",selection:$rarity) { Text("Todas").tag("Todas"); ForEach(Array(Set(store.catalog.map(\.rarity))).sorted(),id:\.self) { Text($0) } }.pickerStyle(.menu)
+                LabeledContent("Estado") { Picker("Estado",selection:$status) { ForEach(["Todas","Tengo","Faltan","Deseos","Repetidas"],id:\.self) { Text($0) } }.pickerStyle(.menu).labelsHidden().accessibilityIdentifier("collectionStatus") }
+                LabeledContent("Expansión") { Picker("Expansión",selection:$expansion) { Text("Todas").tag("Todas"); ForEach(Array(Set(store.catalog.map(\.set))).sorted(),id:\.self) { Text($0) } }.pickerStyle(.menu).labelsHidden() }
+                LabeledContent("Rareza") { Picker("Rareza",selection:$rarity) { Text("Todas").tag("Todas"); ForEach(Array(Set(store.catalog.map(\.rarity))).sorted(),id:\.self) { Text($0) } }.pickerStyle(.menu).labelsHidden() }
                 Divider()
-                Picker("Vista",selection:$layout) { Text("Cuadrícula"); Text("Lista") }.pickerStyle(.menu)
+                LabeledContent("Vista") { Picker("Vista",selection:$layout) { Text("Cuadrícula"); Text("Lista") }.pickerStyle(.menu).labelsHidden() }
                 if layout == "Cuadrícula" { Toggle("Cartas grandes",isOn:$large) }
             }.padding(12)
         }.frame(maxHeight:240).background(Color(uiColor:.secondarySystemGroupedBackground),in:RoundedRectangle(cornerRadius:14))
