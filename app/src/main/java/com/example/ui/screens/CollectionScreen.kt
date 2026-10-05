@@ -118,6 +118,7 @@ fun CollectionScreen(
   val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
   val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
   var showFiltersDialog by remember { mutableStateOf(false) }
+  var showStatusDialog by remember { mutableStateOf(false) }
   var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
@@ -318,28 +319,25 @@ fun CollectionScreen(
       )
     )
 
-    // Wrap filters within the same visible frame instead of cropping a horizontal row.
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)
-      .clip(RoundedCornerShape(14.dp)).background(PocketSurface)
-      .border(1.dp, PocketBorder, RoundedCornerShape(14.dp))
-      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.35f).coerceIn(120f, 280f).dp)
-      .verticalScroll(rememberScrollState()).padding(10.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val statuses = listOf(
-          "Todas" to com.example.data.util.CollectionFilter.ALL,
-          "Tengo ($totalOwned)" to com.example.data.util.CollectionFilter.OWNED,
-          "Faltan (${totalCatalog - totalOwned})" to com.example.data.util.CollectionFilter.MISSING,
-          "Deseos" to com.example.data.util.CollectionFilter.FAVORITES,
-          "Repetidas" to com.example.data.util.CollectionFilter.REPEATED)
-        statuses.forEach { (label, filter) ->
-          PocketPillChip(label, collectionFilter == filter, MaterialTheme.colorScheme.primaryContainer) {
-            viewModel.setCollectionFilter(filter)
-          }
+    val statuses = listOf(
+      "Todas" to com.example.data.util.CollectionFilter.ALL,
+      "Tengo ($totalOwned)" to com.example.data.util.CollectionFilter.OWNED,
+      "Faltan (${totalCatalog - totalOwned})" to com.example.data.util.CollectionFilter.MISSING,
+      "Deseos" to com.example.data.util.CollectionFilter.FAVORITES,
+      "Repetidas" to com.example.data.util.CollectionFilter.REPEATED)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { showStatusDialog = true }) {
+          Text(statuses.first { it.second == collectionFilter }.first + " ▾")
+        }
+        OutlinedButton(onClick = { showFiltersDialog = true }) {
+          Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+          Spacer(Modifier.width(6.dp))
+          Text(if (expansionFilter != null || rarityFilter != null) "Filtrar · activo" else "Filtrar")
         }
       }
-      androidx.compose.material3.HorizontalDivider(color = PocketBorder)
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val selectedColors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -349,6 +347,20 @@ fun CollectionScreen(
           label = { Text("Cartas grandes") }, colors = selectedColors)
       }
     }
+    if (showStatusDialog) AlertDialog(
+      onDismissRequest = { showStatusDialog = false },
+      title = { Text("Mostrar cartas") },
+      text = {
+        Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+          statuses.forEach { (label, filter) ->
+            TextButton(onClick = { viewModel.setCollectionFilter(filter); showStatusDialog = false },
+              modifier = Modifier.fillMaxWidth()) {
+              Text((if (collectionFilter == filter) "✓ " else "") + label)
+            }
+          }
+        }
+      },
+      confirmButton = { TextButton(onClick = { showStatusDialog = false }) { Text("Cerrar") } })
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
