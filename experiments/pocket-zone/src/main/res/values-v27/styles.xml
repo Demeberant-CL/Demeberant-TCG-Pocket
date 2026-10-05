@@ -1,0 +1,6 @@
+<resources>
+    <style name="ZoneTheme" parent="ZoneBase">
+        <item name="android:navigationBarColor">#F1ECE4</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>
