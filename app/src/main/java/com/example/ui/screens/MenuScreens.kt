@@ -211,28 +211,35 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      item {
-        Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primaryContainer,
-          MaterialTheme.colorScheme.secondaryContainer)), RoundedCornerShape(24.dp)).padding(20.dp)) {
-          Text("Más herramientas", style = MaterialTheme.typography.headlineSmall)
-          Text("Elige qué quieres hacer", color = MaterialTheme.colorScheme.onSurface)
-        }
-        com.example.ui.components.AppVersionLabel(Modifier.padding(top = 8.dp))
-      }
-      items(labels.size) { n ->
-        ElevatedCard(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n },
-          modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-          Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-              Text(labels[n], style = MaterialTheme.typography.titleMedium)
-              Text(descriptions[n], style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+      item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
+      listOf("Colección y juego" to listOf(1, 2, 3, 4, 5),
+        "Información" to listOf(6, 0), "Mi app" to listOf(7)).forEach { (group, indices) ->
+        item(key = group) {
+          OutlinedCard(Modifier.fillMaxWidth()) {
+            Column {
+              Text(group, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 16.dp, vertical = 10.dp), style = MaterialTheme.typography.titleSmall)
+              indices.forEachIndexed { index, n ->
+                Surface(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n },
+                  color = MaterialTheme.colorScheme.surface) {
+                  Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                      Text(labels[n], style = MaterialTheme.typography.titleSmall)
+                      Text(descriptions[n], style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  }
+                }
+                if (index < indices.lastIndex) HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+              }
             }
           }
         }
       }
+      item { com.example.ui.components.AppVersionLabel(Modifier.padding(vertical = 8.dp)) }
     } else {
       TextButton(onClick = { section = -1 }) { Text("← Más herramientas") }
       when (section) {
