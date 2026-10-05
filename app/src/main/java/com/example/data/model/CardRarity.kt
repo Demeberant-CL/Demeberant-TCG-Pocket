@@ -8,11 +8,15 @@ enum class CardRarity(val symbol: String, val displayName: String) {
   ONE_STAR("★", "1 Estrella"),
   TWO_STARS("★★", "2 Estrellas"),
   THREE_STARS("★★★", "3 Estrellas (Inmersiva)"),
-  CROWN("♛", "Corona");
+  CROWN("♛", "Corona"),
+  SHINY_ONE("✷", "1 Brillo"),
+  SHINY_TWO("✷✷", "2 Brillos");
 
   companion object {
     fun fromSymbol(symbol: String): CardRarity {
-      return entries.find { it.symbol == symbol.trim() } ?: ONE_DIAMOND
+      val value = symbol.trim()
+      return entries.find { it.symbol == value || it.displayName.equals(value, ignoreCase = true) || it.name == value }
+        ?: throw IllegalArgumentException("Rareza no reconocida: $value")
     }
   }
 }

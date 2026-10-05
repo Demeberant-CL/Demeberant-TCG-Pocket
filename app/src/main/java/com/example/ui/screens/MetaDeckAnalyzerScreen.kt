@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -83,7 +86,7 @@ fun MetaDeckAnalyzerScreen(
             Icon(Icons.Filled.Insights, contentDescription = null, tint = PocketBluePrimary, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Análisis de Meta TCG Pocket",
+              text = "Plantillas A1 y colección",
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Black,
               color = PocketTextPrimary
@@ -93,7 +96,7 @@ fun MetaDeckAnalyzerScreen(
           Spacer(modifier = Modifier.height(8.dp))
 
           Text(
-            text = metaAnalysis?.overview ?: "Evaluación en tiempo real de los arquetipos dominantes en el formato de 20 cartas y compatibilidad con tu colección.",
+            text = metaAnalysis?.overview ?: "Cargando el análisis local de plantillas A1 y tu colección.",
             fontSize = 12.sp,
             color = PocketTextSecondary,
             lineHeight = 17.sp
@@ -116,7 +119,7 @@ fun MetaDeckAnalyzerScreen(
                   Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
-                    text = "Sobre Prioritario: ${analysis.bestPackToOpenNext}",
+                    text = "Sobre para plantillas A1: ${analysis.bestPackToOpenNext}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF92400E)
@@ -138,13 +141,21 @@ fun MetaDeckAnalyzerScreen(
 
     item {
       Text(
-        text = "Arquetipos Competitivos y Cobertura de Inventario",
+        text = "Plantillas históricas A1 · cobertura de colección",
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = PocketTextPrimary
       )
     }
 
+    item {
+      val context = androidx.compose.ui.platform.LocalContext.current
+      Text("Estas plantillas no representan el meta actual.")
+      androidx.compose.material3.OutlinedButton(onClick = {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+          android.net.Uri.parse("https://play.limitlesstcg.com/tournaments?game=POCKET")))
+      }) { Text("Consultar torneos actuales") }
+    }
     // Deck Insight Cards
     items(metaAnalysis?.deckInsights ?: emptyList()) { deckInsight ->
       MetaDeckInsightCard(
@@ -155,17 +166,13 @@ fun MetaDeckAnalyzerScreen(
   }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MetaDeckInsightCard(
   insight: MetaDeckInsight,
   onBuildDeckClick: () -> Unit
 ) {
-  val tierColor = when (insight.tier) {
-    "Tier S" -> Color(0xFFDC2626) // Red
-    "Tier A+" -> Color(0xFFD97706) // Amber
-    "Tier A" -> Color(0xFF2563EB) // Blue
-    else -> Color(0xFF4B5563)
-  }
+  val tierColor = MaterialTheme.colorScheme.secondary
 
   Card(
     modifier = Modifier
@@ -205,7 +212,7 @@ private fun MetaDeckInsightCard(
             .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
           Text(
-            text = insight.tier,
+            text = "Plantilla A1",
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             color = tierColor
@@ -215,11 +222,10 @@ private fun MetaDeckInsightCard(
 
       Spacer(modifier = Modifier.height(10.dp))
 
-      // Progress Completion Bar
-      Row(
+      // Let the percentage wrap when system text is enlarged.
+      FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         Text(
           text = "Cartas clave en tu colección:",
@@ -231,7 +237,7 @@ private fun MetaDeckInsightCard(
           text = "${insight.completionRatePercent}%",
           fontSize = 12.sp,
           fontWeight = FontWeight.Black,
-          color = if (insight.completionRatePercent >= 75) Color(0xFF10B981) else PocketBluePrimary
+          color = PocketBluePrimary
         )
       }
 
@@ -243,8 +249,8 @@ private fun MetaDeckInsightCard(
           .fillMaxWidth()
           .height(6.dp)
           .clip(RoundedCornerShape(3.dp)),
-        color = if (insight.completionRatePercent >= 75) Color(0xFF10B981) else PocketBluePrimary,
-        trackColor = Color(0xFFE2E8F0)
+        color = PocketBluePrimary,
+        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
       )
 
       Spacer(modifier = Modifier.height(8.dp))
@@ -259,7 +265,7 @@ private fun MetaDeckInsightCard(
       Text(
         text = "Poseídas: ${insight.ownedCardsSummary}",
         fontSize = 10.sp,
-        color = Color(0xFF059669)
+        color = MaterialTheme.colorScheme.primary
       )
 
       Spacer(modifier = Modifier.height(8.dp))
@@ -278,7 +284,7 @@ private fun MetaDeckInsightCard(
         onClick = onBuildDeckClick,
         modifier = Modifier
           .fillMaxWidth()
-          .height(36.dp),
+          .heightIn(min = 48.dp),
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
       ) {

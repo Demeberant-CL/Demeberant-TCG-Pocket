@@ -1,0 +1,117 @@
+name: Validate Android and web
+on:
+  push:
+    branches: [main, 'fix/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Restore persistent test signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing ANDROID_DEBUG_KEYSTORE_BASE64. Tests will run, but no installable APK will be published."
+            echo "APK withheld: configure a persistent signing key before distributing updates." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/collection-signing.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/collection-signing.keystore" -storepass android -alias androiddebugkey > /dev/null
+          echo "CI_SIGNING_STORE_FILE=$RUNNER_TEMP/collection-signing.keystore" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+      - name: Summarize Android validation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          import json
+          paths = list(Path("app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
+          assert paths, "No unit-test reports were generated"
+          roots = [ET.parse(p).getroot() for p in paths]
+          counts = {key: sum(int(root.attrib.get(key, 0)) for root in roots) for key in ("tests", "failures", "errors", "skipped")}
+          message = "Android tests: " + json.dumps(counts)
+          print(message)
+          lint = Path("app/build/reports/lint-results-debug.xml")
+          if lint.exists():
+              issues = ET.parse(lint).getroot().findall("issue")
+              errors = [i for i in issues if i.attrib.get("severity") in ("Error", "Fatal")]
+              print(f"Lint: {len(errors)} errors; {len(issues) - len(errors)} other findings")
+              for issue in issues:
+                  locations = [{"file": loc.attrib.get("file"), "line": loc.attrib.get("line")} for loc in issue.findall("location")]
+                  print("LINT_FINDING=" + json.dumps({"id": issue.attrib.get("id"), "severity": issue.attrib.get("severity"), "message": issue.attrib.get("message"), "locations": locations}, ensure_ascii=False))
+              assert not errors
+          Path("app/build/reports/validation-summary.txt").write_text(message + "\n")
+          metadata = json.loads(Path("app/build/outputs/apk/debug/output-metadata.json").read_text())
+          print("APK metadata:", [(e.get("versionCode"), e.get("versionName")) for e in metadata["elements"]])
+          print("ROOM_SCHEMA_JSON=" + json.dumps(json.loads(Path("app/schemas/com.example.data.local.AppDatabase/5.json").read_text()), separators=(",", ":")))
+          PY
+      - name: Record signing certificate
+        if: steps.signing.outputs.ready == 'true'
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/signing-certificate.txt
+          expected=$(keytool -exportcert -keystore "$CI_SIGNING_STORE_FILE" -storepass android -alias androiddebugkey 2>/dev/null | sha256sum | cut -d " " -f 1)
+          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' app/build/outputs/apk/debug/signing-certificate.txt)
+          test "$actual" = "$expected" || { echo "::error::APK signing certificate does not match the persistent key."; exit 1; }
+          test "$actual" = "d3ad80d2fab19c1e2f29bd3b78c92b57ccda271374194b57fe019d63c737106a" || { echo "::error::Signing certificate differs from the installed persistent-key APK."; exit 1; }
+          printf 'APK certificate SHA-256: %s\n' "$actual"
+          sha256sum app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-reports
+          path: app/build/reports/
+      - uses: actions/upload-artifact@v4
+        if: success() && steps.signing.outputs.ready == 'true'
+        with:
+          name: android-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/signing-certificate.txt
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Assistant backend regression tests
+        run: node --test backend/assistant.test.mjs
+      - run: npm run build
+      - name: Browser regression checks
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node web/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-reports
+          path: web-reports/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-app
+          path: dist/

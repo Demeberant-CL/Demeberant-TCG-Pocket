@@ -20,11 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,8 +38,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -47,9 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.data.model.PokemonCard
-import com.example.data.util.TcgdexHelper
 import com.example.ui.theme.PocketBackground
 import com.example.ui.theme.PocketBluePrimary
 import com.example.ui.theme.PocketBorder
@@ -66,14 +62,11 @@ fun CardItemView(
   ownedCount: Int,
   isWishlist: Boolean,
   onToggleWishlist: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  imageLanguage: String = "es",
+  onClick: () -> Unit = {}
 ) {
   val isOwned = ownedCount > 0
-  var imageFailed by remember { mutableStateOf(false) }
-
-  val grayscaleMatrix = remember {
-    ColorMatrix().apply { setToSaturation(0f) }
-  }
 
   val typeColor = when (card.type.lowercase()) {
     "planta" -> Color(0xFF10B981)
@@ -89,43 +82,29 @@ fun CardItemView(
   }
 
   Card(
-    modifier = modifier
+    modifier = modifier.clickable(onClick = onClick)
       .fillMaxWidth()
       .aspectRatio(0.714f)
       .shadow(if (isOwned) 3.dp else 1.dp, shape = RoundedCornerShape(12.dp), clip = false)
       .testTag("card_item_${card.id}"),
     shape = RoundedCornerShape(12.dp),
     colors = CardDefaults.cardColors(
-      containerColor = if (isOwned) PocketSurface else Color(0xFFE2E8F0)
+      containerColor = if (isOwned) PocketSurface else MaterialTheme.colorScheme.surfaceContainerHigh
     ),
     border = CardDefaults.outlinedCardBorder().copy(
       brush = androidx.compose.ui.graphics.SolidColor(
-        if (isOwned) PocketBorder else Color(0xFFCBD5E1)
+        if (isOwned) PocketBorder else MaterialTheme.colorScheme.outlineVariant
       )
     )
   ) {
     Box(modifier = Modifier.fillMaxSize()) {
-      if (!imageFailed) {
-        AsyncImage(
-          model = TcgdexHelper.getCardImageUrl(card.id),
-          contentDescription = card.name,
-          contentScale = ContentScale.Crop,
-          colorFilter = if (!isOwned) ColorFilter.colorMatrix(grayscaleMatrix) else null,
-          onError = { imageFailed = true },
-          modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(12.dp))
-            .alpha(if (isOwned) 1.0f else 0.5f)
-        )
-      }
-
-      // Elegant Fallback Card Design when Image is loading or unavailable
-      if (imageFailed) {
+      PocketCardImage(id = card.id, name = card.name, language = imageLanguage,
+        contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), unavailable = {
         Column(
           modifier = Modifier
             .fillMaxSize()
-            .alpha(if (isOwned) 1.0f else 0.5f)
-            .background(if (isOwned) Color(0xFFF8FAFC) else Color(0xFFE2E8F0))
+            .alpha(1f)
+            .background(if (isOwned) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(6.dp),
           verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -159,7 +138,7 @@ fun CardItemView(
               fontSize = 11.sp,
               fontWeight = FontWeight.Bold,
               textAlign = TextAlign.Center,
-              color = if (isOwned) PocketTextPrimary else Color(0xFF64748B),
+              color = PocketTextPrimary,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )
@@ -186,13 +165,13 @@ fun CardItemView(
               color = PocketGold
             )
             Text(
-              text = card.pack.displayName.replace("Sobre ", ""),
+              text = "Imagen no disponible",
               fontSize = 7.sp,
               color = PocketTextMuted
             )
           }
         }
-      }
+      })
 
       // Floating Badge Top-Right: Quantity (x1, x2, x3...) or (x0)
       Box(
@@ -209,77 +188,24 @@ fun CardItemView(
           .padding(horizontal = 5.dp, vertical = 1.dp)
       ) {
         Text(
-          text = "x$ownedCount",
+          text = if (isOwned) "x$ownedCount" else "Falta",
           fontSize = 10.sp,
           fontWeight = FontWeight.Black,
           color = if (isOwned) Color(0xFFB45309) else Color.White
         )
       }
 
-      // Wishlist Heart Icon Top-Left
-      Box(
-        modifier = Modifier
-          .align(Alignment.TopStart)
-          .padding(4.dp)
-          .size(22.dp)
-          .clip(CircleShape)
-          .background(Color.White.copy(alpha = 0.85f))
-          .clickable { onToggleWishlist() }
-          .testTag("wishlist_btn_${card.id}"),
-        contentAlignment = Alignment.Center
-      ) {
-        Icon(
-          imageVector = if (isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-          contentDescription = if (isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
-          tint = if (isWishlist) PocketRed else PocketTextMuted,
-          modifier = Modifier.size(13.dp)
-        )
-      }
-
-      // Center Overlay Lock for Unowned Cards (Quantity = 0)
-      if (!isOwned) {
-        Box(
-          modifier = Modifier
-            .matchParentSize()
-            .background(Color(0xFF0F172A).copy(alpha = 0.35f)),
-          contentAlignment = Alignment.Center
-        ) {
-          Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-          ) {
-            Box(
-              modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF0F172A).copy(alpha = 0.9f))
-                .border(1.dp, Color.White, CircleShape),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = "Bloqueada",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-              )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Box(
-              modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF0F172A).copy(alpha = 0.85f))
-                .padding(horizontal = 4.dp, vertical = 1.dp)
-            ) {
-              Text(
-                text = "x0 • Bloqueada",
-                color = Color.White,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold
-              )
-            }
-          }
+      // A full touch target with a small visible badge keeps the card art readable.
+      IconButton(onClick = onToggleWishlist,
+        modifier = Modifier.align(Alignment.TopStart).size(48.dp).testTag("wishlist_btn_${card.id}")) {
+        Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.85f)),
+          contentAlignment = Alignment.Center) {
+          Icon(imageVector = if (isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            contentDescription = if (isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
+            tint = if (isWishlist) PocketRed else Color(0xFF59616F), modifier = Modifier.size(14.dp))
         }
       }
+
     }
   }
 }

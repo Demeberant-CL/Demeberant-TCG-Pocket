@@ -22,7 +22,7 @@ data class MetaAnalysisResult(
 object GeminiDeckAnalyzer {
 
   fun computeLocalMetaAnalysis(inventory: List<CardWithInventory>): MetaAnalysisResult {
-    val ownedMap = inventory.associate { it.card.name.lowercase() to it.ownedCount }
+    val ownedMap = inventory.groupBy { it.card.name.lowercase() }.mapValues { (_, cards) -> cards.sumOf { it.ownedCount } }
 
     fun checkDeck(
       name: String,
@@ -46,7 +46,7 @@ object GeminiDeckAnalyzer {
 
       val pct = if (totalRequired > 0) ((totalOwned.toFloat() / totalRequired) * 100).toInt() else 0
       val rec = when {
-        pct >= 90 -> "¡Mazo casi listo para competitivo! Te faltan detalles menores."
+        pct >= 90 -> "Tienes casi todas las piezas de esta plantilla A1; revisa la composición completa."
         pct >= 50 -> "Tienes la base principal. Prioriza el $packRec para conseguir las copias faltantes."
         else -> "Faltan las piezas centrales clave de este arquetipo."
       }
@@ -65,44 +65,44 @@ object GeminiDeckAnalyzer {
     val insights = listOf(
       checkDeck(
         "Pikachu ex Turbo",
-        "Tier S",
+        "Plantilla A1",
         "Rayo Beatdown",
         listOf("Pikachu ex" to 2, "Zapdos ex" to 2, "Raichu" to 1, "Sabrina" to 2),
         "Sobre Pikachu"
       ),
       checkDeck(
         "Mewtwo ex & Gardevoir",
-        "Tier S",
+        "Plantilla A1",
         "Psíquico Aceleración",
-        listOf("Mewtwo ex" to 2, "Gardevoir" to 2, "Gengar ex" to 1, "Sabrina" to 2),
+        listOf("Mewtwo ex" to 2, "Ralts" to 2, "Kirlia" to 2, "Gardevoir" to 2, "Sabrina" to 2),
         "Sobre Mewtwo"
       ),
       checkDeck(
         "Charizard ex & Moltres ex",
-        "Tier A+",
+        "Plantilla A1",
         "Fuego Heavy Hitter",
         listOf("Charizard ex" to 2, "Moltres ex" to 2, "Charmeleon" to 2, "Charmander" to 2, "Blaine" to 2),
         "Sobre Charizard"
       ),
       checkDeck(
         "Starmie ex & Blastoise",
-        "Tier A",
+        "Plantilla A1",
         "Agua Tempo",
-        listOf("Starmie ex" to 2, "Blastoise ex" to 1, "Wartortle" to 2, "Squirtle" to 2),
+        listOf("Staryu" to 2, "Starmie ex" to 2, "Blastoise ex" to 1, "Wartortle" to 2, "Squirtle" to 2),
         "Sobre Charizard"
       )
     )
 
     val bestDeck = insights.maxByOrNull { it.completionRatePercent } ?: insights[0]
     val (bestPack, reasoning) = when {
-      bestDeck.deckName.contains("Pikachu") -> Pair("Sobre Pikachu", "Estás a un paso de completar Pikachu ex Turbo (Tier S del meta).")
+      bestDeck.deckName.contains("Pikachu") -> Pair("Sobre Pikachu", "Pikachu ex Turbo es la plantilla A1 con mayor porcentaje de piezas disponibles.")
       bestDeck.deckName.contains("Mewtwo") -> Pair("Sobre Mewtwo", "Posees piezas clave para la sinergia Mewtwo ex + Gardevoir.")
       bestDeck.deckName.contains("Charizard") -> Pair("Sobre Charizard", "Tienes cartas de fuego compatibles con Charizard ex y Moltres ex.")
       else -> Pair("Sobre Charizard", "Ofrece Starmie ex y Charizard ex con alto valor competitivo.")
     }
 
     return MetaAnalysisResult(
-      overview = "Análisis del meta actual (Genética A1): Barajas de ritmo agresivo de 3 puntos dominan el juego.",
+      overview = "Análisis local de plantillas A1. No consulta Gemini ni verifica el meta competitivo actual.",
       bestPackToOpenNext = bestPack,
       packReasoning = reasoning,
       deckInsights = insights
