@@ -153,7 +153,7 @@ struct AIView: View {
                 try require(selectedAction != "Completar faltantes" || target.total == 20,"Completar requiere un borrador de 20 cartas.")
                 try require(selectedAction != "Mejorar" || target.total > 0,"Abre un borrador para mejorar.")
                 let candidates = store.catalog.filter { card in
-                    (store.quantity(card.id) > 0 && (selectedType == "Todos" || card.energy == selectedType || card.category == "trainer")) || (selectedAction == "Completar faltantes" && target.cards.contains { $0.id == card.id })
+                    (store.quantity(card.id) > 0 && (card.isTrainer || card.category == "pokemon" && ["basic","1","2"].contains(card.stage)) && (selectedType == "Todos" || card.energy == selectedType || card.element == "colorless" || card.isTrainer)) || (selectedAction == "Completar faltantes" && target.cards.contains { $0.id == card.id })
                 }
                 try require(candidates.reduce(0,{ $0 + min(2,store.quantity($1.id)) }) >= 20,"Necesitas 20 copias disponibles en el filtro.")
                 let rows: [[String:Any]] = candidates.map { ["id":$0.id,"name":$0.name,"owned":store.quantity($0.id),"category":$0.category,"stage":$0.stage,"evolvesFrom":$0.evolvesFrom,"energy":$0.energy ?? ""] }

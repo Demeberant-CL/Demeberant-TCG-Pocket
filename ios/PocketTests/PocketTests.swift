@@ -1,6 +1,7 @@
 import XCTest
 import UIKit
 import SQLite3
+import CryptoKit
 @testable import Pocket
 
 final class PocketTests: XCTestCase {
@@ -108,6 +109,17 @@ final class PocketTests: XCTestCase {
         let first = try QRMatrix.make(payload,mask:0), second = try QRMatrix.make(payload,mask:1)
         XCTAssertEqual(first.count,53); XCTAssertEqual(first[0].count,53); XCTAssertNotEqual(first,second)
     }
+    func testQRMatrixMatchesIndependentVersion9HByteModeReference() throws {
+        // Project Nayuki QR-Code-generator, byte mode, v9, H, mask 0, boostEcl=false.
+        struct Fixture: Decodable { var payload: String }
+        let expected = ["2d23c666e0c6c50c83398c2426812279a6e4c1ed3ac101ceb70dade0a5a39970","edfdf1d7d2fb3c6170b6891f502fbf4c4b20d1034ed8ab37bc8dd86c1dd3ff82","b6fd73c080d9a34362c2c3a5a2c5d45aaa4db7d91927f378dd0ac3ff1bbbba4f","2aaff05c7982e7d23ac69ab71be9ce8fcc063be04eb769aa0a06ab38458a8eb8"]
+        let fixtures = try JSONDecoder().decode([Fixture].self,from:fixture("qr-fixtures"))
+        for (index,f) in fixtures.enumerated() {
+            let matrix = try QRMatrix.make(f.payload,mask:0)
+            let bytes = Data(matrix.flatMap { $0.map { UInt8($0 ? 1 : 0) } })
+            XCTAssertEqual(SHA256.hash(data:bytes).map { String(format:"%02x",$0) }.joined(),expected[index])
+        }
+    }
     func testQRRejectsInvalidDraftAndEnergy() {
         XCTAssertThrowsError(try QRPayload(trainers:[],pokemon:[10],energies:[1]).encoded())
         XCTAssertThrowsError(try QRPayload(trainers:[],pokemon:Array(repeating:10,count:20),energies:[10]).encoded())
@@ -196,6 +208,17 @@ final class PocketTests: XCTestCase {
         let draft = try Insights.starter(catalog:cards,inventory:["A1-001":1],type:"Planta")
         XCTAssertEqual(draft.content.total,1); XCTAssertEqual(draft.content.energies,["Planta"])
         XCTAssertThrowsError(try Insights.starter(catalog:cards,inventory:[:],type:"Planta"))
+    }
+    func testActualCatalogTrainerCategoriesAndUnknownRules() throws {
+        let trainer = Card(id:"A1-220",name:"Supporter",rarity:"♦♦",packs:[],category:"supporter",element:"",stage:"unknown",evolvesFrom:"")
+        XCTAssertTrue(trainer.isTrainer)
+        var catalog = completeCatalog(); catalog[trainer.id] = trainer
+        var content = completeContent(); content.cards[0] = Reference(id:trainer.id,count:2)
+        XCTAssertTrue(content.warnings(catalog:catalog).isEmpty)
+        catalog[trainer.id] = Card(id:trainer.id,name:trainer.name,rarity:trainer.rarity,packs:[],category:"unknown",element:"",stage:"unknown",evolvesFrom:"")
+        XCTAssertFalse(content.warnings(catalog:catalog).isEmpty)
+        let draft = try Insights.starter(catalog:Array(completeCatalog().values)+[trainer],inventory:["A1-001":2,trainer.id:2],type:"Planta")
+        XCTAssertEqual(draft.content.cards.first(where:{$0.id == trainer.id})?.count,2)
     }
     func testSandboxStartsFiveWithBasicAndPreserves20Instances() throws {
         let board = try Board.start(completeContent(),catalog:completeCatalog())

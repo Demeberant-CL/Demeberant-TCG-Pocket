@@ -128,7 +128,7 @@ struct AIProposal: Codable {
         }
         let replacements = replacements ?? []
         for replacement in replacements {
-            try require((1...2).contains(replacement.count) && replacement.reason.count <= 1000 &&
+            try require((1...2).contains(replacement.count) && replacement.reason.count <= 1000 && !replacement.reason.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty &&
                 replacement.removedId == canonicalID(replacement.removedId) && replacement.addedId == canonicalID(replacement.addedId), "Reemplazo no válido.")
         }
         if action == "Completar faltantes" {

@@ -94,21 +94,21 @@ enum Insights {
     }
     static func starter(catalog: [Card], inventory: [String:Int], type: String) throws -> Draft {
         try require(energyNames.contains(type),"Energía no válida.")
-        let pool = catalog.filter { inventory[$0.id,default:0] > 0 && ($0.energy == type || $0.element == "colorless" || $0.category == "trainer") }.sorted { $0.id < $1.id }
+        let pool = catalog.filter { inventory[$0.id,default:0] > 0 && ($0.energy == type || $0.element == "colorless" || $0.isTrainer) }.sorted { $0.id < $1.id }
         var cards: [Reference] = []
         func add(_ card: Card) {
             if !card.evolvesFrom.isEmpty && !cards.contains(where: { ref in catalog.first { $0.id == ref.id }?.rulesName == card.evolvesFrom.lowercased() }) { return }
-            if card.category != "trainer" && (!["basic","1","2"].contains(card.stage) || card.stage != "basic" && card.evolvesFrom.isEmpty) { return }
+            if !card.isTrainer && (!["basic","1","2"].contains(card.stage) || card.stage != "basic" && card.evolvesFrom.isEmpty) { return }
             let sameName = cards.reduce(0) { total, ref in total + (catalog.first { $0.id == ref.id }?.rulesName == card.rulesName ? ref.count : 0) }
             let old = cards.first { $0.id == card.id }?.count ?? 0
             let count = min(2-sameName,min(inventory[card.id,default:0]-old,20-cards.reduce(0) { $0+$1.count }))
             if count > 0 { if let index = cards.firstIndex(where:{$0.id == card.id}) { cards[index].count += count } else { cards.append(Reference(id:card.id,count:count)) } }
         }
         for card in pool.filter({$0.energy == type && $0.stage == "basic"}).prefix(3) { add(card) }
-        for card in pool.filter({$0.category == "trainer"}) {
-            if cards.reduce(0,{ total, ref in total + (catalog.first { $0.id == ref.id }?.category == "trainer" ? ref.count : 0) }) < 8 { add(card) }
+        for card in pool.filter({$0.isTrainer}) {
+            if cards.reduce(0,{ total, ref in total + (catalog.first { $0.id == ref.id }?.isTrainer == true ? ref.count : 0) }) < 8 { add(card) }
         }
-        for _ in 0..<3 { for card in pool where card.category != "trainer" { add(card) } }
+        for _ in 0..<3 { for card in pool where !card.isTrainer { add(card) } }
         try require(cards.contains { ref in catalog.contains { $0.id == ref.id && $0.category == "pokemon" && $0.stage == "basic" } },"No tienes un Pokémon básico verificado de este tipo.")
         return Draft(name:"Mi mazo de \(type)",notes:"Borrador local con tus cartas. Revisa estrategia y costes; no es recomendación del meta.",content:DeckContent(energies:[type],cards:cards))
     }

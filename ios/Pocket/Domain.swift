@@ -38,6 +38,7 @@ struct Card: Codable, Identifiable, Hashable {
     let stage: String
     let evolvesFrom: String
     var set: String { String(id[..<id.lastIndex(of: "-")!]) }
+    var isTrainer: Bool { ["trainer", "supporter", "item", "tool", "fossil"].contains(category.lowercased()) }
     var rulesName: String { name.replacingOccurrences(of: "’", with: "'").lowercased() }
     var energy: String? {
         ["grass":"Planta", "fire":"Fuego", "water":"Agua", "lightning":"Rayo", "psychic":"Psíquico", "fighting":"Lucha", "darkness":"Oscuridad", "metal":"Metal"][element]
@@ -98,6 +99,7 @@ struct DeckContent: Codable, Equatable {
         var basic = false
         for ref in cards {
             guard let c = catalog[ref.id] else { result.append("Carta desconocida: \(ref.id)"); continue }
+            if c.category != "pokemon" && !c.isTrainer { result.append("Reglas sin verificar: \(c.name).") }
             names[c.rulesName, default: 0] += ref.count
             if c.category == "pokemon" {
                 if c.stage == "basic" { basic = true }
