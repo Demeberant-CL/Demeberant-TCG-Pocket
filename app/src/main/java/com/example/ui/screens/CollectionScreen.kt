@@ -48,6 +48,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -227,18 +228,23 @@ fun CollectionScreen(
   val totalCopies = fullInventory.sumOf { it.ownedCount }
   val completionPercent = if (totalCatalog > 0) (totalOwned.toFloat() / totalCatalog.toFloat()) else 0f
 
-  Column(
-    modifier = modifier
-      .fillMaxSize()
-      .background(PocketBackground)
+  LazyVerticalGrid(
+    columns = if (listView) GridCells.Fixed(1) else GridCells.Adaptive(
+      ((if (largeCards) 150f else 100f) * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
+    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = modifier.fillMaxSize().background(PocketBackground)
   ) {
+    item(key = "collection_header", span = { GridItemSpan(maxLineSpan) }) {
+    Column {
     // -------------------------------------------------------------
     // CABECERA Y PROGRESO DE COLECCIÓN
     // -------------------------------------------------------------
     Card(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp)
+        .padding(vertical = 8.dp)
         .testTag("collection_stats_card"),
       shape = RoundedCornerShape(10.dp),
       colors = CardDefaults.cardColors(containerColor = PocketBackground)
@@ -352,14 +358,17 @@ fun CollectionScreen(
     }
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
+    }
+    }
 
     // -------------------------------------------------------------
     // GRID DE CARTAS: ADAPTADO A ANCHO Y TAMAÑO DE TEXTO
     // -------------------------------------------------------------
     if (filteredCards.isEmpty()) {
+      item(key = "collection_empty", span = { GridItemSpan(maxLineSpan) }) {
       Box(
         modifier = Modifier
-          .fillMaxSize()
+          .fillMaxWidth()
           .padding(32.dp),
         contentAlignment = Alignment.Center
       ) {
@@ -369,11 +378,9 @@ fun CollectionScreen(
           fontSize = 13.sp
         )
       }
+      }
     } else if (listView) {
-      LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(filteredCards.size, key = { filteredCards[it].card.id }) { index ->
-          val item = filteredCards[index]
+        items(filteredCards, key = { it.card.id }) { item ->
           Card(Modifier.fillMaxWidth().clickable { selectedCardId = item.card.id }) {
             Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
               verticalAlignment = Alignment.CenterVertically) {
@@ -393,15 +400,7 @@ fun CollectionScreen(
             }
           }
         }
-      }
     } else {
-      LazyVerticalGrid(
-        columns = GridCells.Adaptive(((if (largeCards) 150f else 100f) * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize()
-      ) {
         items(filteredCards, key = { it.card.id }) { item ->
           CardItemView(
             card = item.card,
@@ -412,7 +411,6 @@ fun CollectionScreen(
             onClick = { selectedCardId = item.card.id }
           )
         }
-      }
     }
   }
 
@@ -636,7 +634,7 @@ private fun CollectionViewSelector(listView: Boolean, onSelect: (Boolean) -> Uni
       Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)
         .background(if (selected) PocketBluePrimary else Color.Transparent)
         .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(value) })
-        .padding(horizontal = 8.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+        .padding(horizontal = if (showIcons) 8.dp else 2.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           if (showIcons) Icon(if (value) Icons.Filled.ViewList else Icons.Filled.GridView, null,
             Modifier.size(20.dp), tint = color)

@@ -9,6 +9,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +27,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -31,6 +35,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,7 +97,20 @@ class MainActivity : ComponentActivity() {
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
-            NavigationBar(containerColor = PocketSurface, modifier = Modifier.heightIn(min = (80f + 28f * (androidx.compose.ui.platform.LocalDensity.current.fontScale - 1f).coerceAtLeast(0f)).dp).testTag("main_bottom_nav")) {
+            BoxWithConstraints {
+            val density = LocalDensity.current
+            val textMeasurer = rememberTextMeasurer()
+            val widestLabel = labels.maxOf { textMeasurer.measure(it, TextStyle(fontSize = 12.sp)).size.width }
+            val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 24.dp)
+            val navigationScroll = rememberScrollState()
+            val activeIndex = if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex
+            LaunchedEffect(activeIndex, itemWidth, maxWidth) {
+              val target = with(density) { (itemWidth * activeIndex - (maxWidth - itemWidth) / 2).roundToPx() }
+              navigationScroll.animateScrollTo(target.coerceAtLeast(0))
+            }
+            NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
+              .width(itemWidth * labels.size).heightIn(min = (80f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
+              .testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
                   selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
@@ -102,7 +122,7 @@ class MainActivity : ComponentActivity() {
                     }
                   },
                   icon = { Icon(icons[index], contentDescription = label) },
-                  label = { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                  label = { Text(label, fontSize = 12.sp, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
@@ -113,6 +133,7 @@ class MainActivity : ComponentActivity() {
                   modifier = Modifier.testTag("nav_item_$index")
                 )
               }
+            }
             }
           }
         ) { innerPadding ->
