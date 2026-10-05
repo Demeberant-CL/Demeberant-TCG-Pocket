@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -65,30 +66,31 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     modelName = connection.model; url = connection.endpoint
   }
   Column(modifier.fillMaxSize()) {
-    Surface(tonalElevation = 2.dp) {
-      Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Column(Modifier.fillMaxWidth()) {
-          Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
+      OutlinedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
           if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-          else {
-            Text(if (connection.apiKey.isBlank()) "Conecta tu IA para comenzar" else connection.label,
-              style = MaterialTheme.typography.titleSmall)
-            if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}", style = MaterialTheme.typography.bodySmall)
+          Text(if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,
+            style = MaterialTheme.typography.titleSmall)
+          if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }) {
+            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Conexiones")
           }
-        }
-        TextButton(enabled = ready && !busy, onClick = { configure = true }) {
-          Icon(Icons.Filled.Settings, contentDescription = null)
-          Spacer(Modifier.width(6.dp))
-          Text("Conexiones")
         }
       }
     }
     LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
-      Text("Elige una acción", style = MaterialTheme.typography.titleMedium)
+      Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
       AiDeckAction.entries.forEach { choice ->
         OutlinedCard(onClick = { actionName = choice.name; model.proposal.value = null }, enabled = !busy,
           modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+          border = BorderStroke(1.dp, if (action == choice) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
           colors = CardDefaults.outlinedCardColors(containerColor = if (action == choice)
             MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)) {
           Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -111,7 +113,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         "Necesitas un objetivo de 20 cartas. Completar faltantes sustituye las que no tienes; no rellena un borrador corto."
         else "Abre un mazo con al menos una carta para mejorarlo.", color = MaterialTheme.colorScheme.error)
       OutlinedTextField(goal, { if (it.length <= 2000) { goal = it; model.goal = it } }, enabled = !busy,
-        label = { Text("Objetivo opcional") }, placeholder = { Text("Ej.: más fácil de jugar, priorizar Agua") }, modifier = Modifier.fillMaxWidth())
+        label = { Text("Objetivo opcional") }, placeholder = { Text("Ej.: ataques rápidos de tipo Agua") }, modifier = Modifier.fillMaxWidth())
       TextButton(onClick = { showCandidateFilter = !showCandidateFilter }) { Text("Filtrar cartas: ${candidateType.ifBlank { "Todas" }}") }
       if (showCandidateFilter) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         items(listOf("") + com.example.data.util.DeckCodec.energyNames + listOf("Dragón", "Incoloro")) { type ->
@@ -121,7 +123,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         }
       }
       Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && action.canUse(deck?.totalCardCount),
-        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text("Consultar IA · ${action.label}") }
+        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text("${action.label} con IA") }
 
       AdvancedStatus(model)
     }
