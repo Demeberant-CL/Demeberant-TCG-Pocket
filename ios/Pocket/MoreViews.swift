@@ -34,7 +34,7 @@ struct SettingsView: View {
             Section("Apariencia") {
                 Picker("Tema",selection:Binding(get:{store.state.backup.preferences.theme},set:{ theme in Task { _ = await store.commit { $0.backup.preferences.theme = theme } } })) {
                     Text("Sistema").tag("system"); Text("Claro").tag("light"); Text("Oscuro").tag("dark")
-                }
+                }.accessibilityIdentifier("themePicker")
                 Picker("Avatar",selection:Binding(get:{store.state.backup.preferences.avatar ?? avatarIDs[0]},set:{ id in Task { _ = await store.commit { $0.backup.preferences.avatar = id } } })) {
                     ForEach(Array(avatarIDs.enumerated()),id:\.element) { index,id in HStack { AvatarView(id:id); Text(["Rojo","Turquesa","Naranja","Violeta","Verde","Azul"][index]) }.tag(id) }
                 }

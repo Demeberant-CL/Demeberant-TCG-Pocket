@@ -43,12 +43,15 @@ struct AvatarView: View {
 }
 struct HomeView: View {
     @EnvironmentObject var store: Store
+    @Environment(\.dynamicTypeSize) var textSize
     @State var editor = false
     var owned: Int { store.state.backup.inventory.filter { $0.quantity > 0 }.count }
     var body: some View {
         List {
             Section {
-                HStack { AvatarView(id:store.state.backup.preferences.avatar ?? avatarIDs[0]); VStack(alignment:.leading) { Text("Tu colección").font(.title2.bold()); Text("\(owned) de \(store.catalog.count) cartas") } }
+                if textSize.isAccessibilitySize {
+                    VStack(alignment:.leading,spacing:12) { AvatarView(id:store.state.backup.preferences.avatar ?? avatarIDs[0]); collectionSummary }
+                } else { HStack { AvatarView(id:store.state.backup.preferences.avatar ?? avatarIDs[0]); collectionSummary } }
                 ProgressView(value:Double(owned),total:Double(max(1,store.catalog.count)))
                 LabeledContent("Copias",value:"\(store.state.backup.inventory.reduce(0) { $0 + $1.quantity })")
             }
@@ -63,6 +66,7 @@ struct HomeView: View {
             }
         }.navigationTitle("Pocket").sheet(isPresented:$editor) { NavigationStack { EditorView() } }
     }
+    var collectionSummary: some View { VStack(alignment:.leading) { Text("Tu colección").font(.title2.bold()); Text("\(owned) de \(store.catalog.count) cartas") } }
 }
 struct SharedFile: Identifiable { let id = UUID(); let url: URL }
 struct ActivitySheet: UIViewControllerRepresentable {

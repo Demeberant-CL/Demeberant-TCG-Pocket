@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class PocketUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
@@ -27,9 +28,16 @@ final class PocketUITests: XCTestCase {
         for (label,category) in [("100","UICTContentSizeCategoryL"),("130","UICTContentSizeCategoryXXXL"),("200","UICTContentSizeCategoryAccessibilityL")] {
             for theme in ["Light","Dark"] {
                 let app = XCUIApplication()
-                app.launchArguments = ["-UIPreferredContentSizeCategoryName",category,"-AppleInterfaceStyle",theme]
+                app.launchArguments = ["-UIPreferredContentSizeCategoryName",category]
                 app.launch()
                 XCTAssertTrue(app.tabBars.buttons["Colección"].waitForExistence(timeout:20))
+                app.tabBars.buttons["Más"].tap()
+                let settings = app.staticTexts["Ajustes y respaldos"]
+                for _ in 0..<6 { if settings.isHittable { break }; app.swipeUp() }
+                XCTAssertTrue(settings.isHittable); settings.tap()
+                app.buttons["themePicker"].tap(); app.buttons[theme == "Dark" ? "Oscuro" : "Claro"].tap()
+                app.tabBars.buttons["Inicio"].tap()
+                assertTheme(app,dark:theme == "Dark")
                 let home = XCTAttachment(screenshot:app.screenshot()); home.name = "home-\(theme)-text-\(label)"; home.lifetime = .keepAlways; add(home)
                 app.tabBars.buttons["Colección"].tap(); app.buttons["Filtros"].tap()
                 XCTAssertTrue(app.buttons["collectionStatus"].exists)
@@ -67,5 +75,18 @@ final class PocketUITests: XCTestCase {
         },object:app.windows.firstMatch)
         XCTAssertEqual(XCTWaiter.wait(for:[expected],timeout:10),.completed)
         Thread.sleep(forTimeInterval:1)
+    }
+    func assertTheme(_ app: XCUIApplication, dark: Bool) {
+        guard let image = app.screenshot().image.cgImage else { XCTFail("Missing screenshot"); return }
+        var pixel = [UInt8](repeating:0,count:4)
+        let ok = pixel.withUnsafeMutableBytes { bytes -> Bool in
+            guard let context = CGContext(data:bytes.baseAddress,width:1,height:1,bitsPerComponent:8,bytesPerRow:4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.translateBy(x:-10,y:-CGFloat(image.height/2))
+            context.draw(image,in:CGRect(x:0,y:0,width:image.width,height:image.height))
+            return true
+        }
+        XCTAssertTrue(ok)
+        let brightness = (Int(pixel[0])+Int(pixel[1])+Int(pixel[2]))/3
+        if dark { XCTAssertLessThan(brightness,100) } else { XCTAssertGreaterThan(brightness,180) }
     }
 }
