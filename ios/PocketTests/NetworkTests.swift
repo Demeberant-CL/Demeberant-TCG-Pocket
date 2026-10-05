@@ -86,4 +86,19 @@ final class NetworkTests: XCTestCase {
         XCTAssertEqual(names,["gemini-2.5-flash"])
         XCTAssertFalse(ConnectedAI.accepts(provider:"Compatible",row:[:],id:"some-text-model"))
     }
+    func testTournamentVerifiesPocketIdentityBeforeDownloadingStandings() async {
+        let date = ISO8601DateFormatter().string(from:Date())
+        StubProtocol.reset { request in
+            if request.url!.path.hasSuffix("/details") { return (200,Data("{\"id\":\"different\",\"game\":\"POCKET\",\"isPublic\":true,\"decklists\":true}".utf8)) }
+            return (200,Data("[{\"id\":\"abc\",\"game\":\"POCKET\",\"date\":\"\(date)\"}]".utf8))
+        }
+        do { _ = try await Tournaments.refresh(client:client()) { _,_ in }; XCTFail("No eligible tournament") } catch {}
+        XCTAssertEqual(StubProtocol.count(),2)
+    }
+    func testTournamentNeverDownloadsNonPocketGame() async {
+        StubProtocol.reset { _ in (200,Data("[{\"id\":\"abc\",\"game\":\"PTCG\",\"date\":\"2026-10-05T00:00:00Z\"}]".utf8)) }
+        do { _ = try await Tournaments.refresh(client:client()) { _,_ in }; XCTFail("No pocket data") } catch {}
+        XCTAssertEqual(StubProtocol.count(),1)
+    }
+
 }

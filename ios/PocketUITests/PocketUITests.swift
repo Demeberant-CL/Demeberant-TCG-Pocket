@@ -6,7 +6,7 @@ final class PocketUITests: XCTestCase {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.tabBars.buttons["Colección"].waitForExistence(timeout:20))
         for destination in ["Inicio","Colección","Mazos","IA","Más"] { XCTAssertTrue(app.tabBars.buttons[destination].exists) }
-        app.tabBars.buttons["IA"].tap(); XCTAssertTrue(app.buttons["Consultar IA"].exists); XCTAssertFalse(app.buttons["Consultar IA"].isEnabled)
+        app.tabBars.buttons["IA"].tap(); app.swipeUp(); XCTAssertTrue(app.buttons["Consultar IA"].waitForExistence(timeout:5)); XCTAssertFalse(app.buttons["Consultar IA"].isEnabled)
     }
     func testCollectionFiltersAndRotationKeepNativeNavigation() {
         let app = XCUIApplication(); app.launch(); XCTAssertTrue(app.tabBars.buttons["Colección"].waitForExistence(timeout:20)); app.tabBars.buttons["Colección"].tap()

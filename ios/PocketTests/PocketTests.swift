@@ -27,10 +27,13 @@ final class PocketTests: XCTestCase {
         let decks = try XCTUnwrap(root["decks"] as? [[String:Any]])
         XCTAssertTrue(decks[0]["cards"] is String)
     }
-    func testInvalidBackupDoesNotChangeState() throws {
-        let old = LocalState()
+    func testInvalidBackupDoesNotChangeState() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("state.sqlite")
+        defer { try? FileManager.default.removeItem(at:url.deletingLastPathComponent()) }
+        let old = LocalState(), db = Database(url:url); try await db.save(old)
         var value = try backup(); value.inventory[0].quantity = -1
-        XCTAssertThrowsError(try Backup.decode(value.data())); XCTAssertEqual(old,LocalState())
+        XCTAssertThrowsError(try Backup.decode(value.data()))
+        let current = try await db.load(); XCTAssertEqual(current,old)
     }
     func testDuplicateNormalizedInventoryRejected() throws {
         var value = try backup(); var second = value.inventory[0]; second.id = "A1-1"; value.inventory.append(second)
@@ -173,6 +176,14 @@ final class PocketTests: XCTestCase {
     func testCSVAbsentWishlistPreservesOptionalSemantics() throws {
         let rows = try CollectionCSV.parse("Set;ID;Nombre;Rareza;Cantidad\nA1;1;Name;♦;2")
         XCTAssertNil(rows[0].wishlist)
+    }
+    func testMetaRefreshPolicyHonorsFreshnessThrottleAndClockChanges() {
+        let now: Int64 = 100_000_000
+        XCTAssertFalse(MetaRefreshPolicy.shouldRefresh(updated:nil,lastAttempt:now-1,now:now))
+        XCTAssertFalse(MetaRefreshPolicy.shouldRefresh(updated:now-1,lastAttempt:0,now:now))
+        XCTAssertTrue(MetaRefreshPolicy.shouldRefresh(updated:nil,lastAttempt:0,now:now))
+        XCTAssertTrue(MetaRefreshPolicy.shouldRefresh(updated:now+1,lastAttempt:0,now:now))
+        XCTAssertTrue(MetaRefreshPolicy.shouldRefresh(updated:now-21_600_000,lastAttempt:now-900_000,now:now))
     }
     func testProbabilityKnownValuesAndBounds() throws {
         XCTAssertEqual(try Insights.cumulative(0.1,attempts:2),0.19,accuracy:0.000001)

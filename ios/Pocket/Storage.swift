@@ -76,8 +76,9 @@ enum Secrets {
         try require(status == errSecSuccess, "No se pudo guardar Keychain. El perfil anterior se conserva.")
     }
     static func remove(_ id: String) throws {
-        let status = SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: id] as CFDictionary)
-        try require(status == errSecSuccess || status == errSecItemNotFound, "No se pudo eliminar la clave de Keychain.")
+        let query: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: id]
+        let status = SecItemDelete(query as CFDictionary)
+        try require(status == errSecSuccess || status == errSecItemNotFound, "No se pudo eliminar la clave de Keychain (\(status)).")
     }
 }
 @MainActor final class Store: ObservableObject {

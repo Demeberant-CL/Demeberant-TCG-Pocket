@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Vision
+import CoreImage
 
 // Fixed QR version 9, byte mode, H, no ECI, quiet zone 4.
 // ISO QR geometry and Reed-Solomon over GF(256), polynomial 0x11D.
@@ -108,9 +109,10 @@ enum QRMatrix {
 enum QRExport {
     static func decoded(_ image: UIImage) throws -> String? {
         guard let cg = image.cgImage else { throw PocketError("PNG no válido.") }
-        let request = VNDetectBarcodesRequest(); request.symbologies = [.qr]
-        try VNImageRequestHandler(cgImage: cg).perform([request])
-        return request.results?.first?.payloadStringValue
+        guard let detector = CIDetector(ofType: CIDetectorTypeQRCode,
+            context: CIContext(options: [.useSoftwareRenderer: true]),
+            options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]) else { throw PocketError("No se pudo crear el lector QR.") }
+        return (detector.features(in: CIImage(cgImage: cg)).first as? CIQRCodeFeature)?.messageString
     }
     static func png(payload: String, alternate: Bool = false) throws -> Data {
         var readable = 0

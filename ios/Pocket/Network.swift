@@ -154,31 +154,39 @@ struct MetaDeck: Codable, Identifiable, Equatable {
     var id: String { name }
 }
 struct MetaSnapshot: Codable, Equatable { var updated: Int64; var tournaments: Int; var players: Int; var decks: [MetaDeck]; var skipped: Int }
+enum MetaRefreshPolicy {
+    static func shouldRefresh(updated: Int64?, lastAttempt: Int64, now: Int64) -> Bool {
+        if lastAttempt > 0 && (0..<900_000).contains(now-lastAttempt) { return false }
+        guard let updated else { return true }
+        return now-updated >= 21_600_000 || updated > now
+    }
+}
 enum Tournaments {
     static let source = "https://play.limitlesstcg.com/api/"
-    static func refresh(progress: @escaping @Sendable (Int,Int) async -> Void) async throws -> MetaSnapshot {
+    static func refresh(client: HTTP = .shared, timeout: UInt64 = 90_000_000_000, progress: @escaping @Sendable (Int,Int) async -> Void) async throws -> MetaSnapshot {
         try await withThrowingTaskGroup(of: MetaSnapshot.self) { group in
-            group.addTask { try await fetch(progress: progress) }
-            group.addTask { try await Task.sleep(nanoseconds: 90_000_000_000); throw PocketError("La actualización superó 90 segundos.") }
+            group.addTask { try await fetch(client:client,progress: progress) }
+            group.addTask { try await Task.sleep(nanoseconds: timeout); throw PocketError("La actualización superó 90 segundos.") }
             defer { group.cancelAll() }
             return try await group.next()!
         }
     }
-    private static func fetch(progress: @escaping @Sendable (Int,Int) async -> Void) async throws -> MetaSnapshot {
-        guard let rows = try await HTTP.shared.json(source + "tournaments?game=POCKET&limit=12") as? [[String:Any]] else { throw PocketError("Lista de torneos no válida.") }
+    private static func fetch(client: HTTP, progress: @escaping @Sendable (Int,Int) async -> Void) async throws -> MetaSnapshot {
+        guard let rows = try await client.json(source + "tournaments?game=POCKET&limit=12") as? [[String:Any]] else { throw PocketError("Lista de torneos no válida.") }
         var groups: [String:MetaDeck] = [:], included = 0, players = 0, skipped = 0
         let tournaments = Array(rows.prefix(12)), now = Date()
         let formatter = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter(); fractional.formatOptions = [.withInternetDateTime,.withFractionalSeconds]
         for (index,t) in tournaments.enumerated() {
             try Task.checkCancellation(); await progress(index+1,tournaments.count)
             guard t["game"] as? String == "POCKET", let dateText = t["date"] as? String,
-                let date = formatter.date(from: dateText), date <= now && now.timeIntervalSince(date) <= 30*86400,
+                let date = formatter.date(from: dateText) ?? fractional.date(from: dateText), date <= now && now.timeIntervalSince(date) <= 30*86400,
                 let id = t["id"] as? String, id.range(of:"^[a-zA-Z0-9]{1,60}$", options:.regularExpression) != nil else { skipped += 1; continue }
-            guard let d = try await HTTP.shared.json(source + "tournaments/\(id)/details") as? [String:Any],
+            guard let d = try await client.json(source + "tournaments/\(id)/details") as? [String:Any],
                 d["game"] as? String == "POCKET", d["id"] as? String == id, d["isPublic"] as? Bool == true,
                 d["decklists"] as? Bool == true, (d["specialRules"] as? [Any] ?? []).isEmpty,
                 (d["bannedCards"] as? [Any] ?? []).isEmpty, ["", "STANDARD", "null"].contains(d["format"] as? String ?? "") else { skipped += 1; continue }
-            guard let standings = try await HTTP.shared.json(source + "tournaments/\(id)/standings") as? [[String:Any]], !standings.isEmpty,
+            guard let standings = try await client.json(source + "tournaments/\(id)/standings") as? [[String:Any]], !standings.isEmpty,
                 standings.allSatisfy({ ($0["placing"] as? Int ?? 0) > 0 }) else { skipped += 1; continue }
             included += 1
             for row in standings {

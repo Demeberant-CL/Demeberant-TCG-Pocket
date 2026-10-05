@@ -24,11 +24,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ios-native-validation
+          name: ios-native-review
           path: |
             ios/validation/xcodebuild.log
             ios/validation/simulators.json
-            ios/validation/PocketTests.xcresult
             ios/validation/test-summary.json
             ios/validation/screenshots
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-native-xcresult
+          path: ios/validation/PocketTests.xcresult
           retention-days: 14

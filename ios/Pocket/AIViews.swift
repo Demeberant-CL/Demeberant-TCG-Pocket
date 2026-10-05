@@ -15,6 +15,9 @@ struct AIView: View {
     @State var remove = false
     @State var models: [String] = []
     @State var proposal: AIProposal?
+    @State var proposalAction = "Crear"
+    @State var proposalTarget = DeckContent()
+    @State var proposalAllowed: Set<String> = []
     @State var open = false
     @State var editor = false
     @State var message = ""
@@ -31,7 +34,7 @@ struct AIView: View {
             Button("Enviar una consulta") { generate() }
         } message: { Text("Se enviarán cartas disponibles, objetivo y, según la acción, el borrador. Puede consumir cuota. No hay reintentos ni cambio automático de proveedor.") }
         .confirmationDialog("Reemplazar el borrador",isPresented:$open) {
-            Button("Abrir propuesta") { if let proposal { Task { if await store.commit({ $0.draft = proposal.draft }) { editor = true } } } }
+            Button("Abrir propuesta") { openProposal() }
         }
         .confirmationDialog("Eliminar conexión",isPresented:$remove) {
             Button("Eliminar",role:.destructive) { deleteProfile() }
@@ -85,6 +88,17 @@ struct AIView: View {
             key = (try? Secrets.read(p.secretID)) ?? ""
             Task { _ = await store.commit { $0.selectedProfile = p.id } }
         } else { profileName = "Mi conexión"; provider = "Gemini"; model = ""; endpoint = "" }
+    }
+    func openProposal() {
+        guard let proposal else { return }
+        Task {
+            do {
+                try require(proposalAction == "Crear" || store.state.draft.content == proposalTarget,"El borrador cambió; vuelve a consultar.")
+                let quantities = Dictionary(uniqueKeysWithValues:store.state.backup.inventory.map { ($0.id,$0.quantity) })
+                try proposal.validate(catalog:store.byID,quantities:quantities,allowed:proposalAllowed,action:proposalAction,target:proposalTarget)
+                if await store.commit({ $0.draft = proposal.draft }) { editor = true }
+            } catch { message = "La colección o el borrador cambió. Vuelve a consultar antes de abrir la propuesta."; self.proposal = nil }
+        }
     }
     func saveProfile() {
         Task {
@@ -148,6 +162,7 @@ struct AIView: View {
                 let quantities = Dictionary(uniqueKeysWithValues:store.state.backup.inventory.map { ($0.id,$0.quantity) })
                 try decoded.validate(catalog:store.byID,quantities:quantities,allowed:allowed,action:selectedAction,target:target)
                 try require(store.state.selectedProfile == p.id && (selectedAction == "Crear" || store.state.draft.content == target),"La configuración o el borrador cambió; vuelve a consultar.")
+                proposalAction = selectedAction; proposalTarget = target; proposalAllowed = allowed
                 proposal = decoded; message = "Propuesta validada con la colección actual. Revisa antes de abrir."
             } catch is CancellationError { message = "Consulta cancelada. No se guardó una propuesta." }
             catch { message = "No se obtuvo un mazo válido. Revisa conexión, cuota y cartas disponibles. No se cambió de proveedor." }
@@ -183,8 +198,7 @@ struct MetaView: View {
             }
         }.navigationTitle("Meta de torneos")
         .task {
-            let now = milliseconds(), stale = now-(store.state.meta?.updated ?? 0) >= 6*3600*1000
-            if store.state.autoMeta && stale && now-(store.state.lastAutoMeta ?? 0) >= 15*60*1000 { refresh() }
+            if store.state.autoMeta && MetaRefreshPolicy.shouldRefresh(updated:store.state.meta?.updated,lastAttempt:store.state.lastAutoMeta ?? 0,now:milliseconds()) { refresh() }
         }.onDisappear { job?.cancel() }
         .confirmationDialog("Reemplazar borrador",isPresented:Binding(get:{opening != nil},set:{if !$0 {opening = nil}})) {
             Button("Abrir lista") { if let deck = opening { Task {

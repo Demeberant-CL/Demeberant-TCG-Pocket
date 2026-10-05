@@ -29,7 +29,11 @@ PY
 )
 printf 'Simulator UDID: %s\n' "$simulator_id"
 xcodebuild -project Pocket.xcodeproj -scheme Pocket -destination 'generic/platform=iOS Simulator' -derivedDataPath validation/DerivedData CODE_SIGNING_ALLOWED=NO build
+set +e
 xcodebuild -project Pocket.xcodeproj -scheme Pocket -destination "platform=iOS Simulator,id=$simulator_id" -derivedDataPath validation/DerivedData -resultBundlePath validation/PocketTests.xcresult CODE_SIGNING_ALLOWED=NO test
+test_status=$?
+set -e
 
 xcrun xcresulttool get test-results summary --path validation/PocketTests.xcresult > validation/test-summary.json
 xcrun xcresulttool export attachments --path validation/PocketTests.xcresult --output-path validation/screenshots
+exit "$test_status"
