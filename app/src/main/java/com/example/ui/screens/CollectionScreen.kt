@@ -11,7 +11,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconToggleButton
+import com.example.data.util.CollectionFilter
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.FilterChip
@@ -118,7 +133,6 @@ fun CollectionScreen(
   val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
   val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
   var showFiltersDialog by remember { mutableStateOf(false) }
-  var showStatusDialog by remember { mutableStateOf(false) }
   var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
@@ -225,21 +239,18 @@ fun CollectionScreen(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 12.dp, vertical = 8.dp)
-        .shadow(3.dp, shape = RoundedCornerShape(10.dp), clip = false)
         .testTag("collection_stats_card"),
       shape = RoundedCornerShape(10.dp),
-      colors = CardDefaults.cardColors(containerColor = PocketSurface),
-      border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketBorder))
+      colors = CardDefaults.cardColors(containerColor = PocketBackground)
     ) {
       Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
           com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
-            Modifier.size(40.dp).clip(CircleShape).clickable { showAvatarPicker = true }
-              .border(2.dp, PocketGold, CircleShape), "Cambiar avatar de perfil")
+            Modifier.size(48.dp).clip(CircleShape).clickable { showAvatarPicker = true }, "Cambiar avatar de perfil")
           Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
-            Text("Mi colección", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Mi colección", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
-              style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
+              style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
             if (showProfileDetails) {
               Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
               Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
@@ -292,7 +303,7 @@ fun CollectionScreen(
         .padding(horizontal = 14.dp, vertical = 4.dp)
         .shadow(2.dp, RoundedCornerShape(14.dp), clip = false)
         .testTag("search_card_input"),
-      placeholder = { Text("Buscar Pokémon o código (ej. A1-036)...", fontSize = 12.sp, color = PocketTextMuted) },
+      placeholder = { Text("Buscar Pokémon o código…", style = MaterialTheme.typography.bodyMedium, color = PocketTextSecondary) },
       leadingIcon = {
         Icon(Icons.Filled.Search, contentDescription = "Buscar", tint = PocketTextSecondary, modifier = Modifier.size(18.dp))
       },
@@ -300,10 +311,6 @@ fun CollectionScreen(
         Row {
           if (searchQuery.isNotBlank()) IconButton(onClick = { viewModel.setSearchQuery("") }) {
             Icon(Icons.Filled.Clear, contentDescription = "Borrar búsqueda")
-          }
-          IconButton(onClick = { showFiltersDialog = true }) {
-            Icon(Icons.Filled.Tune, contentDescription = "Filtros avanzados",
-              tint = if (expansionFilter != null || rarityFilter != null) PocketBluePrimary else PocketTextSecondary)
           }
         }
       },
@@ -319,48 +326,30 @@ fun CollectionScreen(
       )
     )
 
-    val statuses = listOf(
-      "Todas" to com.example.data.util.CollectionFilter.ALL,
-      "Tengo ($totalOwned)" to com.example.data.util.CollectionFilter.OWNED,
-      "Faltan (${totalCatalog - totalOwned})" to com.example.data.util.CollectionFilter.MISSING,
-      "Deseos" to com.example.data.util.CollectionFilter.FAVORITES,
-      "Repetidas" to com.example.data.util.CollectionFilter.REPEATED)
+    val statuses = remember(fullInventory) { listOf("Todas" to CollectionFilter.ALL, "Tengo" to CollectionFilter.OWNED,
+      "Faltan" to CollectionFilter.MISSING, "Deseos" to CollectionFilter.FAVORITES,
+      "Repetidas" to CollectionFilter.REPEATED).map { (name, filter) ->
+        "$name · ${fullInventory.count { filter.matches(it) }}" to filter
+      } }
+    val stackControls = LocalDensity.current.fontScale >= 1.3f || LocalConfiguration.current.screenWidthDp < 340
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp)) {
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { showStatusDialog = true }) {
-          Text(statuses.first { it.second == collectionFilter }.first + " ▾")
-        }
-        OutlinedButton(onClick = { showFiltersDialog = true }) {
-          Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.width(6.dp))
-          Text(if (expansionFilter != null || rarityFilter != null) "Filtrar · activo" else "Filtrar")
-        }
+      verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      if (stackControls) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.fillMaxWidth())
+        CollectionAdvancedFilterButton(expansionFilter != null || rarityFilter != null,
+          { showFiltersDialog = true }, Modifier.fillMaxWidth())
+      } else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.weight(1f))
+        CollectionAdvancedFilterButton(expansionFilter != null || rarityFilter != null, { showFiltersDialog = true })
       }
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        val selectedColors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer)
-        FilterChip(selected = !listView, onClick = { listView = false }, label = { Text("Cuadrícula") }, colors = selectedColors)
-        FilterChip(selected = listView, onClick = { listView = true }, label = { Text("Lista") }, colors = selectedColors)
-        if (!listView) FilterChip(selected = largeCards, onClick = { largeCards = !largeCards },
-          label = { Text("Cartas grandes") }, colors = selectedColors)
+      if (stackControls) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        CollectionViewSelector(listView, { listView = it }, false, Modifier.fillMaxWidth())
+        CollectionCardSizeButton(largeCards, !listView, { largeCards = it }, Modifier.align(Alignment.End))
+      } else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        CollectionViewSelector(listView, { listView = it }, true, Modifier.weight(1f))
+        CollectionCardSizeButton(largeCards, !listView, { largeCards = it })
       }
     }
-    if (showStatusDialog) AlertDialog(
-      onDismissRequest = { showStatusDialog = false },
-      title = { Text("Mostrar cartas") },
-      text = {
-        Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-          statuses.forEach { (label, filter) ->
-            TextButton(onClick = { viewModel.setCollectionFilter(filter); showStatusDialog = false },
-              modifier = Modifier.fillMaxWidth()) {
-              Text((if (collectionFilter == filter) "✓ " else "") + label)
-            }
-          }
-        }
-      },
-      confirmButton = { TextButton(onClick = { showStatusDialog = false }) { Text("Cerrar") } })
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
 
@@ -596,5 +585,77 @@ private fun PocketPillChip(
       fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
       color = textColor
     )
+  }
+}
+
+/** Compact controls keep appearance and accessibility state together. */
+@Composable
+private fun CollectionStatusMenu(statuses: List<Pair<String, CollectionFilter>>, selected: CollectionFilter,
+  onSelect: (CollectionFilter) -> Unit, modifier: Modifier = Modifier) {
+  var expanded by remember { mutableStateOf(false) }
+  Box(modifier) {
+    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+      shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, PocketBorder),
+      colors = ButtonDefaults.outlinedButtonColors(containerColor = PocketSurface, contentColor = PocketTextPrimary),
+      contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)) {
+      Icon(Icons.Filled.Layers, null, Modifier.size(20.dp))
+      Text(statuses.first { it.second == selected }.first, Modifier.weight(1f).padding(horizontal = 8.dp),
+        style = MaterialTheme.typography.labelLarge)
+      Icon(Icons.Filled.ExpandMore, null, Modifier.size(20.dp))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+      statuses.forEach { (label, filter) ->
+        DropdownMenuItem(text = { Text(label) }, leadingIcon = {
+          if (selected == filter) Icon(Icons.Filled.CheckCircle, "Seleccionado", tint = PocketBluePrimary)
+        }, onClick = { expanded = false; onSelect(filter) })
+      }
+    }
+  }
+}
+
+@Composable
+private fun CollectionAdvancedFilterButton(active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp),
+    shape = RoundedCornerShape(10.dp), border = BorderStroke(if (active) 2.dp else 1.dp, PocketBluePrimary),
+    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)) {
+    Icon(Icons.Filled.Tune, null, Modifier.size(20.dp))
+    Spacer(Modifier.width(8.dp))
+    Text(if (active) "Filtrar · activo" else "Filtrar", style = MaterialTheme.typography.labelLarge)
+  }
+}
+
+@Composable
+private fun CollectionViewSelector(listView: Boolean, onSelect: (Boolean) -> Unit,
+  showIcons: Boolean, modifier: Modifier = Modifier) {
+  val shape = RoundedCornerShape(10.dp)
+  Row(modifier.height(IntrinsicSize.Min).clip(shape).background(PocketSurface)
+    .border(1.dp, PocketBorder, shape).selectableGroup()) {
+    listOf(false to "Cuadrícula", true to "Lista").forEach { (value, label) ->
+      val selected = listView == value
+      val color = if (selected) MaterialTheme.colorScheme.onPrimary else PocketTextPrimary
+      Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)
+        .background(if (selected) PocketBluePrimary else Color.Transparent)
+        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(value) })
+        .padding(horizontal = 8.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          if (showIcons) Icon(if (value) Icons.Filled.ViewList else Icons.Filled.GridView, null,
+            Modifier.size(20.dp), tint = color)
+          Text(label, color = color, style = MaterialTheme.typography.labelLarge)
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CollectionCardSizeButton(large: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier) {
+  val shape = RoundedCornerShape(10.dp)
+  IconToggleButton(checked = large, enabled = enabled, onCheckedChange = onChange,
+    modifier = modifier.size(48.dp).clip(shape)
+      .background(if (large && enabled) MaterialTheme.colorScheme.primaryContainer else PocketSurface)
+      .border(1.dp, if (large && enabled) PocketBluePrimary else PocketBorder, shape)) {
+    Icon(Icons.Filled.ViewModule, if (large) "Usar cartas pequeñas" else "Usar cartas grandes",
+      tint = if (!enabled) PocketTextMuted else if (large) PocketBluePrimary else PocketTextPrimary)
   }
 }
