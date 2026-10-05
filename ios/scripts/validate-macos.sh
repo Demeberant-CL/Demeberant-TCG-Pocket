@@ -13,17 +13,19 @@ sw_vers
 python3 scripts/generate_project.py
 xcodebuild -list -project Pocket.xcodeproj
 xcrun simctl list devices available -j > validation/simulators.json
-simulator_id=$(python3 - <<'PY'
-import json,re
+simulator_sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
+simulator_id=$(python3 - "$simulator_sdk" <<'PY'
+import json,re,sys
+sdk=tuple(map(int,sys.argv[1].split('.')[:2]))
 j=json.load(open('validation/simulators.json'))
 candidates=[]
 for runtime,rows in j['devices'].items():
     version=re.search(r'iOS-(\d+)-(\d+)',runtime)
-    if version and int(version[1])>=17:
+    if version and int(version[1])>=17 and (int(version[1]),int(version[2]))<=sdk:
         for r in rows:
             if r.get('isAvailable') and r['name'].startswith('iPhone'):
                 candidates.append((int(version[1]),int(version[2]),r['name'],r['udid']))
-assert candidates,'No available iPhone simulator with iOS 17+; inspect simulators.json'
+assert candidates,'No available iOS 17+ iPhone runtime compatible with the selected simulator SDK; inspect simulators.json'
 print(sorted(candidates)[-1][-1])
 PY
 )

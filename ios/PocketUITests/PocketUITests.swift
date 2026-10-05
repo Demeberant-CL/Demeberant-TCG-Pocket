@@ -15,7 +15,7 @@ final class PocketUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForOrientation(app,landscape:true)
         XCTAssertTrue(app.tabBars.buttons["Más"].exists)
-        let shot = XCTAttachment(screenshot:app.screenshot()); shot.name = "collection-landscape"; shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot:XCUIDevice.shared.screenshot()); shot.name = "collection-landscape"; shot.lifetime = .keepAlways; add(shot)
         XCUIDevice.shared.orientation = .portrait
         waitForOrientation(app,landscape:false)
     }
