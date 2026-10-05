@@ -122,6 +122,10 @@ class DeckQrTest {
     val bitmap = image.bitmap
     val pixels = IntArray(bitmap.width * bitmap.height)
     bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    // Verify the actual coloured export, not a separate black-and-white surrogate.
+    assertFalse(pixels.contains(android.graphics.Color.BLACK))
+    assertEquals(android.graphics.Color.WHITE, pixels.first())
+    assertTrue(pixels.filter { it != android.graphics.Color.WHITE }.distinct().size > 1)
     val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
     val decoded = MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(source)))
     assertEquals(expected, decoded.text)

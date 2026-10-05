@@ -26,7 +26,11 @@ object DeckQrImages {
       hints[EncodeHintType.QR_MASK_PATTERN] = mask
       val matrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 976, 976, hints)
       val pixels = IntArray(matrix.width * matrix.height) { index ->
-        if (matrix[index % matrix.width, index / matrix.width]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+        if (matrix[index % matrix.width, index / matrix.width]) {
+          // Dark cyan to blue on white: same modules, payload and quiet zone.
+          val fraction = (index / matrix.width).toFloat() / (matrix.height - 1)
+          android.graphics.Color.rgb((0 + 22 * fraction).toInt(), (123 - 48 * fraction).toInt(), (150 + 7 * fraction).toInt())
+        } else android.graphics.Color.WHITE
       }
       val decoded = try {
         MultiFormatReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(matrix.width, matrix.height, pixels)))).text

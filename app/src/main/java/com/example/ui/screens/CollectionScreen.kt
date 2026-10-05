@@ -11,6 +11,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -98,6 +101,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CollectionScreen(
   viewModel: TcgViewModel,
@@ -314,54 +318,36 @@ fun CollectionScreen(
       )
     )
 
-    // One collection status is selected at a time.
-    LazyRow(
-      contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-      item {
-        PocketPillChip(
-          label = "Todas",
-          isSelected = collectionFilter == com.example.data.util.CollectionFilter.ALL,
-          activeColor = MaterialTheme.colorScheme.primaryContainer,
-          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.ALL) }
-        )
-      }
-      item {
-        PocketPillChip(
-          label = "Tengo ($totalOwned)",
-          isSelected = collectionFilter == com.example.data.util.CollectionFilter.OWNED,
-          activeColor = MaterialTheme.colorScheme.primaryContainer,
-          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.OWNED) }
-        )
-      }
-      item {
-        PocketPillChip(
-          label = "Faltan (${totalCatalog - totalOwned})",
-          isSelected = collectionFilter == com.example.data.util.CollectionFilter.MISSING,
-          activeColor = MaterialTheme.colorScheme.primaryContainer,
-          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.MISSING) }
-        )
-      }
-      item {
-        PocketPillChip(
-          label = "Deseos",
-          isSelected = collectionFilter == com.example.data.util.CollectionFilter.FAVORITES,
-          activeColor = MaterialTheme.colorScheme.primaryContainer,
-          onClick = { viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.FAVORITES) }
-        )
-      }
-      item {
-        PocketPillChip("Repetidas", collectionFilter == com.example.data.util.CollectionFilter.REPEATED,
-          MaterialTheme.colorScheme.primaryContainer) {
-          viewModel.setCollectionFilter(com.example.data.util.CollectionFilter.REPEATED)
+    // Wrap filters within the same visible frame instead of cropping a horizontal row.
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)
+      .clip(RoundedCornerShape(14.dp)).background(PocketSurface)
+      .border(1.dp, PocketBorder, RoundedCornerShape(14.dp))
+      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.35f).coerceIn(120f, 280f).dp)
+      .verticalScroll(rememberScrollState()).padding(10.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val statuses = listOf(
+          "Todas" to com.example.data.util.CollectionFilter.ALL,
+          "Tengo ($totalOwned)" to com.example.data.util.CollectionFilter.OWNED,
+          "Faltan (${totalCatalog - totalOwned})" to com.example.data.util.CollectionFilter.MISSING,
+          "Deseos" to com.example.data.util.CollectionFilter.FAVORITES,
+          "Repetidas" to com.example.data.util.CollectionFilter.REPEATED)
+        statuses.forEach { (label, filter) ->
+          PocketPillChip(label, collectionFilter == filter, MaterialTheme.colorScheme.primaryContainer) {
+            viewModel.setCollectionFilter(filter)
+          }
         }
       }
-    }
-    LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-      item { FilterChip(selected = !listView, onClick = { listView = false }, label = { Text("Cuadrícula") }) }
-      item { FilterChip(selected = listView, onClick = { listView = true }, label = { Text("Lista") }) }
-      if (!listView) item { FilterChip(selected = largeCards, onClick = { largeCards = !largeCards }, label = { Text("Cartas grandes") }) }
+      androidx.compose.material3.HorizontalDivider(color = PocketBorder)
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val selectedColors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+          selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+          selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer)
+        FilterChip(selected = !listView, onClick = { listView = false }, label = { Text("Cuadrícula") }, colors = selectedColors)
+        FilterChip(selected = listView, onClick = { listView = true }, label = { Text("Lista") }, colors = selectedColors)
+        if (!listView) FilterChip(selected = largeCards, onClick = { largeCards = !largeCards },
+          label = { Text("Cartas grandes") }, colors = selectedColors)
+      }
     }
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
