@@ -362,6 +362,7 @@ public final class MainActivity extends Activity {
             .setPositiveButton("Guardar JSON", (dialog, which) -> {
                 try {
                     pendingExport = current.toString(2);
+                    preferences.edit().putString("pending-export", pendingExport).commit();
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("application/json");
@@ -374,8 +375,13 @@ public final class MainActivity extends Activity {
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != EXPORT_JSON && requestCode != EXPORT_TRACE) return;
-        String text = pendingExport; pendingExport = null;
-        if (resultCode != RESULT_OK || data == null || data.getData() == null || text == null) return;
+        String text = pendingExport != null ? pendingExport : preferences.getString("pending-export", null);
+        pendingExport = null;
+        if (resultCode != RESULT_OK) { preferences.edit().remove("pending-export").apply(); return; }
+        if (data == null || data.getData() == null || text == null || text.isEmpty()) {
+            message("No se pudo recuperar el registro. Vuelve a pulsar Guardar diagnóstico."); return;
+        }
+        boolean written = false;
         try (OutputStream output = getContentResolver().openOutputStream(data.getData(), "wt")) {
             if (output == null) throw new java.io.IOException();
             if (requestCode == EXPORT_TRACE) {
@@ -386,9 +392,34 @@ public final class MainActivity extends Activity {
                     String summary = "Pocket Zone · Pruebas " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
                     zip.write(summary.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
                 }
-                message("ZIP de diagnóstico guardado.");
-            } else { output.write(text.getBytes(StandardCharsets.UTF_8)); message("JSON guardado. La colección de TCG Pocket no se ha modificado."); }
-        } catch (Exception e) { message("No se pudo guardar el archivo."); }
+                written = true;
+            } else { output.write(text.getBytes(StandardCharsets.UTF_8)); output.flush(); written = true; }
+        } catch (Exception e) { message("No se pudo guardar el archivo. Prueba otra carpeta."); return; }
+        if (written) {
+            try (java.io.InputStream check = getContentResolver().openInputStream(data.getData())) {
+                if (check == null) throw new java.io.IOException();
+                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[4096]; int count;
+                while ((count = check.read(buffer)) != -1) {
+                    bytes.write(buffer, 0, count);
+                    if (bytes.size() > 1000000) throw new java.io.IOException();
+                }
+                if (requestCode == EXPORT_TRACE) {
+                    try (java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
+                        java.util.zip.ZipEntry entry = zip.getNextEntry();
+                        if (entry == null || !"registro.json".equals(entry.getName())) throw new java.io.IOException();
+                        java.io.ByteArrayOutputStream payload = new java.io.ByteArrayOutputStream();
+                        while ((count = zip.read(buffer)) != -1) payload.write(buffer, 0, count);
+                        if (!text.equals(payload.toString(StandardCharsets.UTF_8.name()))) throw new java.io.IOException();
+                        zip.closeEntry();
+                        entry = zip.getNextEntry();
+                        if (entry == null || !"resumen.txt".equals(entry.getName()) || zip.read() == -1) throw new java.io.IOException();
+                    }
+                } else if (!text.equals(bytes.toString(StandardCharsets.UTF_8.name()))) throw new java.io.IOException();
+                preferences.edit().remove("pending-export").apply();
+                message("Archivo guardado y verificado: " + bytes.size() + " bytes.");
+            } catch (Exception e) { message("No se pudo verificar el archivo guardado. Prueba guardarlo en Descargas."); }
+        }
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -440,6 +471,7 @@ public final class MainActivity extends Activity {
         content.addView(recordButton);
         content.addView(button("Guardar diagnóstico ZIP", () -> {
             saveTrace(); pendingExport = trace.exportJson();
+            preferences.edit().putString("pending-export", pendingExport).commit();
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("application/zip");
             intent.putExtra(Intent.EXTRA_TITLE, "zone-proceso.zip");
