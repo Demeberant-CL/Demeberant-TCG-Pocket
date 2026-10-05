@@ -158,8 +158,9 @@ public final class MainActivity extends Activity {
             preview = null;
             openBrowser(profileUrl);
         }));
+        content.addView(button("Conectar cuenta de Pokémon Zone", () -> openBrowser("https://www.pokemon-zone.com/accounts/login/")));
         content.addView(label("Primero actualiza tus datos en Pokémon Zone desde tu navegador. Aquí solo se lee lo publicado; no se sincroniza con Nintendo ni con el juego.", 16));
-        content.addView(label("Los perfiles privados y el acceso con Google, Discord o Nintendo no están incluidos en esta prueba. Las imágenes no se descargan para reducir consumo.", 15));
+        content.addView(label("Puedes probar el acceso con usuario y contraseña de Pokémon Zone desde Conectar cuenta. Google y Discord requieren navegador externo; su sesión no se transfiere a este visor.", 15));
         content.addView(label("Diagnóstico del proceso: activa el registro y navega por Pokémon Zone. Guarda pasos, rutas anonimizadas y errores; nunca guarda contraseñas, formularios, cookies o tokens.", 15));
         addTraceControls(content);
         content.addView(button("Borrar datos de esta prueba", () -> new AlertDialog.Builder(this)
@@ -198,10 +199,11 @@ public final class MainActivity extends Activity {
         controls.addView(row);
         readButton = button("Leer datos visibles", this::readPage);
         readButton.setEnabled(false);
-        row.addView(readButton);
-        row.addView(button("Ver cartas", () -> { if (browser != null) browser.loadUrl(profileUrl + "cards/"); }));
-        row.addView(button("Perfil", () -> { if (browser != null) browser.loadUrl(profileUrl); }));
         row.addView(button("Mi cuenta", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/settings/"); }));
+        row.addView(button("Acceso con contraseña", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/accounts/login/"); }));
+        row.addView(readButton);
+        row.addView(button("Ver cartas", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl + "cards/"); }));
+        row.addView(button("Perfil", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl); }));
         row.addView(button("Volver", this::home));
         row.addView(button("Navegador externo", () -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))));
         content.addView(controls);
@@ -231,7 +233,12 @@ public final class MainActivity extends Activity {
                 if (ZoneUrl.canBrowse(request.getUrl().toString())) return false;
                 trace.add("blocked_link", request.getUrl().toString(), 0);
                 loaded = false; readButton.setEnabled(false);
-                status.setText("Enlace externo bloqueado. El acceso con Google/Discord requiere navegador externo; su sesión no se transfiere aquí.");
+                status.setText("Acceso externo bloqueado. Puedes volver al formulario de Pokémon Zone para usar usuario y contraseña.");
+                new AlertDialog.Builder(MainActivity.this).setTitle("Inicio de sesión externo")
+                    .setMessage("Esta redirección sale de Pokémon Zone. El inicio de sesión con usuario y contraseña del sitio se puede probar dentro del visor. Las sesiones de un navegador externo no se transfieren aquí.")
+                    .setNegativeButton("Cerrar", null)
+                    .setPositiveButton("Formulario de Pokémon Zone", (dialog, which) -> view.loadUrl("https://www.pokemon-zone.com/accounts/login/"))
+                    .show();
                 return true;
             }
 
