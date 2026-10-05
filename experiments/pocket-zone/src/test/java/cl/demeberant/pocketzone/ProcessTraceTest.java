@@ -29,8 +29,9 @@ public class ProcessTraceTest {
         ProcessTrace log = new ProcessTrace(); log.start();
         for (int i = 0; i < 1000; i++) log.add("request", "https://www.pokemon-zone.com/api/sync?token=secret", 0);
         JSONObject data = new JSONObject(log.exportJson());
-        assertEquals(400, data.getJSONArray("events").length());
-        assertEquals(601, data.getInt("omittedEvents"));
+        assertEquals(2, data.getJSONArray("events").length());
+        assertEquals(1000, data.getJSONArray("events").getJSONObject(1).getInt("count"));
+        assertEquals(0, data.getInt("omittedEvents"));
         assertFalse(data.toString().contains("secret"));
     }
     @Test public void restorationKeepsSanitizedDataAndDoesNotStartRecording() {
@@ -49,4 +50,26 @@ public class ProcessTraceTest {
         assertFalse(ZoneUrl.canBrowse("http://www.pokemon-zone.com/settings/"));
         assertFalse(ZoneUrl.canBrowse("https://www.pokemon-zone.com.evil.test/settings/"));
     }
+    @Test public void externalFloodDoesNotEraseSyncOrStart() throws Exception {
+        ProcessTrace log = new ProcessTrace(); log.start();
+        log.add("sync_control", "https://www.pokemon-zone.com/settings/", 0);
+        for (int i = 0; i < 10000; i++) log.add("request", "https://example.com/secret", 0, "GET");
+        log.stop(); JSONObject data = new JSONObject(log.exportJson());
+        assertEquals(3, data.getJSONArray("events").length());
+        assertEquals(10000, data.getInt("filteredRequests"));
+        assertEquals("start", data.getJSONArray("events").getJSONObject(0).getString("event"));
+        assertEquals("sync_control", data.getJSONArray("events").getJSONObject(1).getString("event"));
+        assertFalse(data.toString().contains("secret"));
+    }
+    @Test public void criticalEventsEvictRequestsBeforeStart() throws Exception {
+        ProcessTrace log = new ProcessTrace(); log.start();
+        log.add("request", "https://www.pokemon-zone.com/api/cards", 0, "GET");
+        for (int i = 0; i < 500; i++) log.add("page_end", "https://www.pokemon-zone.com/settings/", 0);
+        log.stop(); JSONObject data = new JSONObject(log.exportJson());
+        assertEquals(400, data.getJSONArray("events").length());
+        assertEquals("start", data.getJSONArray("events").getJSONObject(0).getString("event"));
+        assertEquals("stop", data.getJSONArray("events").getJSONObject(399).getString("event"));
+        assertFalse(data.toString().contains("\"request\""));
+    }
+
 }
