@@ -8,7 +8,7 @@ before(async () => { browser = await chromium.launch({ headless: true }); });
 after(async () => { if (browser) await browser.close(); });
 async function extract(html, url = 'https://www.pokemon-zone.com/players/3778164033299021/') {
   const page = await browser.newPage();
-  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: html }));
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: html }));
   await page.goto(url);
   try { return JSON.parse(await page.evaluate(script)); } finally { await page.close(); }
 }
