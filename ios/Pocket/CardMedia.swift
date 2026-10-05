@@ -19,6 +19,8 @@ func tcgdexID(_ id: String) -> String {
 }
 actor CardImages {
     static let shared = CardImages()
+    let client: HTTP
+    init(client: HTTP = .shared) { self.client = client }
     var missing: [URL:Date] = [:]
     var community: [String:URL] = [:]
     var initialized = false
@@ -47,9 +49,9 @@ actor CardImages {
     func imageData(_ id: String, high: Bool = false, retry: Bool = false) async throws -> Data {
         let urls = candidates(id,high:high)
         if retry { urls.forEach { missing.removeValue(forKey:$0) } }
-        missing = missing.filter { Date().timeIntervalSince($0.value) < 86400 }
+        missing = missing.filter { (0..<86400).contains(Date().timeIntervalSince($0.value)) }
         for url in urls where missing[url] == nil {
-            let (data,code) = try await HTTP.shared.get(URLRequest(url:url),limit:4_000_000)
+            let (data,code) = try await client.get(URLRequest(url:url),limit:4_000_000)
             if code == 404 { missing[url] = Date(); if missing.count > 4096 { missing.removeValue(forKey:missing.keys.first!) }; continue }
             try require((200...299).contains(code),"Imagen temporalmente no disponible.")
             try require(UIImage(data:data) != nil,"Formato de imagen no válido.")
@@ -60,6 +62,9 @@ actor CardImages {
 }
 struct CardRules: Codable, Identifiable {
     var id: String; var language: String; var hp: Int?; var text: String; var updated: Int64
+    var element: String = ""
+    var requestedLanguage: String? = nil
+    var cacheKey: String { (requestedLanguage ?? language) + "|" + id }
     var source: String { "TCGdex · \(language)" }
     var roles: [String] {
         let value = text.folding(options:[.diacriticInsensitive,.caseInsensitive],locale:Locale(identifier:"en_US_POSIX"))
@@ -74,35 +79,42 @@ struct CardRules: Codable, Identifiable {
 }
 actor RulesCache {
     static let shared = RulesCache()
-    private let url = FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("pocket-rules.json")
+    private let url: URL
+    private let client: HTTP
+    init(url: URL? = nil, client: HTTP = .shared) {
+        self.url = url ?? FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("pocket-rules.json")
+        self.client = client
+    }
     private var loaded = false
     private var entries: [String:CardRules] = [:]
     private func load() {
         if !loaded { entries = (try? JSONDecoder().decode([String:CardRules].self,from:Data(contentsOf:url))) ?? [:]; loaded = true }
     }
     func all() -> [CardRules] { load(); return Array(entries.values) }
-    func details(_ id: String, retry: Bool = false) async throws -> CardRules {
+    func details(_ id: String, language requested: String = "es", retry: Bool = false) async throws -> CardRules {
         load()
-        let cached = entries[id]
+        let requested = ["es", "en", "ja"].contains(requested) ? requested : "es"
+        let cacheKey = requested + "|" + id
+        let cached = entries[cacheKey]
         if !retry, let cached, milliseconds()-cached.updated < 86400*1000 { return cached }
         do {
-            for language in ["es","en"] {
-                let (data,code) = try await HTTP.shared.get(URLRequest(url:URL(string:"https://api.tcgdex.net/v2/\(language)/cards/\(tcgdexID(id))")!),limit:256_000)
-                if code == 404 && language == "es" { continue }
+            for language in requested == "en" ? ["en"] : [requested,"en"] {
+                let (data,code) = try await client.get(URLRequest(url:URL(string:"https://api.tcgdex.net/v2/\(language)/cards/\(tcgdexID(id))")!),limit:256_000)
+                if code == 404 && language != "en" { continue }
                 try require((200...299).contains(code),"Detalles no disponibles.")
                 guard let root = try JSONSerialization.jsonObject(with:data) as? [String:Any], (root["id"] as? String)?.lowercased() == tcgdexID(id).lowercased() else { throw PocketError("Identidad de carta incorrecta.") }
                 var text = [root["effect"] as? String ?? ""]
                 for field in ["attacks","abilities"] { for row in root[field] as? [[String:Any]] ?? [] {
                     text.append([row["name"],row["damage"],row["effect"]].compactMap { $0.map { String(describing:$0) } }.joined(separator:" · "))
                 } }
-                let entry = CardRules(id:id,language:language,hp:root["hp"] as? Int,text:text.filter { !$0.isEmpty }.joined(separator:"\n"),updated:milliseconds())
-                entries[id] = entry
-                if entries.count > 512, let oldest = entries.values.min(by: { $0.updated < $1.updated }) { entries.removeValue(forKey:oldest.id) }
+                let entry = CardRules(id:id,language:language,hp:root["hp"] as? Int,text:text.filter { !$0.isEmpty }.joined(separator:"\n"),updated:milliseconds(),element:(root["types"] as? [String])?.first ?? "",requestedLanguage:requested)
+                entries[cacheKey] = entry
+                if entries.count > 512, let oldest = entries.values.min(by: { $0.updated < $1.updated }) { entries = entries.filter { $0.value.id != oldest.id || $0.value.language != oldest.language } }
                 try JSONEncoder().encode(entries).write(to:url,options:.atomic)
                 return entry
             }
             throw PocketError("Detalles no disponibles.")
         } catch is CancellationError { throw CancellationError() }
-        catch { if let cached { return cached }; throw PocketError("No se pudieron consultar los detalles.") }
+        catch { if Task.isCancelled { throw CancellationError() }; if let cached { return cached }; throw PocketError("No se pudieron consultar los detalles.") }
     }
 }

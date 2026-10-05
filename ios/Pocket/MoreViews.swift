@@ -177,6 +177,10 @@ struct EffectsView: View {
     @State var rows: [CardRules] = []
     @State var search = ""
     @State var role = "Todos"
+    @State var language = "es"
+    @State var minHP = ""
+    @State var maxHP = ""
+    @State var element = ""
     @State var message = ""
     @State var job: Task<Void,Never>?
     var body: some View {
@@ -184,11 +188,19 @@ struct EffectsView: View {
             Section {
                 Text("Filtros heurísticos sobre textos TCGdex guardados; no son dictámenes oficiales.").font(.caption)
                 Picker("Efecto",selection:$role) { ForEach(["Todos","Robar","Curar","Energía","Milling","Mover"],id:\.self) { Text($0) } }
+                Picker("Idioma",selection:$language) { Text("Español").tag("es"); Text("Inglés").tag("en"); Text("Japonés").tag("ja") }
+                TextField("PS mínimo",text:$minHP).keyboardType(.numberPad)
+                TextField("PS máximo",text:$maxHP).keyboardType(.numberPad)
+                TextField("Tipo exacto TCGdex (ej. Grass)",text:$element)
                 Button("Indexar hasta 25 cartas de mi colección") { index() }.disabled(job != nil)
                 if job != nil { Button("Cancelar") { job?.cancel() } }
                 Text(message)
             }
-            ForEach(rows.filter { (role == "Todos" || $0.roles.contains(role)) && (search.isEmpty || $0.text.localizedCaseInsensitiveContains(search)) }) { rules in
+            ForEach(rows.filter { rules in
+                (rules.requestedLanguage ?? rules.language) == language && (role == "Todos" || rules.roles.contains(role)) &&
+                (search.isEmpty || rules.text.localizedCaseInsensitiveContains(search)) && (element.isEmpty || rules.element == element) &&
+                (Int(minHP) == nil || (rules.hp ?? -1) >= Int(minHP)!) && (Int(maxHP) == nil || (rules.hp ?? Int.max) <= Int(maxHP)!)
+            },id:\.cacheKey) { rules in
                 if let card = store.byID[rules.id] { NavigationLink { CardDetailView(card:card) } label: { VStack(alignment:.leading) { Text(card.name); Text(rules.text).lineLimit(3).font(.caption); Text(rules.source).font(.caption) } } }
             }
         }.navigationTitle("Efectos").searchable(text:$search)
@@ -201,7 +213,7 @@ struct EffectsView: View {
             defer { job = nil }
             for (n,id) in ids.enumerated() {
                 if Task.isCancelled { break }
-                _ = try? await RulesCache.shared.details(id)
+                _ = try? await RulesCache.shared.details(id,language:language)
                 message = "Indexando \(n+1)/\(ids.count)"
             }
             rows = await RulesCache.shared.all(); message = "\(rows.count) textos guardados."

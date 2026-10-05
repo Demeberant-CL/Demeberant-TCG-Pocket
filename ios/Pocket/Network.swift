@@ -4,16 +4,26 @@ final class NoRedirect: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
 }
+struct HTTPResult: Sendable { let data: Data; let status: Int }
 final class HTTP {
     static let shared = HTTP()
     let session: URLSession
-    init() {
-        let config = URLSessionConfiguration.ephemeral
+    init(configuration: URLSessionConfiguration? = nil) {
+        let config = configuration ?? URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 25; config.timeoutIntervalForResource = 100
         config.urlCache = URLCache(memoryCapacity: 16_000_000, diskCapacity: 64_000_000, diskPath: "pocket-images")
         session = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil)
     }
     func get(_ request: URLRequest, limit: Int) async throws -> (Data, Int) {
+        try await withThrowingTaskGroup(of: HTTPResult.self) { group in
+            group.addTask { let pair = try await self.perform(request, limit: limit); return HTTPResult(data: pair.0, status: pair.1) }
+            group.addTask { try await Task.sleep(nanoseconds: UInt64(max(0.01, request.timeoutInterval)*1_000_000_000)); throw PocketError("La llamada agotó su tiempo.") }
+            defer { group.cancelAll() }
+            let result = try await group.next()!
+            return (result.data, result.status)
+        }
+    }
+    private func perform(_ request: URLRequest, limit: Int) async throws -> (Data, Int) {
         let (bytes, response) = try await session.bytes(for: request)
         guard let response = response as? HTTPURLResponse else { throw PocketError("Respuesta HTTP no válida.") }
         try require(response.expectedContentLength <= Int64(limit), "Respuesta demasiado grande.")
@@ -33,7 +43,37 @@ final class HTTP {
     }
 }
 enum ConnectedAI {
-    static func request(profile: AIProfile, key: String, prompt: String) async throws -> String {
+    static func accepts(provider: String, row: [String:Any], id: String) -> Bool {
+        guard id.range(of: "^[a-zA-Z0-9._:/-]{1,120}$", options: .regularExpression) != nil,
+            id.range(of: "image|audio|tts|embedding|embed-|realtime|live-|transcrib|moderation|vision-only|deep-research|codex|computer-use|search-preview", options: [.regularExpression,.caseInsensitive]) == nil else { return false }
+        if provider == "Gemini" {
+            return id.range(of: "^gemini-(2\\.5|3\\.[0-9]+)-(flash(-lite)?|pro)(-preview(-[0-9-]+)?|-[0-9]{3})?$", options: .regularExpression) != nil &&
+                (row["supportedGenerationMethods"] as? [String] ?? []).contains("generateContent") && (row["outputTokenLimit"] as? Int ?? 4096) >= 4096
+        }
+        if provider == "OpenAI" { return id == "chat-latest" || id.range(of: "^gpt-(4o(-mini)?|4\\.1(-mini|-nano)?|5(\\.[0-9]+)?(-mini|-nano)?)(-[0-9]{4}-[0-9]{2}-[0-9]{2})?$", options:.regularExpression) != nil }
+        let endpoints = row["supported_endpoints"] as? [String] ?? []
+        let outputs = (row["architecture"] as? [String:Any])?["output_modalities"] as? [String] ?? []
+        return endpoints.contains("chat/completions") || endpoints.contains("/v1/chat/completions") ? outputs.contains("text") : false
+    }
+    static func models(profile: AIProfile, key: String, client: HTTP = .shared) async throws -> [String] {
+        try require(!key.isEmpty && key.count <= 4096, "Introduce una clave válida.")
+        let gemini = profile.provider == "Gemini"
+        let endpoint = gemini ? "https://generativelanguage.googleapis.com/v1beta/models" : profile.provider == "OpenAI" ? "https://api.openai.com/v1/models" : String(profile.endpoint.dropLast("/chat/completions".count)) + "/models"
+        let c = URLComponents(string:endpoint)
+        try require(c?.scheme == "https" && c?.host != nil && c?.user == nil && c?.password == nil && c?.query == nil && c?.fragment == nil && (profile.provider != "Compatible" || profile.endpoint.hasSuffix("/chat/completions")), "URL de modelos no válida.")
+        var request = URLRequest(url:c!.url!,timeoutInterval:25)
+        request.setValue(gemini ? key : "Bearer \(key)",forHTTPHeaderField:gemini ? "x-goog-api-key" : "Authorization")
+        let (data,status) = try await client.get(request,limit:1_000_000)
+        try require((200...299).contains(status), "La API no permite listar modelos. Puedes escribirlo manualmente.")
+        let root = try JSONSerialization.jsonObject(with:data) as? [String:Any] ?? [:]
+        let rows = root[gemini ? "models" : "data"] as? [[String:Any]] ?? []
+        return Array(Set(rows.prefix(1000).compactMap { row -> String? in
+            guard let raw = row[gemini ? "name" : "id"] as? String else { return nil }
+            let id = raw.hasPrefix("models/") ? String(raw.dropFirst(7)) : raw
+            return accepts(provider:profile.provider,row:row,id:id) ? id : nil
+        })).sorted()
+    }
+    static func request(profile: AIProfile, key: String, prompt: String, client: HTTP = .shared) async throws -> String {
         try require(!key.isEmpty && key.utf8.count <= 4096 && key.unicodeScalars.allSatisfy { (33...126).contains(Int($0.value)) }, "Clave no válida.")
         try require(profile.model.range(of: "^[a-zA-Z0-9._:/-]{1,120}$", options: .regularExpression) != nil, "Modelo no válido.")
         try require(prompt.utf8.count <= 60_000, "Hay demasiadas cartas. Usa el filtro de tipo.")
@@ -48,7 +88,7 @@ enum ConnectedAI {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(gemini ? key : "Bearer \(key)", forHTTPHeaderField: gemini ? "x-goog-api-key" : "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, code) = try await HTTP.shared.get(request, limit: 100_000)
+        let (data, code) = try await client.get(request, limit: 100_000)
         try require((200...299).contains(code), code == 429 ? "Cuota alcanzada. No se cambió de proveedor." : "La API rechazó la consulta. Revisa clave y modelo.")
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw PocketError("Respuesta no válida.") }
         if gemini {
@@ -61,12 +101,23 @@ enum ConnectedAI {
         return text
     }
 }
+struct AIReplacement: Codable, Equatable {
+    var removedId: String; var addedId: String; var count: Int; var reason: String
+}
 struct AIProposal: Codable {
     let name: String
     let strategy: String
     let energies: [String]
     let cards: [Reference]
+    var replacements: [AIReplacement]? = nil
     var draft: Draft { Draft(name: name, notes: strategy, content: DeckContent(energies: energies, cards: cards)) }
+    static func decode(_ data: Data) throws -> Self {
+        try require(data.count <= 100_000, "Respuesta IA demasiado grande.")
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String:Any], let cards = root["cards"] as? [[String:Any]] else { throw PocketError("Propuesta IA no válida.") }
+        for row in cards { try strictInteger(row["count"]) }
+        for row in root["replacements"] as? [[String:Any]] ?? [] { try strictInteger(row["count"]) }
+        return try JSONDecoder().decode(Self.self, from: data)
+    }
     func validate(catalog: [String:Card], quantities: [String:Int], allowed: Set<String>, action: String, target: DeckContent) throws {
         let content = draft.content
         try content.validateStructure()
@@ -75,12 +126,26 @@ struct AIProposal: Codable {
         for ref in cards {
             try require(ref.id == canonicalID(ref.id) && allowed.contains(ref.id) && ref.count <= quantities[ref.id, default: 0], "La propuesta supera la colección o usa IDs no permitidos.")
         }
+        let replacements = replacements ?? []
+        for replacement in replacements {
+            try require((1...2).contains(replacement.count) && replacement.reason.count <= 1000 &&
+                replacement.removedId == canonicalID(replacement.removedId) && replacement.addedId == canonicalID(replacement.addedId), "Reemplazo no válido.")
+        }
         if action == "Completar faltantes" {
             for ref in target.cards {
                 let keep = min(ref.count, quantities[ref.id, default: 0])
                 try require((cards.first { $0.id == ref.id }?.count ?? 0) >= keep, "Completar debe conservar las copias disponibles.")
             }
-        }
+            let old = Dictionary(uniqueKeysWithValues: target.cards.map { ($0.id, $0.count) })
+            let next = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0.count) })
+            let removed = old.mapValues { $0 }.filter { next[$0.key, default:0] < $0.value }.mapValues { $0 }
+            var expectedRemoved: [String:Int] = [:], expectedAdded: [String:Int] = [:]
+            for (id,count) in removed { expectedRemoved[id] = count-next[id,default:0] }
+            for (id,count) in next where count > old[id,default:0] { expectedAdded[id] = count-old[id,default:0] }
+            var actualRemoved: [String:Int] = [:], actualAdded: [String:Int] = [:]
+            for row in replacements { actualRemoved[row.removedId, default:0] += row.count; actualAdded[row.addedId, default:0] += row.count }
+            try require(actualRemoved == expectedRemoved && actualAdded == expectedAdded, "La explicación de reemplazos no coincide con las cartas.")
+        } else { try require(replacements.isEmpty, "Esta acción no debe declarar reemplazos.") }
     }
 }
 struct MetaDeck: Codable, Identifiable, Equatable {

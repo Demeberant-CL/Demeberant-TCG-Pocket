@@ -90,6 +90,8 @@ final class PocketTests: XCTestCase {
         for f in try JSONDecoder().decode([Fixture].self,from:fixture("qr-fixtures")) {
             let primary = try QRExport.png(payload:f.payload), alternate = try QRExport.png(payload:f.payload,alternate:true)
             XCTAssertEqual(Array(primary.prefix(8)),[137,80,78,71,13,10,26,10]); XCTAssertNotEqual(primary,alternate)
+            let attachment = XCTAttachment(data:primary,uniformTypeIdentifier:"public.png")
+            attachment.name = "qr-v9-H-colored"; attachment.lifetime = .keepAlways; add(attachment)
             for png in [primary,alternate] {
                 let image = try XCTUnwrap(UIImage(data:png)); XCTAssertEqual(image.size.width,976)
                 XCTAssertEqual(try QRExport.decoded(image),f.payload)
@@ -215,6 +217,34 @@ final class PocketTests: XCTestCase {
         try Secrets.write("synthetic-only",id:id); XCTAssertEqual(try Secrets.read(id),"synthetic-only")
         try Secrets.write("replacement-only",id:id); XCTAssertEqual(try Secrets.read(id),"replacement-only")
         try Secrets.remove(id); XCTAssertEqual(try Secrets.read(id),"")
+    }
+    @MainActor func testStoreConcurrentWritesRetainLatestDraftAndDoNotConsumeInventory() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("state.sqlite")
+        defer { try? FileManager.default.removeItem(at:url.deletingLastPathComponent()) }
+        let store = Store(url:url); await store.start(); XCTAssertTrue(store.ready)
+        let card = try XCTUnwrap(store.byID["A1-001"]); var row = store.inventory(card); row.quantity = 2; await store.update(row)
+        await store.addToDraft(card,delta:1)
+        await store.addToDraft(card,delta:1)
+        await store.saveDraft(); XCTAssertEqual(store.quantity(card.id),2); XCTAssertEqual(store.state.backup.decks.count,1)
+        async let first = store.commit { $0.draft.notes = "first" }
+        async let second = store.commit { $0.draft.name = "second" }
+        let result = await (first,second); XCTAssertTrue(result.0); XCTAssertTrue(result.1)
+        XCTAssertEqual(store.state.draft.notes,"first"); XCTAssertEqual(store.state.draft.name,"second")
+        let loaded = try await Database(url:url).load(); XCTAssertEqual(loaded.draft,store.state.draft)
+    }
+    func testCompletionReplacementReasonsMatchExactDiff() throws {
+        let content = completeContent(); var cards = content.cards; cards.removeFirst(); cards.append(Reference(id:"A1-011",count:2))
+        var catalog = completeCatalog(); catalog["A1-011"] = sampleCard("A1-011",name:"Other")
+        var owned = Dictionary(uniqueKeysWithValues:content.cards.map { ($0.id,2) }); owned["A1-001"] = 0; owned["A1-011"] = 2
+        var proposal = AIProposal(name:"Deck",strategy:"",energies:["Planta"],cards:cards)
+        XCTAssertThrowsError(try proposal.validate(catalog:catalog,quantities:owned,allowed:Set(owned.keys),action:"Completar faltantes",target:content))
+        proposal.replacements = [AIReplacement(removedId:"A1-001",addedId:"A1-011",count:2,reason:"Missing copies")]
+        try proposal.validate(catalog:catalog,quantities:owned,allowed:Set(owned.keys),action:"Completar faltantes",target:content)
+    }
+    func testRarityAliasesNormalizeAndUnknownRejects() throws {
+        XCTAssertEqual(try normalizedRarity("ONE_DIAMOND"),"♦")
+        XCTAssertEqual(try normalizedRarity("Corona"),"♛")
+        XCTAssertThrowsError(try normalizedRarity("unknown"))
     }
     func testTCGdexIDsPreserveNumberAndSuffix() {
         XCTAssertEqual(tcgdexID("A1A-001"),"A1a-001"); XCTAssertEqual(tcgdexID("PROMO-A-002"),"P-A-002")

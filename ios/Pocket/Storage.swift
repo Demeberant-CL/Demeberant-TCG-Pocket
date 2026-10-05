@@ -86,6 +86,10 @@ enum Secrets {
     @Published private(set) var ready = false
     @Published private(set) var writing = false
     @Published var error: String?
+    private var events: [(Int64, String)] = []
+    private func event(_ category: String) {
+        events.append((milliseconds(), category)); if events.count > 50 { events.removeFirst() }
+    }
     private(set) var byID: [String: Card] = [:]
     private(set) var identities: [String: QRIdentity] = [:]
     let database: Database
@@ -110,8 +114,8 @@ enum Secrets {
                 let card = Card(id: row.id, name: row.name, rarity: row.rarity, packs: [row.pack], category: "unknown", element: "", stage: "unknown", evolvesFrom: "")
                 catalog.append(card); byID[card.id] = card
             }
-            ready = true
-        } catch { self.error = "No se pudieron cargar los datos. \(error.localizedDescription)" }
+            ready = true; event("LOCAL_READ_OK")
+        } catch { event("LOCAL_READ_FAIL"); self.error = "No se pudieron cargar los datos. \(error.localizedDescription)" }
     }
     func commit(_ mutate: (inout LocalState) throws -> Void) async -> Bool {
         guard ready else { return false }
@@ -127,9 +131,9 @@ enum Secrets {
             var next = state
             try mutate(&next)
             try await database.save(next)
-            state = next
+            state = next; event("LOCAL_COMMIT_OK")
             return true
-        } catch { self.error = error.localizedDescription; return false }
+        } catch { event("LOCAL_COMMIT_FAIL"); self.error = error.localizedDescription; return false }
     }
     func inventory(_ card: Card) -> Inventory {
         state.backup.inventory.first { $0.id == card.id } ?? Inventory(id: card.id, name: card.name, rarity: card.rarity, pack: card.packs.first ?? "", quantity: 0, wishlist: false, acquiredAt: milliseconds())
@@ -158,12 +162,15 @@ enum Secrets {
                 let sameName = rows.reduce(0) { $0 + (self.byID[$1.id]?.rulesName == card.rulesName ? $1.count : 0) }
                 try require(state.draft.content.total < 20 && sameName < 2, "Máximo 20 cartas y dos copias por nombre.")
             }
-            rows.removeAll { $0.id == card.id }
-            if current + delta > 0 { rows.append(Reference(id: card.id, count: current + delta)) }
+            if let index = rows.firstIndex(where: { $0.id == card.id }) {
+                if current + delta > 0 { rows[index].count = current + delta }
+                else { rows.remove(at: index) }
+            } else if current + delta > 0 { rows.append(Reference(id: card.id, count: current + delta)) }
             state.draft.content.cards = rows
         }
     }
     func diagnostic() -> String {
-        "Pocket iOS 0.1.0 (1)\nCatálogo: \(catalog.count)\nRegistros de inventario: \(state.backup.inventory.count)\nMazos: \(state.backup.decks.count)\nBorrador: \(state.draft.content.total)/20\nPerfiles: \(state.profiles.count)\nMeta en caché: \(state.meta != nil)\nNo incluye claves, URLs personalizadas, nombres privados, prompts ni cuerpos HTTP.\n"
+        let history = events.suffix(20).map { "\($0.0): \($0.1)" }.joined(separator: "\n")
+        return "Pocket iOS 0.1.0 (1)\nCatálogo: \(catalog.count)\nRegistros de inventario: \(state.backup.inventory.count)\nMazos: \(state.backup.decks.count)\nBorrador: \(state.draft.content.total)/20\nPerfiles: \(state.profiles.count)\nMeta en caché: \(state.meta != nil)\nNo incluye claves, URLs personalizadas, nombres privados, prompts ni cuerpos HTTP.\n" + history
     }
 }

@@ -142,7 +142,7 @@ struct Backup: Codable, Equatable {
             var row = row
             row.id = try canonicalID(row.id)
             row.rarity = try normalizedRarity(row.rarity)
-            try require(row.quantity >= 0 && !row.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "Inventario no válido.")
+            try require(row.quantity >= 0 && row.quantity <= Int32.max && !row.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "Inventario no válido.")
             return row
         }
         try require(Set(value.inventory.map(\.id)).count == value.inventory.count, "Cartas duplicadas.")

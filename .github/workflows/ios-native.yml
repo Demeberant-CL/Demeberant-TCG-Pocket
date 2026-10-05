@@ -10,6 +10,8 @@ jobs:
   simulator:
     runs-on: macos-15
     timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
       - name: Inspect installed Xcode
@@ -27,4 +29,6 @@ jobs:
             ios/validation/xcodebuild.log
             ios/validation/simulators.json
             ios/validation/PocketTests.xcresult
+            ios/validation/test-summary.json
+            ios/validation/screenshots
           retention-days: 14
