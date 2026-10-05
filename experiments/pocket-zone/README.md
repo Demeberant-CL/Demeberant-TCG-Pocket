@@ -70,3 +70,31 @@ Referencias de diseño: documentación Android WebView y su seguridad;
 documentación pública de Pokémon Zone Collection Tracker. Los selectores de cartas
 coinciden con el HTML descrito por el exportador comunitario de Ivan Donisete Lonel,
 sin incorporar su código. Una API pública de perfil no ha sido verificada.
+
+## Registro del proceso (actualización)
+
+Desde Inicio o la barra superior: **Iniciar registro nuevo**, reproduce los pasos,
+**Detener registro** y **Guardar diagnóstico ZIP**. El ZIP contiene `registro.json`
+y `resumen.txt` en UTF-8, listo para adjuntar al chat. No se envía automáticamente.
+
+El registro guarda hasta 400 eventos recientes y el número de eventos omitidos:
+navegación, peticiones con método, errores HTTP/red, inicio/resultado de lectura y
+algunas pulsaciones reconocidas (Sync, acceso a cuenta y cargar más). Las rutas usan
+una lista cerrada de palabras; IDs y segmentos desconocidos se sustituyen por
+`{hidden}`. No guarda valores de consultas, fragmentos, URLs originales, dominios
+externos, cuerpos, cabeceras, cookies, tokens, mensajes de error ni formularios.
+Las pulsaciones se observan únicamente tras cargar la página y durante el registro;
+una navegación inmediata puede impedir recoger una pulsación. No se registra todo.
+
+**Mi cuenta** permite navegar manualmente en el mismo dominio HTTPS de Pokémon Zone.
+La lectura de perfil continúa limitada a su página y cartas, sin extracción en login
+o ajustes. Puedes usar el acceso propio del sitio por usuario y contraseña; Google,
+Discord y Nintendo externos continúan bloqueados en este WebView. No se capturan sus
+flujos en otro navegador ni se transfieren sesiones. Nunca se pulsa Sync automáticamente.
+Si lo pulsas manualmente, Zone advierte que puede cerrar la sesión del juego.
+
+El diagnóstico se conserva solo en almacenamiento privado de esta app al detener
+el registro, exportarlo o salir de la pantalla/app. Si el proceso falla antes, pueden
+perderse los últimos eventos. Al reiniciar/girar el teléfono el registro queda detenido;
+Iniciar registro nuevo sustituye la captura anterior. Borrar datos de esta prueba
+limpia el diagnóstico. No modifica TCG Pocket, main ni el PR #1.

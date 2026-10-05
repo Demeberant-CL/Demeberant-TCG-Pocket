@@ -37,6 +37,11 @@ public final class ZoneUrl {
         } catch (IllegalArgumentException | NullPointerException e) { return false; }
     }
 
+    public static boolean canBrowse(String url) {
+        try { return isOrigin(URI.create(url)); }
+        catch (IllegalArgumentException | NullPointerException e) { return false; }
+    }
+
     public static String friendId(String url) {
         if (url == null) return null;
         try {

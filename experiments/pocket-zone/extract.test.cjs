@@ -45,3 +45,16 @@ test('bounds the fallback summary', async () => {
   const data = await extract('<main>' + '<p>abc'.repeat(5000) + '</main>');
   assert.ok(data.visibleSummary.length <= 6000);
 });
+test('process probe emits only fixed click categories, never form content', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({contentType:'text/html; charset=utf-8', body:'<button id="sync">Sync</button><button id="login">Sign In</button><input type="password" value="private-password"><button id="other">private-token</button>'}));
+  await page.goto('https://www.pokemon-zone.com/settings/');
+  const probe = fs.readFileSync(__dirname + '/src/main/assets/process-probe.js','utf8');
+  assert.equal(await page.evaluate(probe), '[]');
+  await page.click('#sync'); await page.click('#login'); await page.click('#other');
+  assert.deepEqual(JSON.parse(await page.evaluate(probe)), ['sync_control','account_control']);
+  await page.evaluate('window.__pocketZoneProbeActive=false');
+  await page.click('#sync');
+  assert.equal(await page.evaluate(probe), '[]');
+  await page.close();
+});

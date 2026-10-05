@@ -39,6 +39,7 @@ import java.time.Instant;
 
 public final class MainActivity extends Activity {
     private static final int EXPORT_JSON = 71;
+    private static final int EXPORT_TRACE = 72;
     private static final int BG = 0xFFF1ECE4, TEXT = 0xFF25211C, ACCENT = 0xFFA84400;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WebView browser;
@@ -51,10 +52,41 @@ public final class MainActivity extends Activity {
     private boolean loaded;
     private boolean pageFailed;
     private SharedPreferences preferences;
+    private final ProcessTrace trace = new ProcessTrace();
+    private android.util.AtomicFile traceFile;
+    private Button recordButton;
+    private final Runnable probeLoop = new Runnable() {
+        @Override public void run() {
+            WebView source = browser;
+            if (source == null || !trace.isRecording() || !ZoneUrl.canBrowse(source.getUrl())) return;
+            try {
+                source.evaluateJavascript(asset("process-probe.js"), result -> {
+                    if (browser != source || !trace.isRecording() || result == null || result.length() > 8000) return;
+                    try {
+                        Object decoded = new JSONTokener(result).nextValue();
+                        if (!(decoded instanceof String)) return;
+                        JSONArray events = new JSONArray((String) decoded);
+                        for (int i = 0; i < Math.min(events.length(), 40); i++) {
+                            String kind = events.optString(i);
+                            if (java.util.Set.of("sync_control", "account_control", "load_control").contains(kind)) trace.add(kind, source.getUrl(), 0);
+                        }
+                    } catch (Exception ignored) { }
+                });
+            } catch (Exception ignored) { }
+            handler.postDelayed(this, 1000);
+        }
+    };
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
         preferences = getSharedPreferences("zone-experiment", MODE_PRIVATE);
+        traceFile = new android.util.AtomicFile(new java.io.File(getFilesDir(), "zone-process.json"));
+        try (java.io.InputStream input = traceFile.openRead()) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096]; int size;
+            while ((size = input.read(buffer)) != -1 && bytes.size() <= 160000) bytes.write(buffer, 0, size);
+            if (bytes.size() <= 160000) trace.restore(bytes.toString(StandardCharsets.UTF_8.name()));
+        } catch (Exception ignored) { }
         if (saved != null) {
             profileUrl = ZoneUrl.normalize(saved.getString("profile"));
             pendingExport = saved.getString("pendingExport");
@@ -128,6 +160,8 @@ public final class MainActivity extends Activity {
         }));
         content.addView(label("Primero actualiza tus datos en Pokémon Zone desde tu navegador. Aquí solo se lee lo publicado; no se sincroniza con Nintendo ni con el juego.", 16));
         content.addView(label("Los perfiles privados y el acceso con Google, Discord o Nintendo no están incluidos en esta prueba. Las imágenes no se descargan para reducir consumo.", 15));
+        content.addView(label("Diagnóstico del proceso: activa el registro y navega por Pokémon Zone. Guarda pasos, rutas anonimizadas y errores; nunca guarda contraseñas, formularios, cookies o tokens.", 15));
+        addTraceControls(content);
         content.addView(button("Borrar datos de esta prueba", () -> new AlertDialog.Builder(this)
             .setTitle("¿Borrar los datos de Pocket Zone?")
             .setMessage("Se elimina el enlace guardado y la sesión web de esta app de pruebas. TCG Pocket conserva sus datos.")
@@ -135,6 +169,7 @@ public final class MainActivity extends Activity {
             .setPositiveButton("Borrar", (dialog, which) -> {
                 preferences.edit().clear().apply();
                 profileUrl = null; preview = null; pendingExport = null;
+                trace.stop(); trace.restore("{}"); traceFile.delete();
                 CookieManager.getInstance().removeAllCookies(value -> CookieManager.getInstance().flush());
                 android.webkit.WebStorage.getInstance().deleteAllData();
                 WebView cleaner = new WebView(this); cleaner.clearCache(true); cleaner.destroy();
@@ -166,9 +201,11 @@ public final class MainActivity extends Activity {
         row.addView(readButton);
         row.addView(button("Ver cartas", () -> { if (browser != null) browser.loadUrl(profileUrl + "cards/"); }));
         row.addView(button("Perfil", () -> { if (browser != null) browser.loadUrl(profileUrl); }));
+        row.addView(button("Mi cuenta", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/settings/"); }));
         row.addView(button("Volver", this::home));
         row.addView(button("Navegador externo", () -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))));
         content.addView(controls);
+        addTraceControls(content);
         content.addView(label("Solo se leen elementos cargados. Una colección parcial nunca se considera completa.", 13));
         browser = new WebView(this);
         WebSettings settings = browser.getSettings();
@@ -184,32 +221,39 @@ public final class MainActivity extends Activity {
         browser.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
-                if (ZoneUrl.belongsTo(request.getUrl().toString(), profileUrl)) return false;
+                if (ZoneUrl.canBrowse(request.getUrl().toString())) return false;
+                trace.add("blocked_link", request.getUrl().toString(), 0);
                 loaded = false; readButton.setEnabled(false);
-                status.setText("Enlace fuera del perfil bloqueado. Usa el navegador externo para acceder a tu cuenta.");
+                status.setText("Enlace externo bloqueado. El acceso con Google/Discord requiere navegador externo; su sesión no se transfiere aquí.");
                 return true;
             }
 
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                trace.add("request", uri.toString(), 0, request.getMethod());
                 boolean blocked = !"https".equalsIgnoreCase(uri.getScheme())
-                    || (request.isForMainFrame() && !ZoneUrl.belongsTo(uri.toString(), profileUrl));
+                    || (request.isForMainFrame() && !ZoneUrl.canBrowse(uri.toString()));
                 if (blocked) return new WebResourceResponse("text/plain", "UTF-8", new ByteArrayInputStream(new byte[0]));
                 return null;
             }
 
             @Override public void onPageStarted(WebView view, String pageUrl, android.graphics.Bitmap icon) {
                 generation++; loaded = false; pageFailed = false; readButton.setEnabled(false);
+                trace.add("page_start", pageUrl, 0);
                 status.setText("Cargando… Espera a que aparezcan los datos del perfil.");
             }
 
             @Override public void onPageFinished(WebView view, String pageUrl) {
                 loaded = !pageFailed && ZoneUrl.belongsTo(pageUrl, profileUrl);
+                trace.add("page_end", pageUrl, 0);
                 readButton.setEnabled(loaded);
-                status.setText(loaded ? "Página cargada. Si muestra «Loading», espera antes de leer." : "No se puede leer esta página.");
+                status.setText(loaded ? "Página cargada. Si muestra «Loading», espera antes de leer." : "Página de cuenta. Puedes interactuar con el sitio; Leer se habilita solo en tu perfil.");
+                handler.removeCallbacks(probeLoop);
+                if (trace.isRecording()) handler.post(probeLoop);
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                trace.add("network_error", request.getUrl().toString(), error.getErrorCode());
                 if (request.isForMainFrame()) {
                     loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
                     status.setText("No se pudo cargar el perfil. Comprueba la conexión y vuelve a abrirlo.");
@@ -217,6 +261,7 @@ public final class MainActivity extends Activity {
             }
 
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                trace.add("http_error", request.getUrl().toString(), response.getStatusCode());
                 if (request.isForMainFrame()) {
                     loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
                     status.setText("El sitio respondió HTTP " + response.getStatusCode() + ". No se han leído datos.");
@@ -234,9 +279,11 @@ public final class MainActivity extends Activity {
         final int token = ++generation;
         readButton.setEnabled(false);
         status.setText("Leyendo elementos visibles…");
+        trace.add("read_start", source.getUrl(), 0);
         Runnable timeout = () -> {
             if (token != generation || browser != source) return;
             generation++; readButton.setEnabled(loaded);
+            trace.add("read_error", source.getUrl(), 0);
             status.setText("La lectura agotó su tiempo. Puedes intentarlo otra vez.");
         };
         handler.postDelayed(timeout, 8000);
@@ -271,9 +318,11 @@ public final class MainActivity extends Activity {
                     }
                     clean.put("readAt", Instant.now().toString());
                     preview = clean;
+                    trace.add("read_result", source.getUrl(), 0);
                     status.setText("Vista previa lista. No se ha importado nada.");
                     showPreview();
                 } catch (Exception e) {
+                    trace.add("read_error", source.getUrl(), 0);
                     status.setText("No se pudo validar la lectura. No se ha guardado ni importado nada.");
                 }
             });
@@ -324,14 +373,22 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != EXPORT_JSON) return;
+        if (requestCode != EXPORT_JSON && requestCode != EXPORT_TRACE) return;
         String text = pendingExport; pendingExport = null;
         if (resultCode != RESULT_OK || data == null || data.getData() == null || text == null) return;
         try (OutputStream output = getContentResolver().openOutputStream(data.getData(), "wt")) {
             if (output == null) throw new java.io.IOException();
-            output.write(text.getBytes(StandardCharsets.UTF_8));
-            message("JSON guardado. La colección de TCG Pocket no se ha modificado.");
-        } catch (Exception e) { message("No se pudo guardar el JSON."); }
+            if (requestCode == EXPORT_TRACE) {
+                try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(output)) {
+                    zip.putNextEntry(new java.util.zip.ZipEntry("registro.json"));
+                    zip.write(text.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+                    zip.putNextEntry(new java.util.zip.ZipEntry("resumen.txt"));
+                    String summary = "Pocket Zone · Pruebas " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
+                    zip.write(summary.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+                }
+                message("ZIP de diagnóstico guardado.");
+            } else { output.write(text.getBytes(StandardCharsets.UTF_8)); message("JSON guardado. La colección de TCG Pocket no se ha modificado."); }
+        } catch (Exception e) { message("No se pudo guardar el archivo."); }
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -358,6 +415,57 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
+    @Override protected void onStop() { handler.removeCallbacks(probeLoop); saveTrace(); super.onStop(); }
+    @Override protected void onResume() {
+        super.onResume();
+        if (browser != null && trace.isRecording()) { handler.removeCallbacks(probeLoop); handler.post(probeLoop); }
+    }
+
+    private void addTraceControls(LinearLayout content) {
+        recordButton = button(trace.isRecording() ? "Detener registro" : "Iniciar registro nuevo", () -> {
+            if (trace.isRecording()) {
+                trace.stop(); handler.removeCallbacks(probeLoop);
+                if (browser != null) browser.evaluateJavascript("window.__pocketZoneProbeActive=false;window.__pocketZoneProbe?.drain();", null);
+            } else {
+                trace.start();
+                if (browser != null) {
+                    browser.evaluateJavascript("window.__pocketZoneProbeActive=true;window.__pocketZoneProbe?.drain();", null);
+                    handler.post(probeLoop);
+                }
+            }
+            recordButton.setText(trace.isRecording() ? "Detener registro" : "Iniciar registro nuevo");
+            saveTrace();
+            message(trace.isRecording() ? "Registro activo. Reproduce el proceso en esta app." : "Registro detenido.");
+        });
+        content.addView(recordButton);
+        content.addView(button("Guardar diagnóstico ZIP", () -> {
+            saveTrace(); pendingExport = trace.exportJson();
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_TITLE, "zone-proceso.zip");
+            try { startActivityForResult(intent, EXPORT_TRACE); }
+            catch (Exception e) { pendingExport = null; message("No se pudo abrir el selector de archivos."); }
+        }));
+    }
+
+    private void saveTrace() {
+        if (traceFile == null) return;
+        java.io.FileOutputStream stream = null;
+        try {
+            stream = traceFile.startWrite();
+            stream.write(trace.exportJson().getBytes(StandardCharsets.UTF_8));
+            traceFile.finishWrite(stream);
+        } catch (Exception e) { if (stream != null) traceFile.failWrite(stream); }
+    }
+
+    private String asset(String name) throws Exception {
+        try (java.io.InputStream input = getAssets().open(name)) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096]; int count;
+            while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
+            return bytes.toString(StandardCharsets.UTF_8.name());
+        }
+    }
     private void setRoot(View view) {
         int left = view.getPaddingLeft(), top = view.getPaddingTop();
         int right = view.getPaddingRight(), bottom = view.getPaddingBottom();
