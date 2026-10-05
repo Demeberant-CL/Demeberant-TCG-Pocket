@@ -21,8 +21,15 @@ private val LightColorScheme = lightColorScheme(
   onSecondary = Color.White,
   secondaryContainer = PocketGoldLight,
   onSecondaryContainer = Color(0xFF78350F),
-  background = Color(0xFFF8FAFC),
-  surface = Color.White,
+  background = Color(0xFFE6E3DF),
+  surface = Color(0xFFFAF8F4),
+  surfaceVariant = Color(0xFFEAE5DE),
+  surfaceContainer = Color(0xFFF2EEE8),
+  surfaceContainerLow = Color(0xFFF6F2EC),
+  surfaceContainerHigh = Color(0xFFE8E2DA),
+  onSurfaceVariant = Color(0xFF505257),
+  outline = Color(0xFF77716A),
+  outlineVariant = Color(0xFFB8B2A9),
   onBackground = Color(0xFF0F172A),
   onSurface = Color(0xFF0F172A)
 )
