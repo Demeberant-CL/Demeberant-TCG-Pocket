@@ -73,7 +73,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAsk
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 })
       1 -> ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
-      else -> DeckBuilderScreen(viewModel, Modifier.weight(1f))
+      else -> DeckBuilderScreen(viewModel, Modifier.weight(1f), onOpenSavedDeck = { section = 1 })
     }
   }
 }

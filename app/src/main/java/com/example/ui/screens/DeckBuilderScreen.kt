@@ -85,6 +85,7 @@ fun DeckBuilderScreen(
   savedOnly: Boolean = false,
   onOpenSavedDeck: () -> Unit = {}
 ) {
+  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(viewModel, onOpenSavedDeck)
   val context = LocalContext.current
   val generatedDeck by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val deckPrompt by viewModel.deckBuildPrompt.collectAsStateWithLifecycle()
@@ -488,7 +489,7 @@ fun DeckBuilderScreen(
 
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                      onClick = { viewModel.loadSavedDeck(saved); onOpenSavedDeck() },
+                      onClick = { openSavedDeck(saved) },
                       modifier = Modifier.size(48.dp)
                     ) {
                       Icon(Icons.Filled.PlayArrow, contentDescription = "Cargar mazo", tint = PocketBluePrimary, modifier = Modifier.size(18.dp))
