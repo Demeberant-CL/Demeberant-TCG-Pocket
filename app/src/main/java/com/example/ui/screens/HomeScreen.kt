@@ -43,14 +43,13 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val progress = if (inventory.isEmpty()) 0f else owned.toFloat() / inventory.size
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
     item {
-      Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(
-        MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.secondaryContainer)),
-        RoundedCornerShape(20.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      OutlinedCard(Modifier.fillMaxWidth()) {
+      Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
           ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
             Text("Tu espacio Pocket", style = MaterialTheme.typography.headlineSmall)
-            Text("Colección · Mazos · IA", style = MaterialTheme.typography.bodyMedium)
+            Text("Resumen de tu colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
         Text(if (inventory.isEmpty()) "Preparando tu colección…" else "$owned / ${inventory.size} cartas · $copies copias",
@@ -58,6 +57,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         Text("${decks.size} mazos guardados · ${(progress * 100).toInt()}% del catálogo registrado",
           style = MaterialTheme.typography.bodySmall)
+      }
       }
     }
     message?.let { status -> item {
@@ -93,6 +93,11 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(saved.name, style = MaterialTheme.typography.titleMedium)
             Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodyMedium)
+            val energies = remember(saved.cardListSerialized) {
+              runCatching { DeckCodec.energies(saved.cardListSerialized) }.getOrDefault(emptyList())
+            }
+            if (energies.isNotEmpty()) Text(energies.joinToString(" · "),
+              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             Text(if (canOpen) "Abrir mazo" else "Lista no disponible en el catálogo actual",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
@@ -102,7 +107,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
       ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text("Mazo abierto", style = MaterialTheme.typography.labelLarge)
+          Text("Continuar edición", style = MaterialTheme.typography.labelLarge)
           Text(deck.name, style = MaterialTheme.typography.titleMedium)
           Text("${deck.totalCardCount}/20 cartas · " + deck.energyTypes.joinToString().ifBlank { "Energías por revisar" }, style = MaterialTheme.typography.bodySmall)
           Button(onClick = onEditor) { Text("Continuar editando") }
