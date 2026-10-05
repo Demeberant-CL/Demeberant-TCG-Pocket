@@ -15,7 +15,8 @@ final class HTTP {
         session = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil)
     }
     func get(_ request: URLRequest, limit: Int) async throws -> (Data, Int) {
-        try await withThrowingTaskGroup(of: HTTPResult.self) { group in
+        try Task.checkCancellation()
+        return try await withThrowingTaskGroup(of: HTTPResult.self) { group in
             group.addTask { let pair = try await self.perform(request, limit: limit); return HTTPResult(data: pair.0, status: pair.1) }
             group.addTask { try await Task.sleep(nanoseconds: UInt64(max(0.01, request.timeoutInterval)*1_000_000_000)); throw PocketError("La llamada agotó su tiempo.") }
             defer { group.cancelAll() }
@@ -24,6 +25,7 @@ final class HTTP {
         }
     }
     private func perform(_ request: URLRequest, limit: Int) async throws -> (Data, Int) {
+        try Task.checkCancellation()
         let (bytes, response) = try await session.bytes(for: request)
         guard let response = response as? HTTPURLResponse else { throw PocketError("Respuesta HTTP no válida.") }
         try require(response.expectedContentLength <= Int64(limit), "Respuesta demasiado grande.")
@@ -172,6 +174,7 @@ enum Tournaments {
         }
     }
     private static func fetch(client: HTTP, progress: @escaping @Sendable (Int,Int) async -> Void) async throws -> MetaSnapshot {
+        try Task.checkCancellation()
         guard let rows = try await client.json(source + "tournaments?game=POCKET&limit=12") as? [[String:Any]] else { throw PocketError("Lista de torneos no válida.") }
         var groups: [String:MetaDeck] = [:], included = 0, players = 0, skipped = 0
         let tournaments = Array(rows.prefix(12)), now = Date()

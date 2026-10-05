@@ -46,7 +46,7 @@ final class PocketUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Mazos"].waitForExistence(timeout:20)); app.tabBars.buttons["Mazos"].tap()
         app.buttons.matching(NSPredicate(format:"label BEGINSWITH %@","Continuar borrador")).firstMatch.tap()
         let name = app.textFields["Nombre del mazo"]
-        XCTAssertTrue(name.waitForExistence(timeout:5)); name.tap(); name.typeText(" · prueba UI")
+        XCTAssertTrue(name.waitForExistence(timeout:5)); name.tap(); name.typeText(" prueba UI")
         let value = name.value as? String
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForOrientation(app,landscape:true)

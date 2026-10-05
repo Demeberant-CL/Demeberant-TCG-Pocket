@@ -7,12 +7,19 @@ final class StubProtocol: URLProtocol {
     static let lock = NSLock()
     static var handler: ((URLRequest) throws -> (Int, Data))?
     static var requests: [URLRequest] = []
+    static var scope = UUID().uuidString
+    static func beginTest() { lock.lock(); defer { lock.unlock() }; scope = UUID().uuidString; requests = []; handler = nil }
     static func reset(_ block: @escaping (URLRequest) throws -> (Int,Data)) { lock.lock(); defer { lock.unlock() }; requests = []; handler = block }
     static func count() -> Int { lock.lock(); defer { lock.unlock() }; return requests.count }
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        Self.lock.lock(); Self.requests.append(request); let block = Self.handler; Self.lock.unlock()
+        Self.lock.lock()
+        let current = request.value(forHTTPHeaderField:"X-Pocket-Test-Scope") == Self.scope
+        if current { Self.requests.append(request) }
+        let block = current ? Self.handler : nil
+        Self.lock.unlock()
+        if !current { client?.urlProtocol(self,didFailWithError:URLError(.cancelled)); return }
         if request.url?.path == "/stall" { return }
         do {
             let (status,data) = try XCTUnwrap(block)(request)
@@ -24,8 +31,8 @@ final class StubProtocol: URLProtocol {
     override func stopLoading() {}
 }
 final class NetworkTests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
-    func client() -> HTTP { let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]; return HTTP(configuration:config) }
+    override func setUpWithError() throws { continueAfterFailure = false; StubProtocol.beginTest() }
+    func client() -> HTTP { let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]; config.httpAdditionalHeaders = ["X-Pocket-Test-Scope":StubProtocol.scope]; return HTTP(configuration:config) }
     func profile() -> AIProfile { AIProfile(name:"Synthetic",provider:"Gemini",model:"gemini-2.5-flash",endpoint:"") }
     func testAIFailedRequestIsSingleNoProviderFallback() async {
         StubProtocol.reset { _ in (429,Data("private-body-do-not-display".utf8)) }
