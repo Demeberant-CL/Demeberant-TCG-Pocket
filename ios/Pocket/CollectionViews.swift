@@ -95,9 +95,9 @@ struct CardDetailView: View {
                 TextField("Cantidad",text:$quantity).keyboardType(.numberPad).accessibilityIdentifier("quantity")
                 Button("Guardar cantidad") { Task {
                     guard let n = Int(quantity), (0...99999).contains(n) else { store.error = "Escribe una cantidad de 0 a 99999."; return }
-                    var row = store.inventory(card); row.quantity = n; await store.update(row)
+                    await store.update(card,quantity:n)
                 } }.disabled(store.writing)
-                Toggle("Lista de deseos",isOn:Binding(get:{store.inventory(card).wishlist},set:{ value in Task { var row = store.inventory(card); row.wishlist = value; await store.update(row) } }))
+                Toggle("Lista de deseos",isOn:Binding(get:{store.inventory(card).wishlist},set:{ value in Task { await store.update(card,wishlist:value) } }))
                 Button("Añadir al borrador") { Task { await store.addToDraft(card,delta:1) } }.disabled(store.writing)
             }
             Section("Reglas") {

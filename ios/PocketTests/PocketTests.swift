@@ -266,6 +266,20 @@ final class PocketTests: XCTestCase {
         XCTAssertEqual(store.state.draft.notes,"first"); XCTAssertEqual(store.state.draft.name,"second")
         let loaded = try await Database(url:url).load(); XCTAssertEqual(loaded.draft,store.state.draft)
     }
+    @MainActor func testConcurrentQuantityAndWishlistPreserveBothOnRestart() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("state.sqlite")
+        defer { try? FileManager.default.removeItem(at:url.deletingLastPathComponent()) }
+        let store = Store(url:url); await store.start()
+        let card = try XCTUnwrap(store.byID["A1-001"])
+        async let quantity: Void = store.update(card,quantity:7)
+        async let wish: Void = store.update(card,wishlist:true)
+        _ = await (quantity,wish)
+        let restarted = Store(url:url); await restarted.start()
+        XCTAssertEqual(restarted.quantity(card.id),7); XCTAssertTrue(restarted.inventory(card).wishlist)
+        let previous = restarted.state
+        await restarted.update(card,quantity:-1)
+        XCTAssertEqual(restarted.state,previous)
+    }
     func testCompletionReplacementReasonsMatchExactDiff() throws {
         let content = completeContent(); var cards = content.cards; cards.removeFirst(); cards.append(Reference(id:"A1-011",count:2))
         var catalog = completeCatalog(); catalog["A1-011"] = sampleCard("A1-011",name:"Other")

@@ -146,6 +146,14 @@ enum Secrets {
             state.backup.inventory.removeAll { $0.id == row.id }; state.backup.inventory.append(row)
         }
     }
+    func update(_ card: Card, quantity: Int? = nil, wishlist: Bool? = nil) async {
+        _ = await commit { state in
+            var row = state.backup.inventory.first { $0.id == card.id } ?? Inventory(id:card.id,name:card.name,rarity:card.rarity,pack:card.packs.first ?? "",quantity:0,wishlist:false,acquiredAt:milliseconds())
+            if let quantity { try require((0...99999).contains(quantity),"Cantidad no válida."); row.quantity = quantity }
+            if let wishlist { row.wishlist = wishlist }
+            state.backup.inventory.removeAll { $0.id == card.id }; state.backup.inventory.append(row)
+        }
+    }
     func importBackup(_ backup: Backup) async { _ = await commit { $0.merge(backup) }; if ready { ready = false; await start() } }
     func saveDraft() async {
         _ = await commit { state in
