@@ -1,0 +1,29 @@
+{
+  "format": "demeberant-tcg-pocket-backup",
+  "version": 1,
+  "createdAt": 1,
+  "inventory": [
+    {
+      "id": "a1-1",
+      "name": "Bulbasaur",
+      "rarity": "♦",
+      "pack": "Mewtwo",
+      "quantity": 2,
+      "wishlist": true,
+      "acquiredAt": 1
+    }
+  ],
+  "decks": [
+    {
+      "name": "Fixture sintético",
+      "archetype": "Prueba",
+      "strategy": "No son datos del usuario",
+      "cards": "{\"format\": 2, \"energies\": [\"Planta\"], \"cards\": [{\"id\": \"A1-001\", \"count\": 2}]}",
+      "total": 2,
+      "createdAt": 1
+    }
+  ],
+  "preferences": {
+    "theme": "blue"
+  }
+}

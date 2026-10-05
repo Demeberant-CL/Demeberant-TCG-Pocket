@@ -1,0 +1,568 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		1A163692B85C59919F4C80D0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/AIViews.swift";
+			sourceTree = "<group>";
+		};
+		696687EFFF67CF28358FA376 = {
+			isa = PBXBuildFile;
+			fileRef = 1A163692B85C59919F4C80D0;
+		};
+		55868258975662947411C882 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/App.swift";
+			sourceTree = "<group>";
+		};
+		E938EEF02D33B7DCF4B7C487 = {
+			isa = PBXBuildFile;
+			fileRef = 55868258975662947411C882;
+		};
+		157F68E1C245A87DD99FEB41 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/CardMedia.swift";
+			sourceTree = "<group>";
+		};
+		734403B4C0FA2952D73DD27E = {
+			isa = PBXBuildFile;
+			fileRef = 157F68E1C245A87DD99FEB41;
+		};
+		220BD25551118E95BF35A2BF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/CollectionViews.swift";
+			sourceTree = "<group>";
+		};
+		4405D0CFC295A7810A42326E = {
+			isa = PBXBuildFile;
+			fileRef = 220BD25551118E95BF35A2BF;
+		};
+		4142044ED763C08D521E817B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/DeckViews.swift";
+			sourceTree = "<group>";
+		};
+		ACA44298306BC72F07411174 = {
+			isa = PBXBuildFile;
+			fileRef = 4142044ED763C08D521E817B;
+		};
+		345C5AFACC6F1E314F00DBB0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/Domain.swift";
+			sourceTree = "<group>";
+		};
+		37BF2599C97C34A06AF84591 = {
+			isa = PBXBuildFile;
+			fileRef = 345C5AFACC6F1E314F00DBB0;
+		};
+		6129CE813A8C899576C108D4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/MoreViews.swift";
+			sourceTree = "<group>";
+		};
+		AAE71BC4FBEA2B2280279101 = {
+			isa = PBXBuildFile;
+			fileRef = 6129CE813A8C899576C108D4;
+		};
+		7ED5AB4A2F7ED26A3CBAD996 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/Network.swift";
+			sourceTree = "<group>";
+		};
+		7DA9C93C843E08F4C1D29C43 = {
+			isa = PBXBuildFile;
+			fileRef = 7ED5AB4A2F7ED26A3CBAD996;
+		};
+		08C19AAECD6900747D96262D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/QR.swift";
+			sourceTree = "<group>";
+		};
+		D7C063A75083AE402DA44E30 = {
+			isa = PBXBuildFile;
+			fileRef = 08C19AAECD6900747D96262D;
+		};
+		577C747A35C958DAB83D2D13 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/SandboxView.swift";
+			sourceTree = "<group>";
+		};
+		0C827C8068262459FB3E365A = {
+			isa = PBXBuildFile;
+			fileRef = 577C747A35C958DAB83D2D13;
+		};
+		894AB54DEE3F4337347C7069 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/Storage.swift";
+			sourceTree = "<group>";
+		};
+		EBD9FBB8C776703DE8D53C6A = {
+			isa = PBXBuildFile;
+			fileRef = 894AB54DEE3F4337347C7069;
+		};
+		815763DD8A1ACC4BDBDCE14D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "Pocket/Tools.swift";
+			sourceTree = "<group>";
+		};
+		1E9185C8F17DB156A5A69497 = {
+			isa = PBXBuildFile;
+			fileRef = 815763DD8A1ACC4BDBDCE14D;
+		};
+		28E30B7D232F9B4B78778CA2 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (696687EFFF67CF28358FA376, E938EEF02D33B7DCF4B7C487, 734403B4C0FA2952D73DD27E, 4405D0CFC295A7810A42326E, ACA44298306BC72F07411174, 37BF2599C97C34A06AF84591, AAE71BC4FBEA2B2280279101, 7DA9C93C843E08F4C1D29C43, D7C063A75083AE402DA44E30, 0C827C8068262459FB3E365A, EBD9FBB8C776703DE8D53C6A, 1E9185C8F17DB156A5A69497);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1DDC2EBE01C49C3487108C8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "Pocket/Resources/THIRD_PARTY_NOTICES.md";
+			sourceTree = "<group>";
+		};
+		0B6930F37198433B5456595A = {
+			isa = PBXBuildFile;
+			fileRef = D1DDC2EBE01C49C3487108C8;
+		};
+		B9EBFE6A5C143EE5BD076EBB = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = "Pocket/Resources/pocket-catalog.json";
+			sourceTree = "<group>";
+		};
+		7CA0B8B69C4770795CAE4A27 = {
+			isa = PBXBuildFile;
+			fileRef = B9EBFE6A5C143EE5BD076EBB;
+		};
+		682960F300226B0B8F8FB174 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = "Pocket/Resources/pocket-image-index.json";
+			sourceTree = "<group>";
+		};
+		7773DA63E0ED8C9C1022D568 = {
+			isa = PBXBuildFile;
+			fileRef = 682960F300226B0B8F8FB174;
+		};
+		1DFBC2DD3EC08CF8C7102CE9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = "Pocket/Resources/pocket-qr-entities.json";
+			sourceTree = "<group>";
+		};
+		34DA5C081CA5EE7D489B3B01 = {
+			isa = PBXBuildFile;
+			fileRef = 1DFBC2DD3EC08CF8C7102CE9;
+		};
+		F7A50D5E62D96864212C3DB3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.webp;
+			path = "Pocket/Resources/trainer_avatars.webp";
+			sourceTree = "<group>";
+		};
+		C21DCE494CA657FD29E8BCF5 = {
+			isa = PBXBuildFile;
+			fileRef = F7A50D5E62D96864212C3DB3;
+		};
+		3041AE76937E007EAD4D4CC7 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (0B6930F37198433B5456595A, 7CA0B8B69C4770795CAE4A27, 7773DA63E0ED8C9C1022D568, 34DA5C081CA5EE7D489B3B01, C21DCE494CA657FD29E8BCF5);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DB8BF58B205897CD1F523426 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6276ECB8D5B693F93C3DADDF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "PocketTests/PocketTests.swift";
+			sourceTree = "<group>";
+		};
+		F920A44F3C91CBB5E05D78D6 = {
+			isa = PBXBuildFile;
+			fileRef = 6276ECB8D5B693F93C3DADDF;
+		};
+		DA26867DCB36D46331077EC1 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (F920A44F3C91CBB5E05D78D6);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D6BD4A4B2F0A2184867A51F = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = "PocketTests/Fixtures/android-v1-synthetic.json";
+			sourceTree = "<group>";
+		};
+		4DB0E5DACE5B34768C2D6BD4 = {
+			isa = PBXBuildFile;
+			fileRef = 1D6BD4A4B2F0A2184867A51F;
+		};
+		9EEF0A0052A37CC993A3102D = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.json;
+			path = "PocketTests/Fixtures/qr-fixtures.json";
+			sourceTree = "<group>";
+		};
+		A104703A2C903354FAA6CA7A = {
+			isa = PBXBuildFile;
+			fileRef = 9EEF0A0052A37CC993A3102D;
+		};
+		0A89978272C317C67EF41505 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (4DB0E5DACE5B34768C2D6BD4, A104703A2C903354FAA6CA7A);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB3A5E9FE5FBCA431D2F41D6 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D89F83B0F7C0984B415C565 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = "PocketUITests/PocketUITests.swift";
+			sourceTree = "<group>";
+		};
+		145E14166C639E61AE34C109 = {
+			isa = PBXBuildFile;
+			fileRef = 3D89F83B0F7C0984B415C565;
+		};
+		0948172589326BFE2ADD4693 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (145E14166C639E61AE34C109);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCF262D72B29AFDD0E0FBF5E = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7FDC49F60A4D942083A32D03 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = "Pocket.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		0804C3163360CA8887712B2C = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.ios";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pocket";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = 1;
+				OTHER_LDFLAGS = ("-lsqlite3");
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+			};
+			name = "Debug";
+		};
+		E5115DD17A8346A9CC99C7A4 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.ios";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pocket";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = 1;
+				OTHER_LDFLAGS = ("-lsqlite3");
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = "Release";
+		};
+		5A9D53AC72BD9D3F8E3D2C18 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (0804C3163360CA8887712B2C, E5115DD17A8346A9CC99C7A4);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		0BD05D64FD9F3F98FE8697DB = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A9D53AC72BD9D3F8E3D2C18;
+			buildPhases = (28E30B7D232F9B4B78778CA2, 3041AE76937E007EAD4D4CC7, DB8BF58B205897CD1F523426);
+			buildRules = ();
+			dependencies = ();
+			name = "Pocket";
+			productName = "Pocket";
+			productReference = 7FDC49F60A4D942083A32D03;
+			productType = "com.apple.product-type.application";
+		};
+		D799BAE6088A90139B415FCC = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0;
+			proxyType = 1;
+			remoteGlobalIDString = 0BD05D64FD9F3F98FE8697DB;
+			remoteInfo = "Pocket";
+		};
+		DE58E2B17C19600779694943 = {
+			isa = PBXTargetDependency;
+			target = 0BD05D64FD9F3F98FE8697DB;
+			targetProxy = D799BAE6088A90139B415FCC;
+		};
+		2414192C7BD344E334A22C50 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = "PocketTests.xctest";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		348DFCB0AA2A6A9423E9A77B = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pocket.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pocket";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+			};
+			name = "Debug";
+		};
+		824E737D2DC57CB8469B5CD3 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pocket.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pocket";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = "Release";
+		};
+		23D3F7506132F57AE1E14FAB = {
+			isa = XCConfigurationList;
+			buildConfigurations = (348DFCB0AA2A6A9423E9A77B, 824E737D2DC57CB8469B5CD3);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		37FA067116AA52E345F253BC = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23D3F7506132F57AE1E14FAB;
+			buildPhases = (DA26867DCB36D46331077EC1, 0A89978272C317C67EF41505, FB3A5E9FE5FBCA431D2F41D6);
+			buildRules = ();
+			dependencies = (DE58E2B17C19600779694943);
+			name = "PocketTests";
+			productName = "PocketTests";
+			productReference = 2414192C7BD344E334A22C50;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		0956CF498F373B601E70B130 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = "PocketUITests.xctest";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		EC367BC0ECD2A7EAD04D60B8 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = "Pocket";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+			};
+			name = "Debug";
+		};
+		1533BD2F2900D0E7A59958B9 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "cl.demeberant.pocket.uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				GENERATE_INFOPLIST_FILE = YES;
+				TEST_TARGET_NAME = "Pocket";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = "Release";
+		};
+		8C76F2EA645EDFC73487CB46 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (EC367BC0ECD2A7EAD04D60B8, 1533BD2F2900D0E7A59958B9);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		9C877BE99DFF89EB39E116E3 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8C76F2EA645EDFC73487CB46;
+			buildPhases = (0948172589326BFE2ADD4693, CCF262D72B29AFDD0E0FBF5E);
+			buildRules = ();
+			dependencies = (DE58E2B17C19600779694943);
+			name = "PocketUITests";
+			productName = "PocketUITests";
+			productReference = 0956CF498F373B601E70B130;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		FBDC4F23F93125BBEEAE800C = {
+			isa = PBXGroup;
+			children = (7FDC49F60A4D942083A32D03, 2414192C7BD344E334A22C50, 0956CF498F373B601E70B130);
+			name = "Products";
+			sourceTree = "<group>";
+		};
+		B28B7AF69320201D1CF206EB = {
+			isa = PBXGroup;
+			children = (1A163692B85C59919F4C80D0, 55868258975662947411C882, 157F68E1C245A87DD99FEB41, 220BD25551118E95BF35A2BF, 4142044ED763C08D521E817B, 345C5AFACC6F1E314F00DBB0, 6129CE813A8C899576C108D4, 7ED5AB4A2F7ED26A3CBAD996, 08C19AAECD6900747D96262D, 577C747A35C958DAB83D2D13, 894AB54DEE3F4337347C7069, 815763DD8A1ACC4BDBDCE14D, D1DDC2EBE01C49C3487108C8, B9EBFE6A5C143EE5BD076EBB, 682960F300226B0B8F8FB174, 1DFBC2DD3EC08CF8C7102CE9, F7A50D5E62D96864212C3DB3, 6276ECB8D5B693F93C3DADDF, 1D6BD4A4B2F0A2184867A51F, 9EEF0A0052A37CC993A3102D, 3D89F83B0F7C0984B415C565, FBDC4F23F93125BBEEAE800C);
+			sourceTree = "<group>";
+		};
+		657EE81F72B04E344AD48704 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+			};
+			name = "Debug";
+		};
+		AA45CF0082C822F46E1F835F = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				CLANG_ENABLE_MODULES = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_STYLE = "Automatic";
+				DEVELOPMENT_TEAM = "";
+				SWIFT_STRICT_CONCURRENCY = "targeted";
+				ENABLE_TESTABILITY = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = "Release";
+		};
+		BD59A88C5EC2D65E34727A49 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (657EE81F72B04E344AD48704, AA45CF0082C822F46E1F835F);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		98F54143AB4E86B28C3AFEE0 = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1640;
+				BuildIndependentTargetsInParallel = YES;
+			};
+			buildConfigurationList = BD59A88C5EC2D65E34727A49;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "es";
+			hasScannedForEncodings = 0;
+			knownRegions = ("es", "en", "Base");
+			mainGroup = B28B7AF69320201D1CF206EB;
+			productRefGroup = FBDC4F23F93125BBEEAE800C;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (0BD05D64FD9F3F98FE8697DB, 37FA067116AA52E345F253BC, 9C877BE99DFF89EB39E116E3);
+		};
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0;
+}

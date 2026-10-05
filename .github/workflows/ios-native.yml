@@ -1,0 +1,32 @@
+name: Validate native iOS
+on:
+  push:
+    branches: ['ios/**']
+    paths: ['ios/**', '.github/workflows/ios-native.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect installed Xcode
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          ls /Applications | sed -n '/Xcode/p'
+      - name: Build simulator and run XCTest
+        run: bash ios/scripts/validate-macos.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-native-validation
+          path: |
+            ios/validation/xcodebuild.log
+            ios/validation/simulators.json
+            ios/validation/PocketTests.xcresult
+          retention-days: 14
