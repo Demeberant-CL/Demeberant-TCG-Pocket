@@ -5,6 +5,7 @@ struct SandboxView: View {
     @State var board: Board?
     @State var undo: [Board] = []
     @State var confirm = false
+    @State var coin = ""
     var body: some View {
         List {
             Section { Text("Tablero manual de práctica. No es el motor oficial y no ejecuta automáticamente ataques, habilidades o victoria.").font(.caption); Button("Iniciar con el borrador") { confirm = true } }
@@ -13,7 +14,8 @@ struct SandboxView: View {
                     Button("Robar carta") { apply { try $0.draw() } }
                     Button("Siguiente turno") { apply { $0.next() } }
                     Button("Deshacer") { if let old = undo.popLast() { self.board = old } }.disabled(undo.isEmpty)
-                    Button("Lanzar moneda") { store.error = Bool.random() ? "Moneda: cara" : "Moneda: cruz" }
+                    Button("Lanzar moneda") { coin = Bool.random() ? "Moneda: cara" : "Moneda: cruz" }
+                    if !coin.isEmpty { Text(coin).accessibilityAddTraits(.updatesFrequently) }
                 }
                 zone("Activo",cards:[board.active].compactMap{$0})
                 zone("Banca",cards:board.bench)

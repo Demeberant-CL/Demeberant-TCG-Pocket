@@ -21,4 +21,22 @@ final class PocketUITests: XCTestCase {
         app.swipeUp(); XCTAssertTrue(app.staticTexts["Pocket iOS · 0.1.0 (1)"].waitForExistence(timeout:5))
         app.staticTexts["Tutoriales"].tap(); XCTAssertTrue(app.staticTexts["Migrar desde Android"].exists)
     }
+    func testTextSizesThemesAndAccessibilityDescriptions() throws {
+        for (label,category) in [("100","UICTContentSizeCategoryL"),("130","UICTContentSizeCategoryXXXL"),("200","UICTContentSizeCategoryAccessibilityXXXL")] {
+            for theme in ["Light","Dark"] {
+                let app = XCUIApplication()
+                app.launchArguments = ["-UIPreferredContentSizeCategoryName",category,"-AppleInterfaceStyle",theme]
+                app.launch()
+                XCTAssertTrue(app.tabBars.buttons["Colección"].waitForExistence(timeout:20))
+                let home = XCTAttachment(screenshot:app.screenshot()); home.name = "home-\(theme)-text-\(label)"; home.lifetime = .keepAlways; add(home)
+                app.tabBars.buttons["Colección"].tap(); app.buttons["Filtros"].tap()
+                XCTAssertTrue(app.buttons["collectionStatus"].exists)
+                let filters = XCTAttachment(screenshot:app.screenshot()); filters.name = "filters-\(theme)-text-\(label)"; filters.lifetime = .keepAlways; add(filters)
+                app.tabBars.buttons["Mazos"].tap()
+                XCTAssertTrue(app.buttons.matching(NSPredicate(format:"label BEGINSWITH %@","Continuar borrador")).firstMatch.exists)
+                try app.performAccessibilityAudit(for: [.sufficientElementDescription])
+                app.terminate()
+            }
+        }
+    }
 }

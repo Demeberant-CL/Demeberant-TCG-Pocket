@@ -13,6 +13,7 @@ final class StubProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         Self.lock.lock(); Self.requests.append(request); let block = Self.handler; Self.lock.unlock()
+        if request.url?.path == "/stall" { return }
         do {
             let (status,data) = try XCTUnwrap(block)(request)
             let response = HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:"HTTP/1.1",headerFields:["Content-Type":"application/json"] )!
@@ -50,6 +51,18 @@ final class NetworkTests: XCTestCase {
         StubProtocol.reset { _ in throw URLError(.cancelled) }
         do { _ = try await client().get(URLRequest(url:URL(string:"https://test.invalid/data")!),limit:1000); XCTFail("Expected cancel") } catch {}
         XCTAssertEqual(StubProtocol.count(),1)
+    }
+    func testSlowRequestTimesOutWithoutRetry() async {
+        StubProtocol.reset { _ in XCTFail("Stalled request must not return a body"); return (200,Data()) }
+        let start = Date()
+        do { _ = try await client().get(URLRequest(url:URL(string:"https://test.invalid/stall")!,timeoutInterval:0.03),limit:1000); XCTFail("Expected timeout") } catch {}
+        XCTAssertLessThan(Date().timeIntervalSince(start),2)
+        XCTAssertEqual(StubProtocol.count(),1)
+    }
+    func testTournamentOverallBudgetCancelsPendingHTTP() async {
+        StubProtocol.reset { _ in throw URLError(.timedOut) }
+        do { _ = try await Tournaments.refresh(client:client(),timeout:1) { _,_ in }; XCTFail("Expected deadline") } catch {}
+        XCTAssertLessThanOrEqual(StubProtocol.count(),1)
     }
     func testImageFallbackOnlyOn404AndNegativeCacheResetsManually() async throws {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1

@@ -96,7 +96,12 @@ struct AIView: View {
                 try require(proposalAction == "Crear" || store.state.draft.content == proposalTarget,"El borrador cambió; vuelve a consultar.")
                 let quantities = Dictionary(uniqueKeysWithValues:store.state.backup.inventory.map { ($0.id,$0.quantity) })
                 try proposal.validate(catalog:store.byID,quantities:quantities,allowed:proposalAllowed,action:proposalAction,target:proposalTarget)
-                if await store.commit({ $0.draft = proposal.draft }) { editor = true }
+                if await store.commit({ state in
+                    try require(proposalAction == "Crear" || state.draft.content == proposalTarget,"El borrador cambió; vuelve a consultar.")
+                    let current = Dictionary(uniqueKeysWithValues:state.backup.inventory.map { ($0.id,$0.quantity) })
+                    try proposal.validate(catalog:store.byID,quantities:current,allowed:proposalAllowed,action:proposalAction,target:proposalTarget)
+                    state.draft = proposal.draft
+                }) { editor = true }
             } catch { message = "La colección o el borrador cambió. Vuelve a consultar antes de abrir la propuesta."; self.proposal = nil }
         }
     }

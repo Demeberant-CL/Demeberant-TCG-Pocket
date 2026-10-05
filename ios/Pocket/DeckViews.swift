@@ -10,12 +10,17 @@ struct DeckLibraryView: View {
             Section { Button("Continuar borrador · \(store.state.draft.content.total)/20") { editor = true } }
             ForEach(store.state.backup.decks.reversed()) { deck in
                 Button { opening = deck } label: {
+                    HStack(alignment:.top,spacing:12) {
+                        if let content = try? DeckContent.parse(deck.cards), let first = content.cards.first {
+                            CardImage(id:first.id).frame(width:56,height:78)
+                        }
                     VStack(alignment:.leading,spacing:8) {
                         Text(deck.name).font(.headline).foregroundStyle(.primary)
                         Text("\(deck.total)/20 · \((try? DeckContent.parse(deck.cards).energies.joined(separator:" · ")) ?? "")").font(.caption)
                         if let content = try? DeckContent.parse(deck.cards) {
                             Text(content.cards.allSatisfy { store.quantity($0.id) >= $0.count } ? "Disponible en tu colección" : "Faltan copias").font(.caption).foregroundStyle(.secondary)
                         }
+                    }
                     }
                 }.swipeActions { Button("Eliminar",role:.destructive) { deleting = deck } }
             }
