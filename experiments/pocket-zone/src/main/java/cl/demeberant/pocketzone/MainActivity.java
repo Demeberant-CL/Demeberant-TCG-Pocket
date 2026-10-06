@@ -331,13 +331,14 @@ public final class MainActivity extends Activity {
         final WebView source = browser;
         final int token = ++generation;
         final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
-        final long deadline = android.os.SystemClock.elapsedRealtime() + 180000;
+        final long hardDeadline = android.os.SystemClock.elapsedRealtime() + 900000;
         final String script, advance;
         try { script = asset("extract.js"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
         new Runnable() {
             int stable, rounds;
+            long progressDeadline = android.os.SystemClock.elapsedRealtime() + 180000;
             JSONObject last;
             private boolean active() { return token == generation && browser == source && ZoneUrl.belongsTo(source.getUrl(), profileUrl); }
             private void finish(String reason) {
@@ -358,7 +359,9 @@ public final class MainActivity extends Activity {
             }
             @Override public void run() {
                 if (!active()) return;
-                if (android.os.SystemClock.elapsedRealtime() >= deadline) { finish("Límite de tres minutos."); return; }
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (now >= hardDeadline) { finish("Límite de seguridad de quince minutos."); return; }
+                if (now >= progressDeadline) { finish("Tres minutos sin nuevas cartas."); return; }
                 source.evaluateJavascript(script, result -> {
                     if (!active()) return;
                     try {
@@ -379,6 +382,7 @@ public final class MainActivity extends Activity {
                                 if (accumulated.containsKey(key) || accumulated.size() < 5000) accumulated.put(key, card);
                             }
                             stable = accumulated.size() == before ? stable + 1 : 0;
+                            if (accumulated.size() > before) progressDeadline = android.os.SystemClock.elapsedRealtime() + 180000;
                             if (accumulated.size() >= 5000) { finish("Límite de seguridad de 5000 cartas."); return; }
                         }
                         rounds++;
