@@ -233,6 +233,20 @@ public final class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
                 if (ZoneUrl.canBrowse(request.getUrl().toString())) return false;
+                if (ZoneUrl.isNintendoLogin(request.getUrl().toString())) {
+                    Uri target = request.getUrl();
+                    new AlertDialog.Builder(MainActivity.this).setTitle("Vincular Nintendo")
+                        .setMessage("Nintendo se abrirá en tu navegador. Mantén pulsado Select this account y copia su enlace. Vuelve a esta pantalla, pégalo en Paste Copied Link Code y pulsa Link Account. No se leerá el portapapeles ni se guardará ese enlace en el diagnóstico.")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Abrir Nintendo", (dialog, which) -> {
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, target));
+                                trace.add("nintendo_open", null, 0);
+                                status.setText("Vuelve aquí para pegar el enlace en el formulario de Zone. No necesitas recargar Mi cuenta.");
+                            } catch (android.content.ActivityNotFoundException e) { message("No se encontró un navegador para abrir Nintendo."); }
+                        }).show();
+                    return true;
+                }
                 trace.add("blocked_link", request.getUrl().toString(), 0);
                 loaded = false; readButton.setEnabled(false);
                 status.setText("Acceso externo bloqueado. Puedes volver al formulario de Pokémon Zone para usar usuario y contraseña.");

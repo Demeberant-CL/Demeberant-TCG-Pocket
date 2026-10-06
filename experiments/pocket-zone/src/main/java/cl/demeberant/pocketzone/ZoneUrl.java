@@ -37,6 +37,15 @@ public final class ZoneUrl {
         } catch (IllegalArgumentException | NullPointerException e) { return false; }
     }
 
+    public static boolean isNintendoLogin(String url) {
+        try {
+            URI uri = URI.create(url);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getRawUserInfo() == null
+                && (uri.getPort() == -1 || uri.getPort() == 443)
+                && "accounts.nintendo.com".equalsIgnoreCase(uri.getHost());
+        } catch (IllegalArgumentException | NullPointerException e) { return false; }
+    }
+
     public static boolean canBrowse(String url) {
         try { return isOrigin(URI.create(url)); }
         catch (IllegalArgumentException | NullPointerException e) { return false; }

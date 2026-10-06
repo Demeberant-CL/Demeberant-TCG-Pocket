@@ -72,4 +72,13 @@ public class ProcessTraceTest {
         assertFalse(data.toString().contains("\"request\""));
     }
 
+    @Test public void nintendoHandoffRequiresExactHttpsAccountHost() {
+        assertTrue(ZoneUrl.isNintendoLogin("https://accounts.nintendo.com/connect/1.0.0/authorize?state=secret"));
+        assertFalse(ZoneUrl.isNintendoLogin("https://accounts.nintendo.com.evil.test/"));
+        assertFalse(ZoneUrl.isNintendoLogin("https://evil.test/accounts.nintendo.com"));
+        assertFalse(ZoneUrl.isNintendoLogin("http://accounts.nintendo.com/"));
+        assertFalse(ZoneUrl.isNintendoLogin("https://user:password@accounts.nintendo.com/"));
+        assertFalse(ZoneUrl.isNintendoLogin("https://accounts.nintendo.com:444/"));
+    }
+
 }

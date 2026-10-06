@@ -11,7 +11,7 @@ import org.json.JSONObject;
 /** Bounded metadata only. Never accepts page text, headers, request bodies or raw URLs. */
 public final class ProcessTrace {
     private static final Set<String> SEGMENTS = Set.of("api", "ajax", "players", "profile", "collection", "cards", "sync", "synchronize", "refresh", "settings", "accounts", "account", "login", "logout", "connect", "nintendo", "status", "data", "v1", "v2", "static", "assets", "js", "css", "images", "pocket", "tcgp", "import", "auth", "callback");
-    private static final Set<String> EVENTS = Set.of("start", "stop", "page_start", "page_end", "request", "http_error", "network_error", "blocked_link", "read_start", "read_result", "read_error", "page_probe", "sync_control", "account_control", "load_control");
+    private static final Set<String> EVENTS = Set.of("nintendo_open", "start", "stop", "page_start", "page_end", "request", "http_error", "network_error", "blocked_link", "read_start", "read_result", "read_error", "page_probe", "sync_control", "account_control", "load_control");
     private final ArrayDeque<JSONObject> events = new ArrayDeque<>();
     private int omitted;
     private int filteredRequests;
