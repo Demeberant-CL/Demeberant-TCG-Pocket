@@ -91,6 +91,7 @@ public final class MainActivity extends Activity {
             profileUrl = ZoneUrl.normalize(saved.getString("profile"));
             pendingExport = saved.getString("pendingExport");
         }
+        if (profileUrl == null) profileUrl = ZoneUrl.normalize(preferences.getString("profile", ""));
         home();
     }
 
@@ -206,7 +207,12 @@ public final class MainActivity extends Activity {
         row.addView(readButton);
         row.addView(button("Recorrer cartas", this::readProgressively));
         row.addView(button("Detener recorrido", () -> { generation++; if (readButton != null) readButton.setEnabled(loaded); if (status != null) status.setText("Recorrido detenido. Puedes consultar la última vista previa desde una lectura nueva."); }));
-        row.addView(button("Ver cartas", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl + "cards/"); }));
+        row.addView(button("Ver cartas", () -> {
+            if (browser == null) return;
+            adoptProfile(browser.getUrl());
+            if (profileUrl == null) { status.setText("En Mi cuenta pulsa View profile o Cards para reconocer tu perfil; después podrás usar Ver cartas."); return; }
+            browser.loadUrl(profileUrl + "cards/");
+        }));
         row.addView(button("Perfil", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl); }));
         row.addView(button("Volver", this::home));
         row.addView(button("Navegador externo", () -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))));
@@ -270,12 +276,14 @@ public final class MainActivity extends Activity {
             }
 
             @Override public void onPageStarted(WebView view, String pageUrl, android.graphics.Bitmap icon) {
+                adoptProfile(pageUrl);
                 generation++; loaded = false; pageFailed = false; readButton.setEnabled(false);
                 trace.add("page_start", pageUrl, 0);
                 status.setText("Cargando… Espera a que aparezcan los datos del perfil.");
             }
 
             @Override public void onPageFinished(WebView view, String pageUrl) {
+                adoptProfile(pageUrl);
                 loaded = !pageFailed && ZoneUrl.belongsTo(pageUrl, profileUrl);
                 trace.add("page_end", pageUrl, 0);
                 readButton.setEnabled(loaded);
@@ -305,7 +313,17 @@ public final class MainActivity extends Activity {
         browser.loadUrl(url);
     }
 
+    private void adoptProfile(String pageUrl) {
+        String normalized = ZoneUrl.normalize(pageUrl);
+        if (normalized != null && !normalized.equals(profileUrl)) {
+            profileUrl = normalized;
+            preferences.edit().putString("profile", profileUrl).apply();
+            preview = null;
+        }
+    }
+
     private void readProgressively() {
+        if (browser != null) { adoptProfile(browser.getUrl()); loaded = !pageFailed && ZoneUrl.belongsTo(browser.getUrl(), profileUrl); }
         if (browser == null || !loaded || profileUrl == null || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)
                 || !browser.getUrl().endsWith("/cards/")) {
             message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
