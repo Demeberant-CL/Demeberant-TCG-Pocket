@@ -1,4 +1,4 @@
-(() => {
+((fast = false) => {
   'use strict';
   const allowedHost = ['www.pokemon-zone.com', 'pokemon-zone.com'].includes(location.hostname);
   const match = /^\/players\/([0-9]{10,20})\/(?:cards\/)?$/.exec(location.pathname);
@@ -16,7 +16,7 @@
     return JSON.stringify({error: 'blocked'});
   }
   const fields = [];
-  for (const dt of root.querySelectorAll('dl dt')) {
+  for (const dt of fast ? [] : root.querySelectorAll('dl dt')) {
     const dd = dt.nextElementSibling;
     if (dd?.tagName === 'DD') {
       const label = text(dt, 60), value = text(dd, 120);
@@ -40,7 +40,7 @@
   const lines = [];
   let total = 0;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node && total < 6000; node = walker.nextNode()) {
+  for (let node = fast ? null : walker.nextNode(); node && total < 6000; node = walker.nextNode()) {
     if (!visible(node.parentElement)) continue;
     const line = (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200);
     if (!line || line === lines[lines.length - 1]) continue;

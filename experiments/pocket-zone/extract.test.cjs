@@ -79,3 +79,18 @@ test('advances through a Load more boundary and ignores unrelated controls', asy
   assert.equal(await page.evaluate(advance), 'blocked');
   await page.close();
 });
+
+test('fast scan keeps the same card quantities and deduplication without repeating summary work', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({contentType:'text/html', body:`<main><h1>Profile</h1><p>Public summary</p><div class="player-expansion-collection-card"><div class="player-expansion-collection-card__card"><a href="/cards/a1/1/bulbasaur/">Card</a></div><div class="player-expansion-collection-card__count">2</div><div class="player-expansion-collection-card__name-text">Bulbasaur</div></div></main>`}));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+  const full = JSON.parse(await page.evaluate(script));
+  const fastScript = script.replace('})();', '})(true);');
+  const fast = JSON.parse(await page.evaluate(fastScript));
+  assert.deepEqual(fast.visibleCards, full.visibleCards);
+  assert.equal(fast.visibleSummary, '');
+  assert.equal(fast.collectionComplete, false);
+  await page.locator('.player-expansion-collection-card__count').evaluate(el => el.textContent = '5');
+  assert.equal(JSON.parse(await page.evaluate(fastScript)).visibleCards[0].quantity, 5);
+  await page.close();
+});

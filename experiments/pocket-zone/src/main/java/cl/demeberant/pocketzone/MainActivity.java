@@ -333,7 +333,7 @@ public final class MainActivity extends Activity {
         final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
         final long hardDeadline = android.os.SystemClock.elapsedRealtime() + 900000;
         final String script, advance;
-        try { script = asset("extract.js"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
+        try { script = asset("extract.js").replace("})();", "})(true);"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
         new Runnable() {
@@ -392,7 +392,7 @@ public final class MainActivity extends Activity {
                             if ("\"load\"".equals(action)) stable = 0;
                             else if ("\"blocked\"".equals(action)) { finish("Página no disponible."); return; }
                             if (stable >= 12) { finish("Sin nuevas cartas durante doce lecturas; puede haber filtros o cargas pendientes."); return; }
-                            handler.postDelayed(this, 1000);
+                            handler.postDelayed(this, "\"load\"".equals(action) ? 500 : stable == 0 ? 250 : 1000);
                         });
                     } catch (Exception e) { finish("Lectura interrumpida."); }
                 });
