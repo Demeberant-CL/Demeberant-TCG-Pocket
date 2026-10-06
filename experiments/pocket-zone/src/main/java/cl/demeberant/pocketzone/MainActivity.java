@@ -332,8 +332,8 @@ public final class MainActivity extends Activity {
         final int token = ++generation;
         final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
         final long deadline = android.os.SystemClock.elapsedRealtime() + 180000;
-        final String script;
-        try { script = asset("extract.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
+        final String script, advance;
+        try { script = asset("extract.js"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
         new Runnable() {
@@ -380,12 +380,16 @@ public final class MainActivity extends Activity {
                             }
                             stable = accumulated.size() == before ? stable + 1 : 0;
                             if (accumulated.size() >= 5000) { finish("Límite de seguridad de 5000 cartas."); return; }
-                            if (stable >= 12) { finish("Sin nuevas cartas durante doce lecturas; puede haber filtros o cargas pendientes."); return; }
                         }
                         rounds++;
                         status.setText("Recorriendo cartas: " + accumulated.size() + " distintas · paso " + rounds + ".");
-                        source.evaluateJavascript("window.scrollTo(0, document.documentElement.scrollHeight);", null);
-                        handler.postDelayed(this, 1000);
+                        source.evaluateJavascript(advance, action -> {
+                            if (!active()) return;
+                            if ("\"load\"".equals(action)) stable = 0;
+                            else if ("\"blocked\"".equals(action)) { finish("Página no disponible."); return; }
+                            if (stable >= 12) { finish("Sin nuevas cartas durante doce lecturas; puede haber filtros o cargas pendientes."); return; }
+                            handler.postDelayed(this, 1000);
+                        });
                     } catch (Exception e) { finish("Lectura interrumpida."); }
                 });
             }

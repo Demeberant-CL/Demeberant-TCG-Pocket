@@ -65,3 +65,17 @@ test('reads more than 200 loaded cards without duplicates', async () => {
   assert.equal(data.visibleCards.length,250);
   assert.equal(data.collectionComplete,false);
 });
+
+test('advances through a Load more boundary and ignores unrelated controls', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({contentType:'text/html', body:`<header><button onclick="window.wrong=true">Load more</button></header><main><div class="player-expansion-collection-card">A2b</div><form><button onclick="window.wrong=true">Load more</button></form><button hidden onclick="window.wrong=true">Load more</button><button disabled onclick="window.wrong=true">Load more</button><button id="load" onclick="document.querySelector('main').insertAdjacentHTML('beforeend','<div class=player-expansion-collection-card>A3</div>');this.remove()">Load more</button></main>`}));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+  const advance = fs.readFileSync(__dirname + '/src/main/assets/advance-cards.js', 'utf8');
+  assert.equal(await page.evaluate(advance), 'load');
+  assert.equal(await page.locator('.player-expansion-collection-card').count(), 2);
+  assert.equal(await page.evaluate('window.wrong'), undefined);
+  assert.equal(await page.evaluate(advance), 'scroll');
+  await page.goto('https://www.pokemon-zone.com/settings/');
+  assert.equal(await page.evaluate(advance), 'blocked');
+  await page.close();
+});
