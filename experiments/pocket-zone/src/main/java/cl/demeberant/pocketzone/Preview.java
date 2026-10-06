@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class Preview {
-    public static final int MAX_BYTES = 160000;
+    public static final int MAX_BYTES = 3000000;
     private Preview() {}
 
     public static JSONObject validate(String text, String profileUrl) throws Exception {
@@ -37,7 +37,7 @@ public final class Preview {
         output.put("collectionComplete", false);
         JSONArray cards = input.optJSONArray("visibleCards");
         JSONArray cleanCards = new JSONArray();
-        if (cards != null) for (int i = 0; i < Math.min(cards.length(), 200); i++) {
+        if (cards != null) for (int i = 0; i < Math.min(cards.length(), 5000); i++) {
             JSONObject card = cards.optJSONObject(i);
             if (card == null) continue;
             Object rawQuantity = card.opt("quantity");

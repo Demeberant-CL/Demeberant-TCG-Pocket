@@ -77,4 +77,12 @@ public class ZoneTest {
         assertEquals(0, clean.getJSONArray("visibleCards").length());
         assertEquals(6000, clean.getString("visibleSummary").length());
     }
+    @Test public void acceptsMoreThanTwoHundredCardsWithoutClaimingCompleteness() throws Exception {
+        JSONArray cards = new JSONArray();
+        for (int i = 0; i < 250; i++) cards.put(new JSONObject().put("quantity", 1).put("cardPath", "/cards/a1/" + i + "/"));
+        JSONObject clean = Preview.validate(fixture().put("visibleCards", cards).toString(), URL);
+        assertEquals(250, clean.getJSONArray("visibleCards").length());
+        assertFalse(clean.getBoolean("collectionComplete"));
+    }
+
 }

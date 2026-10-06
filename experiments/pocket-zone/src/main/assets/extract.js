@@ -27,7 +27,7 @@
   const cards = [];
   const seen = new Set();
   for (const el of root.querySelectorAll('.player-expansion-collection-card')) {
-    if (cards.length >= 200) break;
+    if (cards.length >= 5000) break;
     const anchor = el.querySelector('.player-expansion-collection-card__card a[href]');
     const count = text(el.querySelector('.player-expansion-collection-card__count'), 20);
     if (!visible(el) || !anchor || !/^\d+$/.test(count)) continue;

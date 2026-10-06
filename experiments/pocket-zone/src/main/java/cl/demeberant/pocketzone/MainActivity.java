@@ -204,6 +204,8 @@ public final class MainActivity extends Activity {
         row.addView(button("Mi cuenta", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/settings/"); }));
         row.addView(button("Acceso con contraseña", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/accounts/login/"); }));
         row.addView(readButton);
+        row.addView(button("Recorrer cartas", this::readProgressively));
+        row.addView(button("Detener recorrido", () -> { generation++; if (readButton != null) readButton.setEnabled(loaded); if (status != null) status.setText("Recorrido detenido. Puedes consultar la última vista previa desde una lectura nueva."); }));
         row.addView(button("Ver cartas", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl + "cards/"); }));
         row.addView(button("Perfil", () -> { if (browser != null && profileUrl != null) browser.loadUrl(profileUrl); }));
         row.addView(button("Volver", this::home));
@@ -301,6 +303,75 @@ public final class MainActivity extends Activity {
         content.addView(browser, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setRoot(content);
         browser.loadUrl(url);
+    }
+
+    private void readProgressively() {
+        if (browser == null || !loaded || profileUrl == null || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)
+                || !browser.getUrl().endsWith("/cards/")) {
+            message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
+        }
+        final WebView source = browser;
+        final int token = ++generation;
+        final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
+        final long deadline = android.os.SystemClock.elapsedRealtime() + 180000;
+        final String script;
+        try { script = asset("extract.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
+        readButton.setEnabled(false);
+        trace.add("read_start", source.getUrl(), 0);
+        new Runnable() {
+            int stable, rounds;
+            JSONObject last;
+            private boolean active() { return token == generation && browser == source && ZoneUrl.belongsTo(source.getUrl(), profileUrl); }
+            private void finish(String reason) {
+                if (!active()) return;
+                generation++; readButton.setEnabled(loaded);
+                try {
+                    if (last == null) { status.setText("No se obtuvieron cartas. " + reason); return; }
+                    last.put("visibleCards", new JSONArray(accumulated.values()));
+                    last.put("readAt", Instant.now().toString());
+                    last.put("collectionComplete", false);
+                    last.put("scanReason", reason);
+                    last.put("scanRounds", rounds);
+                    preview = last;
+                    trace.add("read_result", source.getUrl(), 0);
+                    status.setText("Recorrido terminado: " + accumulated.size() + " cartas distintas. " + reason + " No se garantiza una colección completa.");
+                    showPreview();
+                } catch (Exception e) { status.setText("No se pudo preparar el resultado del recorrido."); }
+            }
+            @Override public void run() {
+                if (!active()) return;
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) { finish("Límite de tres minutos."); return; }
+                source.evaluateJavascript(script, result -> {
+                    if (!active()) return;
+                    try {
+                        if (result == null || result.length() > Preview.MAX_BYTES * 2) throw new IllegalArgumentException();
+                        Object decoded = new JSONTokener(result).nextValue();
+                        if (!(decoded instanceof String)) throw new IllegalArgumentException();
+                        JSONObject raw = new JSONObject((String) decoded);
+                        if (raw.has("error")) {
+                            stable = 0;
+                            if (!"loading".equals(raw.optString("error"))) { finish("Página no disponible."); return; }
+                        } else {
+                            last = Preview.validate((String) decoded, profileUrl);
+                            int before = accumulated.size();
+                            JSONArray cards = last.getJSONArray("visibleCards");
+                            for (int i = 0; i < cards.length(); i++) {
+                                JSONObject card = cards.getJSONObject(i);
+                                String key = card.getString("cardPath");
+                                if (accumulated.containsKey(key) || accumulated.size() < 5000) accumulated.put(key, card);
+                            }
+                            stable = accumulated.size() == before ? stable + 1 : 0;
+                            if (accumulated.size() >= 5000) { finish("Límite de seguridad de 5000 cartas."); return; }
+                            if (stable >= 12) { finish("Sin nuevas cartas durante doce lecturas; puede haber filtros o cargas pendientes."); return; }
+                        }
+                        rounds++;
+                        status.setText("Recorriendo cartas: " + accumulated.size() + " distintas · paso " + rounds + ".");
+                        source.evaluateJavascript("window.scrollTo(0, document.documentElement.scrollHeight);", null);
+                        handler.postDelayed(this, 1000);
+                    } catch (Exception e) { finish("Lectura interrumpida."); }
+                });
+            }
+        }.run();
     }
 
     private void readPage() {
@@ -455,7 +526,7 @@ public final class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         out.putString("profile", profileUrl);
-        out.putString("pendingExport", pendingExport);
+        // Export payload is persisted privately; avoid oversized Android state bundles.
     }
 
     @Override public void onBackPressed() {

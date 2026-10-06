@@ -58,3 +58,10 @@ test('process probe emits only fixed click categories, never form content', asyn
   assert.equal(await page.evaluate(probe), '[]');
   await page.close();
 });
+
+test('reads more than 200 loaded cards without duplicates', async () => {
+  const card = n => `<div class="player-expansion-collection-card"><div class="player-expansion-collection-card__card"><a href="/cards/a1/${n}/card/">Card</a></div><div class="player-expansion-collection-card__count">2</div><div class="player-expansion-collection-card__name-text">Card ${n}</div></div>`;
+  const data = await extract('<main>' + Array.from({length:250},(_,i)=>card(i+1)).join('') + card(1) + '</main>');
+  assert.equal(data.visibleCards.length,250);
+  assert.equal(data.collectionComplete,false);
+});
