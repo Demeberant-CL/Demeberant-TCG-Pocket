@@ -1,4 +1,4 @@
-((fast = false) => {
+((fast) => {
   'use strict';
   const allowedHost = ['www.pokemon-zone.com', 'pokemon-zone.com'].includes(location.hostname);
   const match = /^\/players\/([0-9]{10,20})\/(?:cards\/)?$/.exec(location.pathname);
