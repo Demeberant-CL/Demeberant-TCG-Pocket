@@ -10,6 +10,12 @@ android {
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionName = "0.1.$versionCode"
     }
+    signingConfigs.getByName("debug") {
+        storeFile = file(System.getenv("POCKET_ZONE_KEYSTORE") ?: error("Configura POCKET_ZONE_KEYSTORE; no se permite generar otra firma automáticamente"))
+        storePassword = "android"
+        keyAlias = "pocket-zone-tests"
+        keyPassword = "android"
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -13,6 +13,8 @@ jobs:
   prototype:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      POCKET_ZONE_KEYSTORE: ${{ runner.temp }}/pocket-zone-signing/pocket-zone-tests.keystore
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,17 +40,53 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/zone-node/node_modules
         run: node --test experiments/pocket-zone/extract.test.cjs
-      - name: Cache experimental debug key independently
+      - name: Restore the isolated signing key
+        id: zone-key
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: pocket-zone-experimental-debug-key-v1
+          path: ${{ runner.temp }}/pocket-zone-signing
+          key: pocket-zone-explicit-signing-key-v2
+      - name: Prepare or validate the isolated signing key
+        run: |
+          if [ ! -f "$POCKET_ZONE_KEYSTORE" ]; then
+            if [ -f experiments/pocket-zone/signing-certificate.sha256 ]; then
+              echo "Signing key unavailable. Restore the private backup; refusing to rotate the certificate."
+              exit 1
+            fi
+            mkdir -p "$(dirname "$POCKET_ZONE_KEYSTORE")"
+            keytool -genkeypair -noprompt -keystore "$POCKET_ZONE_KEYSTORE" -storetype JKS -storepass android -keypass android -alias pocket-zone-tests -keyalg RSA -keysize 3072 -validity 10000 -dname "CN=Pocket Zone Tests, OU=Experimental, O=Demeberant, C=CL"
+          fi
+          keytool -list -keystore "$POCKET_ZONE_KEYSTORE" -storepass android -alias pocket-zone-tests > /dev/null
+      - name: Encrypt a recovery copy without exposing the private key
+        if: steps.zone-key.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/zone-key-backup"
+          openssl rand -hex 32 > "$RUNNER_TEMP/zone-backup-password"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in "$POCKET_ZONE_KEYSTORE" -out "$RUNNER_TEMP/zone-key-backup/keystore.enc" -pass "file:$RUNNER_TEMP/zone-backup-password"
+          openssl pkeyutl -encrypt -pubin -inkey experiments/pocket-zone/signing-backup-public.pem -in "$RUNNER_TEMP/zone-backup-password" -out "$RUNNER_TEMP/zone-key-backup/password.enc" -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+          rm "$RUNNER_TEMP/zone-backup-password"
+      - uses: actions/upload-artifact@v4
+        if: steps.zone-key.outputs.cache-hit != 'true'
+        with:
+          name: pocket-zone-encrypted-signing-backup
+          retention-days: 7
+          path: ${{ runner.temp }}/zone-key-backup/*
       - name: Build and test only the standalone experiment
         run: ./gradlew -p experiments/pocket-zone testDebugUnitTest lintDebug assembleDebug --no-daemon
       - name: Verify separate APK identity and signature
         run: |
           python3 experiments/pocket-zone/check-isolation.py --apk-metadata
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs experiments/pocket-zone/build/outputs/apk/debug/*-debug.apk > experiments/pocket-zone/build/outputs/apk/debug/signing-certificate.txt
+          python3 - <<'PY_PIN'
+          from pathlib import Path
+          import re
+          certificate = Path('experiments/pocket-zone/build/outputs/apk/debug/signing-certificate.txt').read_text()
+          digest = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)', certificate).group(1).lower()
+          pin = Path('experiments/pocket-zone/signing-certificate.sha256')
+          if pin.exists():
+              assert digest == pin.read_text().strip().lower(), 'Certificate changed; APK rejected'
+          print('Verified signer SHA-256:', digest)
+          PY_PIN
           sha256sum experiments/pocket-zone/build/outputs/apk/debug/*-debug.apk
           python3 - <<'PY'
           from pathlib import Path
