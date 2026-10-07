@@ -618,7 +618,7 @@ public final class MainActivity extends Activity {
     @Override protected void onStop() { resumed = false; handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
         super.onResume(); resumed = true;
-        if (pendingScanResult) { pendingScanResult = false; showPreview(); }
+        if (pendingScanResult) { pendingScanResult = false; try { showPreview(); } catch (Exception e) { message("El resultado está guardado; vuelve a abrir la vista previa."); } }
         if (browser != null && trace.isRecording()) { handler.removeCallbacks(probeLoop); handler.post(probeLoop); }
     }
 

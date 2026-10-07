@@ -80,7 +80,9 @@ public final class ScanService extends Service {
     @Override public void onDestroy() {
         handler.removeCallbacksAndMessages(null);
         if (wake != null && wake.isHeld()) wake.release();
-        wake = null; instance = null; startWork = null; cancelWork = null;
+        wake = null; instance = null;
+        // A new start may already be queued while the previous service is being destroyed.
+        if (startWork == null) cancelWork = null;
         super.onDestroy();
     }
     @Override public IBinder onBind(Intent intent) { return null; }
