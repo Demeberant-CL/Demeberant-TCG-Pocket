@@ -33,6 +33,7 @@ jobs:
       - name: Check isolation from the original app
         run: python3 experiments/pocket-zone/check-isolation.py
       - name: Install fixture browser
+        timeout-minutes: 6
         run: |
           npm install --prefix "$RUNNER_TEMP/zone-node" playwright@1.56.1
           "$RUNNER_TEMP/zone-node/node_modules/.bin/playwright" install --with-deps chromium
