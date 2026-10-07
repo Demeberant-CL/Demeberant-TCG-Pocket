@@ -9,7 +9,9 @@
   const excluded = 'script,style,noscript,nav,header,footer,form,input,textarea,[contenteditable],[hidden],[aria-hidden="true"],[role="navigation"]';
   const visible = el => !!el && !el.closest(excluded) && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const text = (el, max) => visible(el) ? (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, max) : '';
-  if (!root || /(?:loading|cargando)\s*(?:\.\.\.|…)/i.test(root.innerText || '')) {
+  const scan = fast && window.__pocketZoneScan?.route === location.pathname ? window.__pocketZoneScan : null;
+  if (scan) scan.collect(scan.observer.takeRecords());
+  if (!root || (!scan && /(?:loading|cargando)\s*(?:\.\.\.|…)/i.test(root.innerText || ''))) {
     return JSON.stringify({error: 'loading'});
   }
   if (/just a moment|checking your browser|verify you are human|attention required/i.test(document.title)) {
@@ -26,8 +28,10 @@
   // Solo lee filas ya cargadas, sin pulsar botones, ni sincronizar con Nintendo.
   const cards = [];
   const seen = new Set();
-  for (const el of root.querySelectorAll('.player-expansion-collection-card')) {
+  for (const el of scan ? [...scan.dirty] : root.querySelectorAll('.player-expansion-collection-card')) {
     if (cards.length >= 5000) break;
+    if (scan) scan.dirty.delete(el);
+    if (!el.isConnected) continue;
     const anchor = el.querySelector('.player-expansion-collection-card__card a[href]');
     const count = text(el.querySelector('.player-expansion-collection-card__count'), 20);
     if (!visible(el) || !anchor || !/^\d+$/.test(count)) continue;

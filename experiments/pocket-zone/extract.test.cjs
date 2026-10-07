@@ -94,3 +94,44 @@ test('fast scan keeps the same card quantities and deduplication without repeati
   assert.equal(JSON.parse(await page.evaluate(fastScript)).visibleCards[0].quantity, 5);
   await page.close();
 });
+
+test('incremental scan processes new and changed rows only, keeping quantities and ignoring ad changes', async () => {
+  const page = await browser.newPage();
+  const card = n => `<div class="player-expansion-collection-card" id="card${n}"><div class="player-expansion-collection-card__card"><a href="/cards/a1/${n}/card/">Card</a></div><div class="player-expansion-collection-card__count">2</div><div class="player-expansion-collection-card__name-text">Card ${n}</div></div>`;
+  await page.route('**/*', route => route.fulfill({contentType:'text/html',body:'<main>'+Array.from({length:1320},(_,i)=>card(i+1)).join('')+'<div id="ad">Ad</div></main>'}));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+  const observer = fs.readFileSync(__dirname+'/src/main/assets/scan-observer.js','utf8');
+  const scan = observer+';'+script.replace('})();','})(true);');
+  const read = async () => JSON.parse(await page.evaluate(scan));
+  assert.equal((await read()).visibleCards.length,1320);
+  assert.equal((await read()).visibleCards.length,0);
+  await page.locator('#ad').evaluate(el=>el.textContent='New ad');
+  assert.equal((await read()).visibleCards.length,0);
+  await page.locator('#card3 .player-expansion-collection-card__count').evaluate(el=>el.textContent='7');
+  const changed=(await read()).visibleCards;
+  assert.equal(changed.length,1); assert.equal(changed[0].quantity,7);
+  await page.locator('main').evaluate((el,html)=>el.insertAdjacentHTML('beforeend',html),card(1321));
+  const added=(await read()).visibleCards;
+  assert.equal(added.length,1);assert.equal(added[0].cardPath,'/cards/a1/1321/card/');
+  await page.evaluate('window.__pocketZoneScan.observer.disconnect();delete window.__pocketZoneScan');
+  assert.equal((await read()).visibleCards.length,1321);
+  await page.close();
+});
+test('Load more waits for an actual added card before allowing another click', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route=>route.fulfill({contentType:'text/html',body:'<main><div class="player-expansion-collection-card">First</div><button onclick="window.clicks=(window.clicks||0)+1">Load more</button><div id="ad">Ad</div></main>'}));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+  await page.evaluate(fs.readFileSync(__dirname+'/src/main/assets/scan-observer.js','utf8'));
+  const advance=fs.readFileSync(__dirname+'/src/main/assets/advance-cards.js','utf8');
+  assert.equal(await page.evaluate(advance),'load');
+  assert.equal(await page.evaluate(advance),'waiting');
+  await page.locator('#ad').evaluate(el=>el.textContent='Changed');
+  assert.equal(await page.evaluate(advance),'waiting');
+  assert.equal(await page.evaluate('window.clicks'),1);
+  await page.locator('main').evaluate(el=>el.insertAdjacentHTML('beforeend','<div class="player-expansion-collection-card">Next</div>'));
+  assert.equal(await page.evaluate(advance),'load');
+  assert.equal(await page.evaluate('window.clicks'),2);
+  await page.evaluate('window.__pocketZoneScan.waiting.time=Date.now()-21000');
+  assert.equal(await page.evaluate(advance),'load-timeout');
+  await page.close();
+});

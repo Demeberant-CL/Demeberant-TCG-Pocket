@@ -49,6 +49,9 @@ public final class MainActivity extends Activity {
     private JSONObject preview;
     private String pendingExport;
     private int generation;
+    private Runnable cancelScan;
+    private Runnable checkpointScan;
+    private android.util.AtomicFile previewFile;
     private boolean loaded;
     private boolean pageFailed;
     private SharedPreferences preferences;
@@ -92,7 +95,24 @@ public final class MainActivity extends Activity {
             pendingExport = saved.getString("pendingExport");
         }
         if (profileUrl == null) profileUrl = ZoneUrl.normalize(preferences.getString("profile", ""));
+        previewFile = new android.util.AtomicFile(new java.io.File(getFilesDir(), "zone-preview.json"));
+        try (java.io.InputStream input = previewFile.openRead()) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096]; int size;
+            while ((size = input.read(buffer)) != -1 && bytes.size() <= Preview.MAX_BYTES) bytes.write(buffer, 0, size);
+            if (bytes.size() <= Preview.MAX_BYTES) preview = Preview.validate(bytes.toString(StandardCharsets.UTF_8.name()), profileUrl);
+        } catch (Exception ignored) { }
         home();
+    }
+
+    private void savePreviewSnapshot() {
+        if (preview == null || previewFile == null) return;
+        java.io.FileOutputStream output = null;
+        try {
+            byte[] bytes = preview.toString().getBytes(StandardCharsets.UTF_8);
+            if (bytes.length > Preview.MAX_BYTES) return;
+            output = previewFile.startWrite(); output.write(bytes); previewFile.finishWrite(output);
+        } catch (Exception e) { if (output != null) previewFile.failWrite(output); }
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -206,7 +226,7 @@ public final class MainActivity extends Activity {
         row.addView(button("Acceso con contraseña", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/accounts/login/"); }));
         row.addView(readButton);
         row.addView(button("Recorrer cartas", this::readProgressively));
-        row.addView(button("Detener recorrido", () -> { generation++; if (readButton != null) readButton.setEnabled(loaded); if (status != null) status.setText("Recorrido detenido. Puedes consultar la última vista previa desde una lectura nueva."); }));
+        row.addView(button("Detener recorrido", () -> { if (cancelScan != null) cancelScan.run(); }));
         row.addView(button("Ver cartas", () -> {
             if (browser == null) return;
             adoptProfile(browser.getUrl());
@@ -328,30 +348,38 @@ public final class MainActivity extends Activity {
                 || !browser.getUrl().endsWith("/cards/")) {
             message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
         }
+        if (cancelScan != null) cancelScan.run();
         final WebView source = browser;
         final int token = ++generation;
         final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
         final long hardDeadline = android.os.SystemClock.elapsedRealtime() + 900000;
         final String script, advance;
-        try { script = asset("extract.js").replace("})();", "})(true);"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
+        try { script = asset("scan-observer.js") + ";" + asset("extract.js").replace("})();", "})(true);"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
+        source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
         new Runnable() {
             int stable, rounds;
+            final Runnable stop = () -> finish("Detenido por el usuario; avance conservado.");
+            private void snapshot(String reason) throws Exception {
+                if (last == null) return;
+                JSONObject value = new JSONObject(last.toString());
+                value.put("visibleCards", new JSONArray(accumulated.values()));
+                value.put("readAt", Instant.now().toString());
+                value.put("collectionComplete", false);
+                value.put("scanReason", reason); value.put("scanRounds", rounds);
+                preview = value; savePreviewSnapshot();
+            }
             long progressDeadline = android.os.SystemClock.elapsedRealtime() + 180000;
             JSONObject last;
             private boolean active() { return token == generation && browser == source && ZoneUrl.belongsTo(source.getUrl(), profileUrl); }
             private void finish(String reason) {
                 if (!active()) return;
-                generation++; readButton.setEnabled(loaded);
+                generation++; cancelScan = null; checkpointScan = null; readButton.setEnabled(loaded);
+                source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
                 try {
                     if (last == null) { status.setText("No se obtuvieron cartas. " + reason); return; }
-                    last.put("visibleCards", new JSONArray(accumulated.values()));
-                    last.put("readAt", Instant.now().toString());
-                    last.put("collectionComplete", false);
-                    last.put("scanReason", reason);
-                    last.put("scanRounds", rounds);
-                    preview = last;
+                    snapshot(reason);
                     trace.add("read_result", source.getUrl(), 0);
                     status.setText("Recorrido terminado: " + accumulated.size() + " cartas distintas. " + reason + " No se garantiza una colección completa.");
                     showPreview();
@@ -359,6 +387,8 @@ public final class MainActivity extends Activity {
             }
             @Override public void run() {
                 if (!active()) return;
+                cancelScan = stop;
+                checkpointScan = () -> { if (active()) try { snapshot("Avance guardado; recorrido todavía incompleto."); } catch (Exception ignored) { } };
                 long now = android.os.SystemClock.elapsedRealtime();
                 if (now >= hardDeadline) { finish("Límite de seguridad de quince minutos."); return; }
                 if (now >= progressDeadline) { finish("Tres minutos sin nuevas cartas."); return; }
@@ -389,10 +419,11 @@ public final class MainActivity extends Activity {
                         status.setText("Recorriendo cartas: " + accumulated.size() + " distintas · paso " + rounds + ".");
                         source.evaluateJavascript(advance, action -> {
                             if (!active()) return;
-                            if ("\"load\"".equals(action)) stable = 0;
+                            if ("\"load\"".equals(action) || "\"waiting\"".equals(action)) stable = 0;
+                            else if ("\"load-timeout\"".equals(action)) { finish("La página no cargó nuevas cartas en veinte segundos; avance conservado."); return; }
                             else if ("\"blocked\"".equals(action)) { finish("Página no disponible."); return; }
                             if (stable >= 12) { finish("Sin nuevas cartas durante doce lecturas; puede haber filtros o cargas pendientes."); return; }
-                            handler.postDelayed(this, "\"load\"".equals(action) ? 500 : stable == 0 ? 250 : 1000);
+                            handler.postDelayed(this, "\"waiting\"".equals(action) ? 500 : stable == 0 ? 100 : 1000);
                         });
                     } catch (Exception e) { finish("Lectura interrumpida."); }
                 });
@@ -563,6 +594,7 @@ public final class MainActivity extends Activity {
     }
 
     private void destroyBrowser() {
+        if (cancelScan != null) cancelScan.run();
         generation++; loaded = false; handler.removeCallbacksAndMessages(null);
         if (browser != null) {
             browser.stopLoading();
@@ -573,7 +605,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
-    @Override protected void onStop() { handler.removeCallbacks(probeLoop); saveTrace(); super.onStop(); }
+    @Override protected void onStop() { handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
         super.onResume();
         if (browser != null && trace.isRecording()) { handler.removeCallbacks(probeLoop); handler.post(probeLoop); }
