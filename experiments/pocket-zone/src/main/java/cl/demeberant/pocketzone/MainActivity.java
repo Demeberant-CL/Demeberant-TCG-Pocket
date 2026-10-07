@@ -63,7 +63,7 @@ public final class MainActivity extends Activity {
     private final Runnable probeLoop = new Runnable() {
         @Override public void run() {
             WebView source = browser;
-            if (source == null || !trace.isRecording() || !ZoneUrl.canBrowse(source.getUrl())) return;
+            if (source == null || !trace.isRecording() || (!resumed && cancelScan == null) || !ZoneUrl.canBrowse(source.getUrl())) return;
             try {
                 source.evaluateJavascript(asset("process-probe.js"), result -> {
                     if (browser != source || !trace.isRecording() || result == null || result.length() > 8000) return;
@@ -212,6 +212,7 @@ public final class MainActivity extends Activity {
     @SuppressLint("SetJavaScriptEnabled")
     private void openBrowser(String url) {
         destroyBrowser();
+        trace.start(); saveTrace();
         LinearLayout content = column();
         
         status = label("Cargando perfil…", 14);
@@ -622,33 +623,29 @@ public final class MainActivity extends Activity {
 
     @Override public void onConfigurationChanged(android.content.res.Configuration configuration) {
         super.onConfigurationChanged(configuration);
+        trace.add(configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                ? "orientation_landscape" : "orientation_portrait", null, 0);
+        saveTrace();
         // Keep the same WebView, DOM observer and native scan when the screen rotates.
         if (browser != null) { browser.requestLayout(); browser.invalidate(); }
     }
 
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
-    @Override protected void onStop() { resumed = false; handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
+    @Override protected void onStop() { resumed = false; trace.add("app_background", null, 0); if (cancelScan == null) handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
-        super.onResume(); resumed = true;
+        super.onResume(); resumed = true; trace.add("app_foreground", null, 0);
         if (pendingScanResult) { pendingScanResult = false; try { showPreview(); } catch (Exception e) { message("El resultado está guardado; vuelve a abrir la vista previa."); } }
         if (browser != null && trace.isRecording()) { handler.removeCallbacks(probeLoop); handler.post(probeLoop); }
     }
 
     private void addTraceControls(LinearLayout content) {
-        recordButton = button(trace.isRecording() ? "Detener registro" : "Iniciar registro nuevo", () -> {
-            if (trace.isRecording()) {
-                trace.stop(); handler.removeCallbacks(probeLoop);
-                if (browser != null) browser.evaluateJavascript("window.__pocketZoneProbeActive=false;window.__pocketZoneProbe?.drain();", null);
-            } else {
-                trace.start();
-                if (browser != null) {
-                    browser.evaluateJavascript("window.__pocketZoneProbeActive=true;window.__pocketZoneProbe?.drain();", null);
-                    handler.post(probeLoop);
-                }
+        recordButton = button("Reiniciar diagnóstico", () -> {
+            trace.start();
+            if (browser != null) {
+                browser.evaluateJavascript("window.__pocketZoneProbeActive=true;window.__pocketZoneProbe?.drain();", null);
+                handler.removeCallbacks(probeLoop); handler.post(probeLoop);
             }
-            recordButton.setText(trace.isRecording() ? "Detener registro" : "Iniciar registro nuevo");
-            saveTrace();
-            message(trace.isRecording() ? "Registro activo. Reproduce el proceso en esta app." : "Registro detenido.");
+            saveTrace(); message("Diagnóstico reiniciado. Se registra automáticamente al abrir el visor.");
         });
         content.addView(recordButton);
         content.addView(button("Guardar diagnóstico ZIP", () -> {
