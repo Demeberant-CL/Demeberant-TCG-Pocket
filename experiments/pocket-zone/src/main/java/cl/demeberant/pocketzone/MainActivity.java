@@ -594,7 +594,8 @@ public final class MainActivity extends Activity {
     }
 
     private void destroyBrowser() {
-        if (cancelScan != null) cancelScan.run();
+        if (checkpointScan != null) checkpointScan.run();
+        cancelScan = null; checkpointScan = null;
         generation++; loaded = false; handler.removeCallbacksAndMessages(null);
         if (browser != null) {
             browser.stopLoading();
