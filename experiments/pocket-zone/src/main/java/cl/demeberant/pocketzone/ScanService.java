@@ -38,7 +38,9 @@ public final class ScanService extends Service {
     static void progress(int cards) {
         if (instance == null || instance.count == cards) return;
         instance.count = cards;
-        instance.getSystemService(NotificationManager.class).notify(ID, instance.notification());
+        if (Build.VERSION.SDK_INT < 33 || instance.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            instance.getSystemService(NotificationManager.class).notify(ID, instance.notification());
     }
     private Notification notification() {
         PendingIntent open = PendingIntent.getActivity(this, 0,

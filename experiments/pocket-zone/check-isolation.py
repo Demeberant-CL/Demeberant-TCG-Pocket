@@ -20,7 +20,7 @@ for line in changes.splitlines():
 manifest = ET.parse(ROOT / 'src/main/AndroidManifest.xml').getroot()
 android = '{http://schemas.android.com/apk/res/android}'
 permissions = [p.attrib[android + 'name'] for p in manifest.findall('uses-permission')]
-assert permissions == ['android.permission.INTERNET', 'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_DATA_SYNC', 'android.permission.WAKE_LOCK'], permissions
+assert permissions == ['android.permission.INTERNET', 'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_DATA_SYNC', 'android.permission.WAKE_LOCK', 'android.permission.POST_NOTIFICATIONS'], permissions
 assert not manifest.findall('queries')
 application = manifest.find('application')
 assert application is not None

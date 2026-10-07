@@ -352,6 +352,12 @@ public final class MainActivity extends Activity {
                 || !browser.getUrl().endsWith("/cards/")) {
             message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
         }
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                && !preferences.getBoolean("notificationPermissionAsked", false)) {
+            preferences.edit().putBoolean("notificationPermissionAsked", true).apply();
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 73);
+        }
         if (cancelScan != null) cancelScan.run();
         final WebView source = browser;
         final int token = ++generation;
