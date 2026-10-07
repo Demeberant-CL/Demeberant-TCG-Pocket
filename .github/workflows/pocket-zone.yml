@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      POCKET_ZONE_KEYSTORE: ${{ runner.temp }}/pocket-zone-signing/pocket-zone-tests.keystore
+      POCKET_ZONE_KEYSTORE: ${{ github.workspace }}/.pocket-zone-signing/pocket-zone-tests.keystore
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +44,7 @@ jobs:
         id: zone-key
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/pocket-zone-signing
+          path: ${{ github.workspace }}/.pocket-zone-signing
           key: pocket-zone-explicit-signing-key-v2
       - name: Prepare or validate the isolated signing key
         run: |
