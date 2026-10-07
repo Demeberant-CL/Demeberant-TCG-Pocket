@@ -36,10 +36,12 @@ jobs:
         timeout-minutes: 6
         run: |
           npm install --prefix "$RUNNER_TEMP/zone-node" playwright@1.56.1
-          "$RUNNER_TEMP/zone-node/node_modules/.bin/playwright" install --with-deps chromium
+          test -x "$CHROME_BIN"
+          "$CHROME_BIN" --version
       - name: Test extraction against local fixtures only
         env:
           NODE_PATH: ${{ runner.temp }}/zone-node/node_modules
+          POCKET_ZONE_TEST_BROWSER: /usr/bin/google-chrome
         run: node --test experiments/pocket-zone/extract.test.cjs
       - name: Restore the isolated signing key
         id: zone-key

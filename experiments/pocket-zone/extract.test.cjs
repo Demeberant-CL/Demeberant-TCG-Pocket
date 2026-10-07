@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const { chromium } = require('playwright');
 const script = fs.readFileSync(__dirname + '/src/main/assets/extract.js', 'utf8');
 let browser;
-before(async () => { browser = await chromium.launch({ headless: true }); });
+before(async () => { browser = await chromium.launch({ headless: true, ...(process.env.POCKET_ZONE_TEST_BROWSER ? { executablePath: process.env.POCKET_ZONE_TEST_BROWSER } : {}) }); });
 after(async () => { if (browser) await browser.close(); });
 async function extract(html, url = 'https://www.pokemon-zone.com/players/3778164033299021/') {
   const page = await browser.newPage();
