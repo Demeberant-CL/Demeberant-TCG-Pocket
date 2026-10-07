@@ -620,6 +620,12 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @Override public void onConfigurationChanged(android.content.res.Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        // Keep the same WebView, DOM observer and native scan when the screen rotates.
+        if (browser != null) { browser.requestLayout(); browser.invalidate(); }
+    }
+
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
     @Override protected void onStop() { resumed = false; handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
