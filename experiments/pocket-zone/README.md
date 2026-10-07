@@ -98,3 +98,7 @@ el registro, exportarlo o salir de la pantalla/app. Si el proceso falla antes, p
 perderse los últimos eventos. Al reiniciar/girar el teléfono el registro queda detenido;
 Iniciar registro nuevo sustituye la captura anterior. Borrar datos de esta prueba
 limpia el diagnóstico. No modifica TCG Pocket, main ni el PR #1.
+
+## Recorrido en segundo plano
+
+El recorrido iniciado por el usuario usa un servicio Android dataSync con notificación de progreso y acción Detener. Mantiene la CPU activa durante el trabajo, con límite de quince minutos y parada al finalizar, cancelar, cambiar de página o cerrar la actividad. El resultado se muestra al regresar si terminó en segundo plano. No se reinicia automáticamente tras una terminación del proceso. En Android 13 o posterior, si las notificaciones están desactivadas, el servicio puede aparecer solamente en la lista de aplicaciones activas. El motor WebView y las restricciones del fabricante todavía pueden ralentizar la carga; requiere prueba en dispositivo. La sincronización de Nintendo sigue siendo manual hasta verificar una señal inequívoca de finalización del sitio.

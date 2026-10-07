@@ -52,6 +52,8 @@ public final class MainActivity extends Activity {
     private Runnable cancelScan;
     private Runnable checkpointScan;
     private android.util.AtomicFile previewFile;
+    private boolean resumed;
+    private boolean pendingScanResult;
     private boolean loaded;
     private boolean pageFailed;
     private SharedPreferences preferences;
@@ -297,6 +299,8 @@ public final class MainActivity extends Activity {
 
             @Override public void onPageStarted(WebView view, String pageUrl, android.graphics.Bitmap icon) {
                 adoptProfile(pageUrl);
+                if (checkpointScan != null) checkpointScan.run();
+                cancelScan = null; checkpointScan = null; ScanService.end(MainActivity.this);
                 generation++; loaded = false; pageFailed = false; readButton.setEnabled(false);
                 trace.add("page_start", pageUrl, 0);
                 status.setText("Cargando… Espera a que aparezcan los datos del perfil.");
@@ -358,7 +362,7 @@ public final class MainActivity extends Activity {
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
         source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
-        new Runnable() {
+        Runnable worker = new Runnable() {
             int stable, rounds;
             final Runnable stop = () -> finish("Detenido por el usuario; avance conservado.");
             private void snapshot(String reason) throws Exception {
@@ -375,14 +379,14 @@ public final class MainActivity extends Activity {
             private boolean active() { return token == generation && browser == source && ZoneUrl.belongsTo(source.getUrl(), profileUrl); }
             private void finish(String reason) {
                 if (!active()) return;
-                generation++; cancelScan = null; checkpointScan = null; readButton.setEnabled(loaded);
+                generation++; cancelScan = null; checkpointScan = null; ScanService.end(MainActivity.this); readButton.setEnabled(loaded);
                 source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
                 try {
                     if (last == null) { status.setText("No se obtuvieron cartas. " + reason); return; }
                     snapshot(reason);
                     trace.add("read_result", source.getUrl(), 0);
                     status.setText("Recorrido terminado: " + accumulated.size() + " cartas distintas. " + reason + " No se garantiza una colección completa.");
-                    showPreview();
+                    if (resumed) showPreview(); else pendingScanResult = true;
                 } catch (Exception e) { status.setText("No se pudo preparar el resultado del recorrido."); }
             }
             @Override public void run() {
@@ -417,6 +421,7 @@ public final class MainActivity extends Activity {
                         }
                         rounds++;
                         status.setText("Recorriendo cartas: " + accumulated.size() + " distintas · paso " + rounds + ".");
+                        ScanService.progress(accumulated.size());
                         source.evaluateJavascript(advance, action -> {
                             if (!active()) return;
                             if ("\"load\"".equals(action) || "\"waiting\"".equals(action)) stable = 0;
@@ -428,12 +433,15 @@ public final class MainActivity extends Activity {
                     } catch (Exception e) { finish("Lectura interrumpida."); }
                 });
             }
-        }.run();
+        };
+        try { ScanService.begin(this, worker, () -> { if (cancelScan != null) cancelScan.run(); }); }
+        catch (RuntimeException e) { readButton.setEnabled(loaded); status.setText("No se pudo iniciar el recorrido en segundo plano. Inténtalo con la app abierta."); }
     }
 
     private void readPage() {
         if (browser == null || !loaded || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)) return;
         final WebView source = browser;
+        if (cancelScan != null) cancelScan.run();
         final int token = ++generation;
         readButton.setEnabled(false);
         status.setText("Leyendo elementos visibles…");
@@ -596,6 +604,7 @@ public final class MainActivity extends Activity {
     private void destroyBrowser() {
         if (checkpointScan != null) checkpointScan.run();
         cancelScan = null; checkpointScan = null;
+        ScanService.end(this);
         generation++; loaded = false; handler.removeCallbacksAndMessages(null);
         if (browser != null) {
             browser.stopLoading();
@@ -606,9 +615,10 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
-    @Override protected void onStop() { handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
+    @Override protected void onStop() { resumed = false; handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
-        super.onResume();
+        super.onResume(); resumed = true;
+        if (pendingScanResult) { pendingScanResult = false; showPreview(); }
         if (browser != null && trace.isRecording()) { handler.removeCallbacks(probeLoop); handler.post(probeLoop); }
     }
 

@@ -20,7 +20,7 @@ for line in changes.splitlines():
 manifest = ET.parse(ROOT / 'src/main/AndroidManifest.xml').getroot()
 android = '{http://schemas.android.com/apk/res/android}'
 permissions = [p.attrib[android + 'name'] for p in manifest.findall('uses-permission')]
-assert permissions == ['android.permission.INTERNET'], permissions
+assert permissions == ['android.permission.INTERNET', 'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_DATA_SYNC', 'android.permission.WAKE_LOCK'], permissions
 assert not manifest.findall('queries')
 application = manifest.find('application')
 assert application is not None
@@ -28,7 +28,11 @@ assert application.get(android + 'allowBackup') == 'false'
 assert application.get(android + 'usesCleartextTraffic') == 'false'
 assert len(application.findall('activity')) == 1
 assert not application.findall('provider')
-assert not application.findall('service')
+services = application.findall('service')
+assert len(services) == 1
+assert services[0].get(android + 'name') == '.ScanService'
+assert services[0].get(android + 'exported') == 'false'
+assert services[0].get(android + 'foregroundServiceType') == 'dataSync'
 assert not manifest.get(android + 'sharedUserId')
 gradle = (ROOT / 'build.gradle.kts').read_text()
 assert re.search(r'applicationId\s*=\s*"' + re.escape(APP_ID) + '"', gradle)
