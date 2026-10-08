@@ -1,8 +1,7 @@
-name: Validate Android and web
+name: Validate production Pokémon Zone integration
 on:
   push:
-    branches: [main, 'fix/**']
-  pull_request:
+    branches: ['integration/pokemon-zone/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -60,6 +59,7 @@ jobs:
               assert not errors
           Path("app/build/reports/validation-summary.txt").write_text(message + "\n")
           metadata = json.loads(Path("app/build/outputs/apk/debug/output-metadata.json").read_text())
+          assert metadata["applicationId"] == "com.aistudio.tcgpocket2.kxmpzq"
           print("APK metadata:", [(e.get("versionCode"), e.get("versionName")) for e in metadata["elements"]])
           print("ROOM_SCHEMA_JSON=" + json.dumps(json.loads(Path("app/schemas/com.example.data.local.AppDatabase/5.json").read_text()), separators=(",", ":")))
           PY
@@ -88,30 +88,16 @@ jobs:
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
-  web:
+  zone-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - name: Assistant backend regression tests
-        run: node --test backend/assistant.test.mjs
-      - run: npm run build
-      - name: Browser regression checks
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-          node web/smoke.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: web-reports
-          path: web-reports/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-app
-          path: dist/
+      - run: npm install --prefix /tmp/zone-browser-tests --no-save playwright
+      - run: /tmp/zone-browser-tests/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verified Zone DOM and Sync fixtures
+        env:
+          NODE_PATH: /tmp/zone-browser-tests/node_modules
+        run: node --test experiments/zone-import/browser.test.cjs

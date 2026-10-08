@@ -461,6 +461,10 @@ fun CollectionScreen(
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
             showSettingsDialog = false
+            context.startActivity(android.content.Intent(context, com.example.zoneimport.ZoneImportActivity::class.java))
+          }, modifier = Modifier.fillMaxWidth()) { Text("Pokémon Zone: resultado / importar JSON") }
+          OutlinedButton(onClick = {
+            showSettingsDialog = false
             try { csvPickerLauncher.launch("*/*") } catch (_: Exception) { showPasteDialog = true }
           }, modifier = Modifier.fillMaxWidth()) { Text("Importar CSV") }
           OutlinedButton(onClick = { showSettingsDialog = false; showPasteDialog = true },

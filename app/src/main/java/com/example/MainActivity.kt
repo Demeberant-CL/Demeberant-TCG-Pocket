@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -96,6 +97,14 @@ class MainActivity : ComponentActivity() {
           Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
+          topBar = {
+            androidx.compose.foundation.layout.Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp)) {
+              androidx.compose.material3.Button(onClick = {
+                navigateTo(0)
+                startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java))
+              }) { Text("Sincronizar colección") }
+            }
+          },
           bottomBar = {
             BoxWithConstraints {
             val density = LocalDensity.current
