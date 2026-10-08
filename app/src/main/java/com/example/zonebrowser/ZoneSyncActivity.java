@@ -206,7 +206,11 @@ public final class ZoneSyncActivity extends Activity {
         HorizontalScrollView controls = new HorizontalScrollView(this);
         LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); controls.addView(row);
         syncButton = button("Sincronizar colección", this::syncAndRead);
-        accountButton = button("Conectar cuenta", () -> { autoStart = false; browser.loadUrl("https://www.pokemon-zone.com/settings/"); });
+        accountButton = button("Conectar cuenta", () -> {
+            autoStart = false;
+            if (browser == null) openBrowser("https://www.pokemon-zone.com/settings/");
+            else browser.loadUrl("https://www.pokemon-zone.com/settings/");
+        });
         cancelButton = button("Cancelar", () -> {
             autoStart = false; cancelSync("Cancelado. La colección guardada se conserva.");
             if (cancelScan != null) cancelScan.run();
@@ -214,6 +218,21 @@ public final class ZoneSyncActivity extends Activity {
         });
         closeButton = button("Volver", () -> { if (!importing) finish(); });
         row.addView(syncButton); row.addView(accountButton); row.addView(cancelButton); row.addView(closeButton);
+        row.addView(button("Copiar diagnóstico", () -> {
+            StringBuilder text = new StringBuilder("POCKET ZONE · PRUEBA " + versionName() + "\n");
+            text.append(status.getText()).append("\nFase Sync: ").append(syncPhase).append("\n");
+            try {
+                JSONArray events = new JSONObject(trace.exportJson()).optJSONArray("events");
+                if (events != null) for (int i = Math.max(0, events.length() - 20); i < events.length(); i++) {
+                    JSONObject event = events.getJSONObject(i);
+                    text.append(event.optString("event")).append(" ").append(event.optString("route"))
+                        .append(" ").append(event.optInt("code")).append("\n");
+                }
+            } catch (Exception ignored) { }
+            ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE))
+                .setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico de sincronización", text.toString()));
+            message("Diagnóstico copiado; puedes pegarlo en el chat.");
+        }));
         content.addView(controls);
         browser = new WebView(this);
         WebSettings settings = browser.getSettings();

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -97,7 +98,7 @@ class MainActivity : ComponentActivity() {
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           topBar = {
-            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 12.dp)) {
+            androidx.compose.foundation.layout.Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp)) {
               Text("Copia de prueba · datos independientes", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
               androidx.compose.material3.Button(onClick = {
                 navigateTo(0)
