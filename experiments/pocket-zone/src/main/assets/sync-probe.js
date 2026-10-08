@@ -18,24 +18,42 @@
       return null;
     };
     // Only fixed, allowlisted categories leave the page. No raw values, IDs or response bodies.
-    const inspect = (kind, data) => {
-      if (!data || typeof data !== 'object' || Array.isArray(data)) { emit('sync_' + kind + '_unknown'); return; }
-      let found = false;
-      for (const key of ['status', 'state', 'done', 'completed', 'success', 'error']) {
-        const value = data[key];
-        let safe = null;
-        if (typeof value === 'boolean') safe = String(value);
-        else if (typeof value === 'string') {
-          const normalized = value.toLowerCase().trim();
-          if (['pending', 'queued', 'running', 'processing', 'in_progress', 'success', 'completed', 'complete', 'done', 'failed', 'failure', 'error'].includes(normalized)) safe = normalized;
-        }
-        if (safe !== null) { found = true; emit('sync_' + kind + '_' + key + '_' + safe); }
+    const fields = new Set(['status', 'state', 'task_status', 'task_state', 'ready', 'is_ready', 'done', 'is_done', 'finished', 'is_finished', 'completed', 'is_completed', 'complete', 'success', 'successful', 'is_successful', 'failed', 'is_failed', 'error', 'has_error', 'progress', 'percent', 'percentage']);
+    const containers = new Set(['data', 'result', 'task', 'job', 'response', 'value']);
+    const phases = new Set(['pending', 'queued', 'received', 'started', 'running', 'processing', 'in_progress', 'progress', 'retry', 'revoked', 'success', 'successful', 'succeeded', 'completed', 'complete', 'finished', 'done', 'ok', 'failed', 'failure', 'error']);
+    const normalizeKey = key => key.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+    const safeValue = value => {
+      if (typeof value === 'boolean') return String(value);
+      if (typeof value === 'string') {
+        const normalized = value.toLowerCase().trim();
+        return phases.has(normalized) ? normalized : 'string';
       }
-      if (!found) emit('sync_' + kind + '_unknown');
+      if (value === null) return 'null';
+      if (Array.isArray(value)) return 'array';
+      return ['number', 'object'].includes(typeof value) ? typeof value : 'unknown';
+    };
+    const inspect = (kind, data) => {
+      const signals = new Set(); let recognized = false;
+      const note = suffix => { if (signals.size < 20) signals.add('sync_' + kind + '_' + suffix); };
+      note('shape_' + (data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data));
+      const visit = (node, path, depth) => {
+        if (depth > 3) return;
+        if (node === null || typeof node !== 'object' || Array.isArray(node)) {
+          note(path + 'value_' + safeValue(node)); recognized = true; return;
+        }
+        for (const key of Object.keys(node).slice(0, 64)) {
+          const name = normalizeKey(key);
+          if (fields.has(name)) { note(path + name + '_' + safeValue(node[key])); recognized = true; }
+          else if (containers.has(name)) visit(node[key], path + name + '_', depth + 1);
+        }
+      };
+      visit(data, '', 0);
+      if (!recognized) note('unknown');
+      signals.forEach(emit);
     };
     const parse = (kind, text) => {
-      if (typeof text !== 'string' || text.length > 16384) { emit('sync_' + kind + '_unknown'); return; }
-      try { inspect(kind, JSON.parse(text)); } catch (_) { emit('sync_' + kind + '_unknown'); }
+      if (typeof text !== 'string' || text.length > 16384) { emit('sync_' + kind + '_oversize'); return; }
+      try { inspect(kind, JSON.parse(text)); } catch (_) { emit('sync_' + kind + '_parse_error'); }
     };
     const consume = async (kind, response) => {
       if (!response.ok) { emit('sync_' + kind + '_http_error'); return; }
@@ -48,7 +66,7 @@
           const chunk = await reader.read();
           if (chunk.done) break;
           size += chunk.value.byteLength;
-          if (size > 16384) { reader.cancel().catch(() => {}); emit('sync_' + kind + '_unknown'); return; }
+          if (size > 16384) { reader.cancel().catch(() => {}); emit('sync_' + kind + '_oversize'); return; }
           text += decoder.decode(chunk.value, { stream: true });
         }
         parse(kind, text + decoder.decode());

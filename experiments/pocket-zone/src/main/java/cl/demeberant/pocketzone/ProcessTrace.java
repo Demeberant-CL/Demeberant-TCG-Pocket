@@ -19,7 +19,7 @@ public final class ProcessTrace {
     private boolean recording;
 
     private static boolean allowedEvent(String event) {
-        return EVENTS.contains(event) || event != null && event.matches("sync_(?:transport_(?:fetch|xhr)|(?:start|status)_(?:unknown|http_error|(?:status|state|done|completed|success|error)_(?:true|false|pending|queued|running|processing|in_progress|success|completed|complete|done|failed|failure|error)))");
+        return EVENTS.contains(event) || event != null && event.matches("sync_(?:transport_(?:fetch|xhr)|(?:start|status)_(?:unknown|http_error|parse_error|oversize|shape_(?:object|array|string|boolean|number|null)|(?:(?:data|result|task|job|response|value)_){0,3}(?:status|state|task_status|task_state|ready|is_ready|done|is_done|finished|is_finished|completed|is_completed|complete|success|successful|is_successful|failed|is_failed|error|has_error|progress|percent|percentage|value)_(?:true|false|pending|queued|received|started|running|processing|in_progress|progress|retry|revoked|success|successful|succeeded|completed|complete|finished|done|ok|failed|failure|error|string|number|null|object|array|unknown)))");
     }
 
     public synchronized void start() { events.clear(); requests.clear(); omitted = 0; filteredRequests = 0; recording = true; add("start", null, 0); }

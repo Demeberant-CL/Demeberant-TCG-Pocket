@@ -152,7 +152,7 @@ test('sync probe preserves fetch responses and exports only fixed state categori
     events.push(...await page.evaluate(() => window.__pocketZoneSyncProbe.drain()));
     if (!events.includes('sync_status_status_completed')) await page.waitForTimeout(10);
   }
-  assert.deepEqual(events, ['sync_transport_fetch', 'sync_status_status_completed']);
+  assert.deepEqual(events, ['sync_transport_fetch', 'sync_status_shape_object', 'sync_status_status_completed']);
   assert.equal(JSON.stringify(events).includes('private'), false);
   await page.close();
 });
@@ -163,8 +163,19 @@ test('sync probe handles XHR and excludes unrelated or unknown response data', a
   await page.route('**/api/players/sync/status/*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'private-secret', token: 'private-secret' }) }));
   await page.evaluate(syncProbe);
   await page.evaluate(() => new Promise(resolve => { const xhr = new XMLHttpRequest(); xhr.open('GET', '/api/players/sync/status/private-job'); xhr.responseType = 'json'; xhr.addEventListener('loadend', resolve); xhr.send(); }));
-  assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), ['sync_transport_xhr', 'sync_status_unknown']);
+  assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), ['sync_transport_xhr', 'sync_status_shape_object', 'sync_status_state_string']);
   await page.evaluate(async () => { await fetch('/api/players/unrelated'); });
   assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), []);
+  await page.close();
+});
+
+test('sync probe recognizes nested task states and camel case flags without retaining secrets', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main>Profile</main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.route('**/api/players/sync/status/*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: { task: { taskStatus: 'SUCCESS', isReady: true, token: 'secret' } }, credential: 'secret' }) }));
+  await page.evaluate(syncProbe);
+  await page.evaluate(() => new Promise(resolve => { const xhr = new XMLHttpRequest(); xhr.open('GET', '/api/players/sync/status/job'); xhr.addEventListener('loadend', resolve); xhr.send(); }));
+  assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), ['sync_transport_xhr', 'sync_status_shape_object', 'sync_status_data_task_task_status_success', 'sync_status_data_task_is_ready_true']);
   await page.close();
 });

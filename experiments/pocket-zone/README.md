@@ -114,3 +114,5 @@ Cada apertura del visor inicia un registro nuevo de metadatos limitados. No es n
 ## Observación limitada de Sync
 
 El visor observa las respuestas de fetch y XMLHttpRequest únicamente de las rutas de sincronización comprobadas en los registros del sitio: /api/players/sync y /api/players/sync/status/…. Solo exporta categorías fijas para campos de estado permitidos; nunca guarda el cuerpo original ni IDs o tokens. Una respuesta desconocida queda marcada como desconocida. Los estados de inicio y de seguimiento se distinguen; un éxito al iniciar no se considera finalización. Esta entrega recoge evidencia del contrato real del sitio; todavía no inicia automáticamente la lectura tras Sync.
+
+El detector también reconoce estados en contenedores permitidos hasta tres niveles, nombres camelCase y estados de tareas. Los valores desconocidos se reducen a su tipo; no se exportan sus textos. El tipo de respuesta, errores de JSON y respuestas demasiado grandes permiten distinguir por qué no se reconoce el estado. Esto es observación diagnóstica, no confirmación automática de éxito.
