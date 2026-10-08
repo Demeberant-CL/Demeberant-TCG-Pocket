@@ -25,7 +25,7 @@ android {
         targetSdk = 35
         // CI revisions increase monotonically; local builds keep the original code.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 1
-        versionName = "0.1.1"
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

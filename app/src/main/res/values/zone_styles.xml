@@ -1,0 +1,11 @@
+<resources>
+    <style name="ZoneBase" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#A84400</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#F1ECE4</item>
+        <item name="android:navigationBarColor">#25211C</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+    <style name="ZoneTheme" parent="ZoneBase" />
+</resources>

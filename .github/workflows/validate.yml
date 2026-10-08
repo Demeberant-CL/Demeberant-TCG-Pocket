@@ -35,6 +35,27 @@ jobs:
           keytool -list -keystore "$RUNNER_TEMP/collection-signing.keystore" -storepass android -alias androiddebugkey > /dev/null
           echo "CI_SIGNING_STORE_FILE=$RUNNER_TEMP/collection-signing.keystore" >> "$GITHUB_ENV"
           echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Check isolated integrated package
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          ns = '{http://schemas.android.com/apk/res/android}'
+          manifest = ET.parse('app/src/main/AndroidManifest.xml').getroot()
+          app = manifest.find('application')
+          assert app.get(ns+'allowBackup') == 'false'
+          assert app.find('provider').get(ns+'authorities') == '${applicationId}.fileprovider'
+          activity = next(x for x in app.findall('activity') if x.get(ns+'name') == 'com.example.zonebrowser.ZoneSyncActivity')
+          assert activity.get(ns+'exported') == 'false'
+          assert 'orientation' in activity.get(ns+'configChanges')
+          service = next(x for x in app.findall('service') if x.get(ns+'name') == 'com.example.zonebrowser.ScanService')
+          assert service.get(ns+'exported') == 'false'
+          assert service.get(ns+'foregroundServiceType') == 'dataSync'
+          gradle = Path('app/build.gradle.kts').read_text()
+          assert 'applicationId = "cl.demeberant.pocketzone.importtest"' in gradle
+          assert 'applicationId = "com.aistudio.tcgpocket2.kxmpzq"' not in gradle
+          print('Integrated copy: independent package/provider, private activity/service, rotation retained.')
+          PY
       - run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
       - name: Summarize Android validation
         run: |
@@ -90,3 +111,16 @@ jobs:
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
+  zone-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/zone-browser-tests --no-save playwright
+      - run: /tmp/zone-browser-tests/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verified Zone DOM and Sync fixtures
+        env:
+          NODE_PATH: /tmp/zone-browser-tests/node_modules
+        run: node --test experiments/zone-import/browser.test.cjs

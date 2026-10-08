@@ -100,7 +100,7 @@ class ZoneImportViewModel(app: Application) : AndroidViewModel(app) {
             "Duración: ${android.os.SystemClock.elapsedRealtime() - start} ms.\n" +
             "App de prueba: cl.demeberant.pocketzone.importtest"
         }
-        prefs.edit().putString("result", result).apply()
+        prefs.edit().putString("result", result).putString("player", plan.playerId).apply()
         mutable.value = mutable.value.copy(busy = false, plan = null, message = result, lastResult = result)
       } catch (e: CancellationException) { throw e }
       catch (_: Exception) {

@@ -100,8 +100,12 @@ class MainActivity : ComponentActivity() {
             androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 12.dp)) {
               Text("Copia de prueba · datos independientes", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
               androidx.compose.material3.Button(onClick = {
+                navigateTo(0)
+                startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java))
+              }) { Text("Sincronizar colección") }
+              androidx.compose.material3.TextButton(onClick = {
                 startActivity(android.content.Intent(this@MainActivity, com.example.zoneimport.ZoneImportActivity::class.java))
-              }) { Text("Importar JSON de Pocket Zone") }
+              }) { Text("Importar JSON / resultado") }
             }
           },
           bottomBar = {

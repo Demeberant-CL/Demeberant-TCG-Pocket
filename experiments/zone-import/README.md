@@ -1,4 +1,20 @@
-# Pocket · Importación de prueba 0.1.1
+# Pocket · Importación de prueba 0.1.2
+
+## Integrated one-button test
+
+Update the existing independent copy; do not uninstall it. Its package and persistent signing key stay unchanged, and its saved collection remains in place.
+
+Tap **Sincronizar colección** on the main screen. On the first use, connect your Pokémon Zone account in this copy's WebView and open your own profile (View profile / Cards) so its ID is recognized. You can also enter the 16-digit friend ID in initial setup. Existing sessions in Pocket Zone · Pruebas or an external browser cannot be transferred into this copy. Google OAuth is not embedded: use the site's password login if the Google flow requires an external browser. Nintendo linking follows the already tested browser handoff and site form; credentials/tokens are not intercepted or logged.
+
+After connection, one tap reloads the saved profile, triggers Sync exactly once, waits for the actual SUCCESS + ready:true response, opens cards, waits for actual card elements, and runs the tested incremental scan. The WebView stays attached with its normal viewport beneath an opaque progress overlay so scroll/infinite-load behavior continues; page controls are disabled during work. The user sees state, distinct loaded-card count, and Cancel. Rotation preserves the same WebView/scan through configChanges. The foreground dataSync service and wake lock preserve the existing background/screen-lock behavior, subject to Android terminating the app process.
+
+Only a naturally finished scan from a confirmed Sync reaches automatic import. Cancellation, load timeout, network error, page change, renderer loss, empty result, wrong player, and safety deadlines do not import an incomplete checkpoint. Native completion markers do not declare `collectionComplete:true`; the importer continues to preserve absent rows. Saving/verification uses the exact JSON importer already tested on the phone. The brief atomic save phase disables Cancel; it is not a reversible cancellation after SQLite commits. A previous saved preview is never automatically imported at startup.
+
+After saving, the scanner closes and the app's main collection summary updates through Room. The last result is available under **Importar JSON / resultado → Copiar resultado para el chat**. No manual JSON export/upload is needed. The JSON-import fallback remains available. Manual imports now also retain the player's ID for future setup.
+
+Phone acceptance: first connection; full Sync→scan→save; compare account counts; rerun without adding copies; rotate and background during scan; cancel a scan and confirm the old quantities remain. The previously confirmed 1,328 IDs / 2,414 copies / 24 sets is a reference, not a fixed cap: real account changes should change these values.
+
+## Earlier import contract and validation
 
 Independent copy of the main Android app, developed only on the `experiment/pocket-zone-import/20261008` branch. No changes are merged into `main` or another experiment. Package: `cl.demeberant.pocketzone.importtest`; its private database, preferences and FileProvider are distinct from the installed main app and Pocket Zone. The clone does not restore Android cloud backups automatically. Updates use the repository's existing persistent CI signing key and increasing version codes.
 
@@ -26,7 +42,7 @@ The actual exported file currently says `collectionComplete: false`, even when t
 
 Uses the app's existing Room repository and schema 5, with a wrapping transaction and read-back verification of quantities in both inventory and user-card tables. A failed transaction rolls back. Reimporting replaces quantities; no additive import. Existing wishes, acquisition dates, absent cards, saved decks and settings are preserved. Selection/validation/import state survives rotation through a ViewModel; interruption by process termination relies on SQLite atomicity and may require selecting the file again. Cancellation can discard uncommitted work; it cannot undo an already committed transaction. All JSON processing is local. The app's existing optional network features remain present, but the importer itself sends no data.
 
-This build tests JSON-to-collection integration only. The Pocket Zone WebView and one-button Sync-and-read are not yet embedded in this clone. No direct access to another app's private storage, Google/Nintendo session, or account tokens is used.
+The integrated scanner reuses the experimentally verified DOM assets and native service. No direct access to another app's private storage, Google/Nintendo session, or account tokens is used.
 
 ## Validation
 
