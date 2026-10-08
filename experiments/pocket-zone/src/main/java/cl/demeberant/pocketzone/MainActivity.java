@@ -65,7 +65,7 @@ public final class MainActivity extends Activity {
             WebView source = browser;
             if (source == null || !trace.isRecording() || (!resumed && cancelScan == null) || !ZoneUrl.canBrowse(source.getUrl())) return;
             try {
-                source.evaluateJavascript(asset("process-probe.js"), result -> {
+                source.evaluateJavascript(asset("sync-probe.js") + ";" + asset("process-probe.js").replace("JSON.stringify(window.__pocketZoneProbe.drain())", "JSON.stringify(window.__pocketZoneSyncProbe.drain().concat(window.__pocketZoneProbe.drain()).slice(0,40))"), result -> {
                     if (browser != source || !trace.isRecording() || result == null || result.length() > 8000) return;
                     try {
                         Object decoded = new JSONTokener(result).nextValue();
@@ -73,7 +73,7 @@ public final class MainActivity extends Activity {
                         JSONArray events = new JSONArray((String) decoded);
                         for (int i = 0; i < Math.min(events.length(), 40); i++) {
                             String kind = events.optString(i);
-                            if (java.util.Set.of("sync_control", "account_control", "load_control").contains(kind)) trace.add(kind, source.getUrl(), 0);
+                            trace.add(kind, source.getUrl(), 0);
                         }
                     } catch (Exception ignored) { }
                 });

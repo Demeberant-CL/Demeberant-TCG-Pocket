@@ -18,6 +18,10 @@ public final class ProcessTrace {
     private final java.util.LinkedHashMap<String, JSONObject> requests = new java.util.LinkedHashMap<>();
     private boolean recording;
 
+    private static boolean allowedEvent(String event) {
+        return EVENTS.contains(event) || event != null && event.matches("sync_(?:transport_(?:fetch|xhr)|(?:start|status)_(?:unknown|http_error|(?:status|state|done|completed|success|error)_(?:true|false|pending|queued|running|processing|in_progress|success|completed|complete|done|failed|failure|error)))");
+    }
+
     public synchronized void start() { events.clear(); requests.clear(); omitted = 0; filteredRequests = 0; recording = true; add("start", null, 0); }
     public synchronized void stop() { add("stop", null, 0); recording = false; }
     public synchronized boolean isRecording() { return recording; }
@@ -27,7 +31,7 @@ public final class ProcessTrace {
     }
 
     public synchronized void add(String event, String url, int code, String method) {
-        if (!recording || !EVENTS.contains(event)) return;
+        if (!recording || !allowedEvent(event)) return;
         try {
             String route = url == null ? null : safeRoute(url);
             String safeMethod = method != null && Set.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS").contains(method) ? method : "";
@@ -79,7 +83,7 @@ public final class ProcessTrace {
             filteredRequests = Math.max(0, root.optInt("filteredRequests"));
             for (int i = Math.max(0, rows.length() - 400); i < rows.length(); i++) {
                 JSONObject row = rows.optJSONObject(i);
-                if (row == null || !EVENTS.contains(row.optString("event"))) continue;
+                if (row == null || !allowedEvent(row.optString("event"))) continue;
                 String time = row.optString("time");
                 try { Instant.parse(time); } catch (Exception e) { continue; }
                 JSONObject clean = new JSONObject().put("time", time).put("event", row.getString("event"));

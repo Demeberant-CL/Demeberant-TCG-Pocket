@@ -135,3 +135,36 @@ test('Load more waits for an actual added card before allowing another click', a
   assert.equal(await page.evaluate(advance),'load-timeout');
   await page.close();
 });
+
+const syncProbe = fs.readFileSync(__dirname + '/src/main/assets/sync-probe.js', 'utf8');
+test('sync probe preserves fetch responses and exports only fixed state categories', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main>Profile</main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.route('**/api/players/sync/status/*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 'completed', token: 'private-secret', playerId: 'private-id' }) }));
+  await page.evaluate(syncProbe);
+  await page.evaluate(syncProbe); // installation must be idempotent
+  const original = await page.evaluate(async () => (await fetch('/api/players/sync/status/private-job')).json());
+  assert.equal(original.token, 'private-secret');
+  await page.waitForFunction(() => window.__pocketZoneSyncProbe !== undefined);
+  const events = [];
+  for (let i = 0; i < 40 && !events.includes('sync_status_status_completed'); i++) {
+    events.push(...await page.evaluate(() => window.__pocketZoneSyncProbe.drain()));
+    if (!events.includes('sync_status_status_completed')) await page.waitForTimeout(10);
+  }
+  assert.deepEqual(events, ['sync_transport_fetch', 'sync_status_status_completed']);
+  assert.equal(JSON.stringify(events).includes('private'), false);
+  await page.close();
+});
+test('sync probe handles XHR and excludes unrelated or unknown response data', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main>Profile</main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.route('**/api/players/sync/status/*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'private-secret', token: 'private-secret' }) }));
+  await page.evaluate(syncProbe);
+  await page.evaluate(() => new Promise(resolve => { const xhr = new XMLHttpRequest(); xhr.open('GET', '/api/players/sync/status/private-job'); xhr.responseType = 'json'; xhr.addEventListener('loadend', resolve); xhr.send(); }));
+  assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), ['sync_transport_xhr', 'sync_status_unknown']);
+  await page.evaluate(async () => { await fetch('/api/players/unrelated'); });
+  assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), []);
+  await page.close();
+});
