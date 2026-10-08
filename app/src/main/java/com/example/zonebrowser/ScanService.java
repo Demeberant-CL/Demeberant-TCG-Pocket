@@ -24,7 +24,7 @@ public final class ScanService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock wake;
     private int count;
-    private boolean stopping;
+    private boolean stopping, committing;
     private final Runnable deadline = this::cancel;
 
     static void begin(Context context, Runnable work, Runnable cancel) {
@@ -37,6 +37,12 @@ public final class ScanService extends Service {
         startWork = null; cancelWork = null;
         if (instance != null) instance.stopping = true;
         context.stopService(new Intent(context, ScanService.class));
+    }
+    static void committing() {
+        if (instance == null) return;
+        instance.committing = true; cancelWork = null;
+        instance.handler.removeCallbacks(instance.deadline);
+        instance.getSystemService(NotificationManager.class).notify(ID, instance.notification());
     }
     static void progress(int cards) {
         if (instance == null || instance.count == cards) return;
@@ -51,12 +57,13 @@ public final class ScanService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent stop = PendingIntent.getService(this, 1, new Intent(this, ScanService.class).setAction(STOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        return new Notification.Builder(this, CHANNEL)
+        Notification.Builder builder = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("Pocket Zone · Actualizando colección")
-                .setContentText(count + " cartas distintas · toca para volver")
-                .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
-                .addAction(new Notification.Action.Builder(null, "Detener", stop).build()).build();
+                .setContentTitle("TCG Dex · Actualizando colección")
+                .setContentText(committing ? "Guardando y verificando cantidades…" : count + " cartas distintas · toca para volver")
+                .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true);
+        if (!committing) builder.addAction(new Notification.Action.Builder(null, "Detener", stop).build());
+        return builder.build();
     }
     @Override public void onCreate() {
         super.onCreate(); instance = this;
@@ -78,11 +85,12 @@ public final class ScanService extends Service {
         }
         if (wake.isHeld()) wake.release();
         wake.acquire(16 * 60 * 1000L);
-        count = 0;
+        count = 0; committing = false;
         handler.removeCallbacks(deadline); handler.postDelayed(deadline, 15 * 60 * 1000L);
         Runnable work = startWork; startWork = null; work.run();
     }
     private void cancel() {
+        if (committing) return; // Room finishes its atomic transaction before releasing the service.
         stopping = true;
         Runnable cancel = cancelWork; cancelWork = null;
         if (cancel != null) cancel.run();

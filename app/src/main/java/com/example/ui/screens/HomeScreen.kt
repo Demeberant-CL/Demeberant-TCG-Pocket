@@ -48,7 +48,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
           ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
-            Text("Tu espacio Pocket", style = MaterialTheme.typography.headlineSmall)
+            Text("Tu espacio TCG Dex", style = MaterialTheme.typography.headlineSmall)
             Text("Resumen de tu colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }

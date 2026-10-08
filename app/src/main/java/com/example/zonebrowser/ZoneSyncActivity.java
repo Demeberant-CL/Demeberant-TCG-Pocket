@@ -393,15 +393,15 @@ public final class ZoneSyncActivity extends Activity {
 
     private void importFinishedScan(JSONObject value) {
         if (importing) return;
-        importing = true; setRunning(true); status.setText("Guardando y verificando cantidades…");
+        importing = true; ScanService.committing(); setRunning(true); status.setText("Guardando y verificando cantidades…");
         boolean started = com.example.zoneimport.ZoneAutoImport.start(this, value.toString(), ZoneUrl.friendId(profileUrl),
             (ok, result) -> {
-                importing = false;
+                importing = false; ScanService.end(ZoneSyncActivity.this);
                 if (isDestroyed()) return;
                 setRunning(false); status.setText(result);
                 if (ok) { message(result); finish(); }
             });
-        if (!started) { importing = false; setRunning(false); status.setText("Ya hay una importación en curso. Espera a que termine."); }
+        if (!started) { ScanService.end(this); importing = false; setRunning(false); status.setText("Ya hay una importación en curso. Espera a que termine."); }
     }
 
     private void syncAndRead() {
@@ -518,10 +518,12 @@ public final class ZoneSyncActivity extends Activity {
             private void finish(String reason) { finish(reason, false); }
             private void finish(String reason, boolean completed) {
                 if (!active()) return;
-                generation++; cancelScan = null; checkpointScan = null; ScanService.end(ZoneSyncActivity.this); readButton.setEnabled(loaded);
+                generation++; cancelScan = null; checkpointScan = null;
+                if (!completed || !syncSucceeded) ScanService.end(ZoneSyncActivity.this);
+                readButton.setEnabled(loaded);
                 source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
                 try {
-                    if (last == null) { setRunning(false); status.setText("No se obtuvieron cartas. " + reason); return; }
+                    if (last == null) { ScanService.end(ZoneSyncActivity.this); setRunning(false); status.setText("No se obtuvieron cartas. " + reason); return; }
                     snapshot(reason);
                     trace.add("read_result", source.getUrl(), 0);
                     status.setText("Recorrido terminado: " + accumulated.size() + " cartas distintas. " + reason + " No se garantiza una colección completa.");
@@ -532,7 +534,7 @@ public final class ZoneSyncActivity extends Activity {
                         setRunning(false);
                         status.setText(reason + " No se importó nada; las cantidades guardadas se conservan.");
                     }
-                } catch (Exception e) { setRunning(false); status.setText("No se pudo preparar el resultado. No se importó nada."); }
+                } catch (Exception e) { ScanService.end(ZoneSyncActivity.this); setRunning(false); status.setText("No se pudo preparar el resultado. No se importó nada."); }
             }
             @Override public void run() {
                 if (!active()) return;
@@ -701,7 +703,7 @@ public final class ZoneSyncActivity extends Activity {
                     zip.putNextEntry(new java.util.zip.ZipEntry("registro.json"));
                     zip.write(text.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
                     zip.putNextEntry(new java.util.zip.ZipEntry("resumen.txt"));
-                    String summary = "Pocket Zone · Pruebas " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
+                    String summary = "TCG Dex · Diagnóstico " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
                     zip.write(summary.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
                 }
                 written = true;

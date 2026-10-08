@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Demeberant TCG Pocket</string>
+    <string name="app_name">TCG Dex</string>
     <string name="settings_title">Configuración</string>
     <string name="settings_theme">Tema visual</string>
     <string name="theme_light">Modo Claro</string>
