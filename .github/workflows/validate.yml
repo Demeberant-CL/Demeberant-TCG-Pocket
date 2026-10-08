@@ -1,7 +1,8 @@
-name: Validate production Pokémon Zone integration
+name: Validate Android, web and Pokémon Zone
 on:
   push:
-    branches: ['integration/pokemon-zone/**']
+    branches: [main, 'fix/**', 'integration/pokemon-zone/**']
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -88,6 +89,34 @@ jobs:
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Assistant backend regression tests
+        run: node --test backend/assistant.test.mjs
+      - run: npm run build
+      - name: Browser regression checks
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node web/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-reports
+          path: web-reports/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-app
+          path: dist/
+
   zone-browser:
     runs-on: ubuntu-latest
     steps:

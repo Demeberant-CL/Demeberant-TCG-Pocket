@@ -1,6 +1,6 @@
 # Integración de Pokémon Zone en la app Android principal
 
-Rama de entrega: integration/pokemon-zone/20261008. main y las copias de prueba permanecen sin cambios.
+Integración validada en el teléfono e incorporada en main. La rama integration/pokemon-zone/20261008 conserva la entrega original; las copias de prueba permanecen independientes.
 
 Mantiene applicationId com.aistudio.tcgpocket2.kxmpzq, la firma persistente publicada, la base de datos Room versión 5 y las reglas originales de respaldo. El código de versión aumenta en CI. No desinstalar para actualizar: se conservan los datos privados existentes.
 
@@ -14,4 +14,4 @@ El recorrido conserva la misma WebView al rotar y usa el servicio foreground dat
 
 La copia de prueba completó las pruebas reales del usuario: Sync y guardado de 1343 cartas distintas, 2440 copias, 24 sets; reimportación, persistencia, giro, uso de otra app y cancelación sin alterar la colección. Estos números no son un límite: cambian si cambia la cuenta del juego. El acceso con Google en navegador externo no comparte cookies con el visor; se conserva el acceso con contraseña y la vinculación Nintendo previamente probados. No se leen ni guardan contraseñas ni tokens.
 
-Pruebas: 146 Android (incluye conservación de deseos/mazos/ausentes, cantidades, transacciones y rollback) y 19 de los selectores/Sync/recorrido. El APK se publica solo con pruebas, lint y firma verificados. Falta comprobar la actualización y primera conexión dentro de la app principal en el teléfono.
+Pruebas: 146 Android (incluye conservación de deseos/mazos/ausentes, cantidades, transacciones y rollback) y 19 de los selectores/Sync/recorrido. El APK se publica solo con pruebas, lint y firma verificados. Actualización y sincronización comprobadas en la app principal por el usuario: 1343 cartas distintas, 2440 copias y 24 sets, con deseos, mazos y ajustes conservados.
