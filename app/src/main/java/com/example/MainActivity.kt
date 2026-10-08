@@ -96,6 +96,14 @@ class MainActivity : ComponentActivity() {
           Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
+          topBar = {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 12.dp)) {
+              Text("Copia de prueba · datos independientes", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
+              androidx.compose.material3.Button(onClick = {
+                startActivity(android.content.Intent(this@MainActivity, com.example.zoneimport.ZoneImportActivity::class.java))
+              }) { Text("Importar JSON de Pocket Zone") }
+            }
+          },
           bottomBar = {
             BoxWithConstraints {
             val density = LocalDensity.current

@@ -20,12 +20,12 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.aistudio.tcgpocket2.kxmpzq"
+        applicationId = "cl.demeberant.pocketzone.importtest"
         minSdk = 26
         targetSdk = 35
         // CI revisions increase monotonically; local builds keep the original code.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 1000 + it } ?: 1
-        versionName = "1.0.$versionCode"
+        versionName = "0.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

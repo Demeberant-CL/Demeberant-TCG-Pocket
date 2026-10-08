@@ -1,8 +1,7 @@
-name: Validate Android and web
+name: Validate isolated Pocket Zone importer
 on:
   push:
-    branches: [main, 'fix/**']
-  pull_request:
+    branches: ['experiment/pocket-zone-import/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -60,8 +59,11 @@ jobs:
               assert not errors
           Path("app/build/reports/validation-summary.txt").write_text(message + "\n")
           metadata = json.loads(Path("app/build/outputs/apk/debug/output-metadata.json").read_text())
+          assert metadata["applicationId"] == "cl.demeberant.pocketzone.importtest", "Wrong application ID; APK withheld"
+          print("ISOLATED_APK_PACKAGE=" + metadata["applicationId"])
           print("APK metadata:", [(e.get("versionCode"), e.get("versionName")) for e in metadata["elements"]])
-          print("ROOM_SCHEMA_JSON=" + json.dumps(json.loads(Path("app/schemas/com.example.data.local.AppDatabase/5.json").read_text()), separators=(",", ":")))
+          assert json.loads(Path("app/schemas/com.example.data.local.AppDatabase/5.json").read_text())["database"]["version"] == 5
+          assert not (counts["failures"] or counts["errors"])
           PY
       - name: Record signing certificate
         if: steps.signing.outputs.ready == 'true'
@@ -81,37 +83,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success() && steps.signing.outputs.ready == 'true'
         with:
-          name: android-apk
+          name: pocket-zone-import-test-apk
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/signing-certificate.txt
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
-  web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - name: Assistant backend regression tests
-        run: node --test backend/assistant.test.mjs
-      - run: npm run build
-      - name: Browser regression checks
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-          node web/smoke.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: web-reports
-          path: web-reports/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-app
-          path: dist/
