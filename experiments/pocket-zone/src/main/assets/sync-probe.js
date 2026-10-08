@@ -3,6 +3,7 @@
   if (location.protocol !== 'https:' || !['www.pokemon-zone.com', 'pokemon-zone.com'].includes(location.hostname)) return '[]';
   if (!window.__pocketZoneSyncProbe) {
     const events = [], tracked = new WeakMap();
+    const flow = { run: 0, phase: "idle" };
     const emit = event => {
       if (window.__pocketZoneProbeActive === false) return;
       if (events.length >= 40) events.shift();
@@ -33,6 +34,12 @@
       return ['number', 'object'].includes(typeof value) ? typeof value : 'unknown';
     };
     const inspect = (kind, data) => {
+      // Verified site contract: readiness alone is not success.
+      if (kind === 'status' && flow.phase === 'waiting' && data?.data?.ready === true) {
+        const status = typeof data.data.status === 'string' ? data.data.status.toLowerCase().trim() : '';
+        if (status === 'success') flow.phase = 'success';
+        else if (['failure', 'failed', 'error', 'revoked'].includes(status)) flow.phase = 'failed';
+      }
       const signals = new Set(); let recognized = false;
       const note = suffix => { if (signals.size < 20) signals.add('sync_' + kind + '_' + suffix); };
       note('shape_' + (data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data));
@@ -55,8 +62,8 @@
       if (typeof text !== 'string' || text.length > 16384) { emit('sync_' + kind + '_oversize'); return; }
       try { inspect(kind, JSON.parse(text)); } catch (_) { emit('sync_' + kind + '_parse_error'); }
     };
-    const consume = async (kind, response) => {
-      if (!response.ok) { emit('sync_' + kind + '_http_error'); return; }
+    const consume = async (kind, response, lease) => {
+      if (!response.ok) { if (lease === flow.run && flow.phase === 'waiting') flow.phase = 'failed'; emit('sync_' + kind + '_http_error'); return; }
       const copy = response.clone();
       const reader = copy.body?.getReader();
       if (!reader) { emit('sync_' + kind + '_unknown'); return; }
@@ -69,14 +76,22 @@
           if (size > 16384) { reader.cancel().catch(() => {}); emit('sync_' + kind + '_oversize'); return; }
           text += decoder.decode(chunk.value, { stream: true });
         }
-        parse(kind, text + decoder.decode());
+        if (lease === flow.run) parse(kind, text + decoder.decode());
       } finally { reader.releaseLock(); }
     };
     if (typeof window.fetch === 'function') {
       const original = window.fetch;
       window.fetch = function (...args) {
         const kind = purpose(args[0]), result = original.apply(this, args);
-        if (kind) { emit('sync_transport_fetch'); result.then(response => consume(kind, response).catch(() => emit('sync_' + kind + '_unknown')), () => emit('sync_' + kind + '_http_error')); }
+        if (kind) {
+          if (kind === 'start') { flow.run++; flow.phase = 'waiting'; }
+          const lease = flow.run;
+          emit('sync_transport_fetch');
+          result.then(response => consume(kind, response, lease).catch(() => emit('sync_' + kind + '_unknown')), () => {
+            if (lease === flow.run && flow.phase === 'waiting') flow.phase = 'failed';
+            emit('sync_' + kind + '_http_error');
+          });
+        }
         return result;
       };
     }
@@ -88,9 +103,12 @@
     XMLHttpRequest.prototype.send = function (...args) {
       const kind = tracked.get(this);
       if (kind) {
+        if (kind === 'start') { flow.run++; flow.phase = 'waiting'; }
+        const lease = flow.run;
         emit('sync_transport_xhr');
         this.addEventListener('loadend', () => {
-          if (this.status < 200 || this.status >= 300) { emit('sync_' + kind + '_http_error'); return; }
+          if (lease !== flow.run) return;
+          if (this.status < 200 || this.status >= 300) { if (flow.phase === 'waiting') flow.phase = 'failed'; emit('sync_' + kind + '_http_error'); return; }
           try {
             if (this.responseType === 'json') inspect(kind, this.response);
             else if (this.responseType === '' || this.responseType === 'text') parse(kind, this.responseText);
@@ -100,7 +118,7 @@
       }
       return send.apply(this, args);
     };
-    window.__pocketZoneSyncProbe = { drain: () => events.splice(0, 40) };
+    window.__pocketZoneSyncProbe = { drain: () => events.splice(0, 40), prepare: () => { flow.run++; flow.phase = "idle"; }, state: () => flow.phase };
   }
   return null;
 })();

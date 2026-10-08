@@ -49,6 +49,11 @@ public final class MainActivity extends Activity {
     private JSONObject preview;
     private String pendingExport;
     private int generation;
+    private int syncPhase, syncFlowId;
+    private long syncDeadline;
+    private WebView syncBrowser;
+    private String syncProfile;
+    private boolean syncEvaluationPending;
     private Runnable cancelScan;
     private Runnable checkpointScan;
     private android.util.AtomicFile previewFile;
@@ -63,7 +68,7 @@ public final class MainActivity extends Activity {
     private final Runnable probeLoop = new Runnable() {
         @Override public void run() {
             WebView source = browser;
-            if (source == null || !trace.isRecording() || (!resumed && cancelScan == null) || !ZoneUrl.canBrowse(source.getUrl())) return;
+            if (source == null || !trace.isRecording() || (!resumed && cancelScan == null && syncPhase == 0) || !ZoneUrl.canBrowse(source.getUrl())) return;
             try {
                 source.evaluateJavascript(asset("sync-probe.js") + ";" + asset("process-probe.js").replace("JSON.stringify(window.__pocketZoneProbe.drain())", "JSON.stringify(window.__pocketZoneSyncProbe.drain().concat(window.__pocketZoneProbe.drain()).slice(0,40))"), result -> {
                     if (browser != source || !trace.isRecording() || result == null || result.length() > 8000) return;
@@ -228,8 +233,9 @@ public final class MainActivity extends Activity {
         row.addView(button("Mi cuenta", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/settings/"); }));
         row.addView(button("Acceso con contraseña", () -> { if (browser != null) browser.loadUrl("https://www.pokemon-zone.com/accounts/login/"); }));
         row.addView(readButton);
+        row.addView(button("Sincronizar y leer", this::syncAndRead));
         row.addView(button("Recorrer cartas", this::readProgressively));
-        row.addView(button("Detener recorrido", () -> { if (cancelScan != null) cancelScan.run(); }));
+        row.addView(button("Detener", () -> { cancelSync("Sincronización detenida por el usuario."); if (cancelScan != null) cancelScan.run(); }));
         row.addView(button("Ver cartas", () -> {
             if (browser == null) return;
             adoptProfile(browser.getUrl());
@@ -301,7 +307,12 @@ public final class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String pageUrl, android.graphics.Bitmap icon) {
                 adoptProfile(pageUrl);
                 if (checkpointScan != null) checkpointScan.run();
-                cancelScan = null; checkpointScan = null; ScanService.end(MainActivity.this);
+                cancelScan = null; checkpointScan = null;
+                if (syncPhase != 0) {
+                    String expected = syncPhase >= 3 ? syncProfile + "cards/" : syncProfile;
+                    if (!expected.equals(pageUrl)) cancelSync("La navegación interrumpió la sincronización.");
+                }
+                if (syncPhase == 0) ScanService.end(MainActivity.this);
                 generation++; loaded = false; pageFailed = false; readButton.setEnabled(false);
                 trace.add("page_start", pageUrl, 0);
                 status.setText("Cargando… Espera a que aparezcan los datos del perfil.");
@@ -315,12 +326,19 @@ public final class MainActivity extends Activity {
                 status.setText(loaded ? "Página cargada. Si muestra «Loading», espera antes de leer." : "Página de cuenta. Puedes interactuar con el sitio; Leer se habilita solo en tu perfil.");
                 handler.removeCallbacks(probeLoop);
                 if (trace.isRecording()) handler.post(probeLoop);
+                if (syncBrowser == view && syncPhase == 1 && syncProfile.equals(pageUrl) && loaded) {
+                    syncPhase = 2;
+                    status.setText("Sincronizando Pokémon Zone… Esperando confirmación.");
+                } else if (syncBrowser == view && syncPhase == 3 && (syncProfile + "cards/").equals(pageUrl) && loaded) {
+                    syncPhase = 4;
+                    status.setText("Sincronización confirmada. Esperando a que aparezcan las cartas…");
+                }
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 trace.add("network_error", request.getUrl().toString(), error.getErrorCode());
                 if (request.isForMainFrame()) {
-                    loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
+                    cancelSync("El sitio no pudo cargar la página para Sync."); loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
                     status.setText("No se pudo cargar el perfil. Comprueba la conexión y vuelve a abrirlo.");
                 }
             }
@@ -328,7 +346,7 @@ public final class MainActivity extends Activity {
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 trace.add("http_error", request.getUrl().toString(), response.getStatusCode());
                 if (request.isForMainFrame()) {
-                    loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
+                    cancelSync("El sitio no pudo cargar la página para Sync."); loaded = false; pageFailed = true; generation++; readButton.setEnabled(false);
                     status.setText("El sitio respondió HTTP " + response.getStatusCode() + ". No se han leído datos.");
                 }
             }
@@ -347,25 +365,98 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void readProgressively() {
-        if (browser != null) { adoptProfile(browser.getUrl()); loaded = !pageFailed && ZoneUrl.belongsTo(browser.getUrl(), profileUrl); }
-        if (browser == null || !loaded || profileUrl == null || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)
-                || !browser.getUrl().endsWith("/cards/")) {
-            message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
-        }
+    private void requestWorkNotifications() {
         if (android.os.Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
                 && !preferences.getBoolean("notificationPermissionAsked", false)) {
             preferences.edit().putBoolean("notificationPermissionAsked", true).apply();
             requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 73);
         }
+    }
+
+    private void syncAndRead() {
+        if (browser == null || profileUrl == null) { message("Abre primero tu perfil para reconocer la cuenta."); return; }
+        cancelSync("Se reinició la sincronización.");
+        if (cancelScan != null) cancelScan.run();
+        requestWorkNotifications();
+        syncBrowser = browser; syncProfile = profileUrl;
+        syncPhase = 1; syncEvaluationPending = false; syncFlowId++;
+        syncDeadline = android.os.SystemClock.elapsedRealtime() + 120000;
+        final int token = syncFlowId;
+        try {
+            ScanService.begin(this, () -> {
+                if (token != syncFlowId || syncBrowser != browser) return;
+                status.setText("Abriendo tu perfil para sincronizar…");
+                handler.removeCallbacks(syncPoll); handler.post(syncPoll);
+                syncBrowser.loadUrl(syncProfile);
+            }, () -> cancelSync("Sincronización detenida; la colección no se ha leído."));
+        } catch (RuntimeException e) { cancelSync("No se pudo iniciar la sincronización. Inténtalo con la app abierta."); }
+    }
+
+    private void cancelSync(String reason) {
+        if (syncPhase == 0) return;
+        syncPhase = 0; syncFlowId++; syncBrowser = null; syncEvaluationPending = false;
+        handler.removeCallbacks(syncPoll); ScanService.end(this);
+        if (status != null) status.setText(reason);
+        trace.add("read_error", null, 0); saveTrace();
+    }
+
+    private final Runnable syncPoll = new Runnable() {
+        @Override public void run() {
+            if (syncPhase == 0 || syncBrowser != browser) return;
+            if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en dos minutos. La colección no se ha leído."); return; }
+            if (syncPhase == 2 && !syncEvaluationPending) {
+                if (!syncProfile.equals(browser.getUrl())) { cancelSync("La página cambió durante Sync."); return; }
+                syncEvaluationPending = true;
+                final int token = syncFlowId;
+                try {
+                    syncBrowser.evaluateJavascript(asset("sync-probe.js") + ";" + asset("sync-control.js"), result -> {
+                        if (token != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                        syncEvaluationPending = false;
+                        if ("\"success\"".equals(result)) {
+                            syncPhase = 3;
+                            status.setText("Sincronización confirmada. Abriendo cartas…");
+                            syncBrowser.loadUrl(syncProfile + "cards/");
+                        } else if ("\"failed\"".equals(result) || "\"blocked\"".equals(result)) {
+                            cancelSync("Sync no confirmó éxito. La colección no se ha leído.");
+                        }
+                    });
+                } catch (Exception e) { cancelSync("No se pudo comprobar el estado de Sync."); return; }
+            }
+            if (syncPhase == 4 && !syncEvaluationPending) {
+                syncEvaluationPending = true;
+                final int token = syncFlowId;
+                try {
+                    syncBrowser.evaluateJavascript(asset("cards-ready.js"), result -> {
+                        if (token != syncFlowId || syncPhase != 4 || syncBrowser != browser) return;
+                        syncEvaluationPending = false;
+                        if ("\"ready\"".equals(result)) {
+                            syncPhase = 0; syncFlowId++; syncBrowser = null;
+                            handler.removeCallbacks(syncPoll);
+                            readProgressively();
+                        } else if ("\"blocked\"".equals(result)) cancelSync("No se pudo abrir la colección después de Sync.");
+                    });
+                } catch (Exception e) { cancelSync("No se pudo comprobar la carga de cartas."); return; }
+            }
+            if (syncPhase != 0) handler.postDelayed(this, 500);
+        }
+    };
+
+    private void readProgressively() {
+        cancelSync("Se inició un recorrido manual.");
+        if (browser != null) { adoptProfile(browser.getUrl()); loaded = !pageFailed && ZoneUrl.belongsTo(browser.getUrl(), profileUrl); }
+        if (browser == null || !loaded || profileUrl == null || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)
+                || !browser.getUrl().endsWith("/cards/")) {
+            message("Abre Ver cartas y espera a que cargue antes de recorrer."); return;
+        }
+        requestWorkNotifications();
         if (cancelScan != null) cancelScan.run();
         final WebView source = browser;
         final int token = ++generation;
         final java.util.LinkedHashMap<String, JSONObject> accumulated = new java.util.LinkedHashMap<>();
         final long hardDeadline = android.os.SystemClock.elapsedRealtime() + 900000;
         final String script, advance;
-        try { script = asset("scan-observer.js") + ";" + asset("extract.js").replace("})();", "})(true);"); advance = asset("advance-cards.js"); } catch (Exception e) { message("No se pudo iniciar el recorrido."); return; }
+        try { script = asset("scan-observer.js") + ";" + asset("extract.js").replace("})();", "})(true);"); advance = asset("advance-cards.js"); } catch (Exception e) { ScanService.end(this); message("No se pudo iniciar el recorrido."); return; }
         readButton.setEnabled(false);
         trace.add("read_start", source.getUrl(), 0);
         source.evaluateJavascript("window.__pocketZoneScan?.observer.disconnect();delete window.__pocketZoneScan;", null);
@@ -446,6 +537,7 @@ public final class MainActivity extends Activity {
     }
 
     private void readPage() {
+        cancelSync("Se inició una lectura manual.");
         if (browser == null || !loaded || !ZoneUrl.belongsTo(browser.getUrl(), profileUrl)) return;
         final WebView source = browser;
         if (cancelScan != null) cancelScan.run();
@@ -609,6 +701,7 @@ public final class MainActivity extends Activity {
     }
 
     private void destroyBrowser() {
+        cancelSync("Sincronización interrumpida al cerrar el visor.");
         if (checkpointScan != null) checkpointScan.run();
         cancelScan = null; checkpointScan = null;
         ScanService.end(this);
@@ -631,7 +724,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() { destroyBrowser(); super.onDestroy(); }
-    @Override protected void onStop() { resumed = false; trace.add("app_background", null, 0); if (cancelScan == null) handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
+    @Override protected void onStop() { resumed = false; trace.add("app_background", null, 0); if (cancelScan == null && syncPhase == 0) handler.removeCallbacks(probeLoop); if (checkpointScan != null) checkpointScan.run(); saveTrace(); super.onStop(); }
     @Override protected void onResume() {
         super.onResume(); resumed = true; trace.add("app_foreground", null, 0);
         if (pendingScanResult) { pendingScanResult = false; try { showPreview(); } catch (Exception e) { message("El resultado está guardado; vuelve a abrir la vista previa."); } }

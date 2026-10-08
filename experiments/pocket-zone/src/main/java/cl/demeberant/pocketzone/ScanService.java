@@ -24,15 +24,18 @@ public final class ScanService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock wake;
     private int count;
+    private boolean stopping;
     private final Runnable deadline = this::cancel;
 
     static void begin(Context context, Runnable work, Runnable cancel) {
         startWork = work; cancelWork = cancel;
+        if (instance != null && !instance.stopping) { instance.runWork(); return; }
         try { context.startForegroundService(new Intent(context, ScanService.class)); }
         catch (RuntimeException e) { startWork = null; cancelWork = null; throw e; }
     }
     static void end(Context context) {
         startWork = null; cancelWork = null;
+        if (instance != null) instance.stopping = true;
         context.stopService(new Intent(context, ScanService.class));
     }
     static void progress(int cards) {
@@ -50,7 +53,7 @@ public final class ScanService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("Pocket Zone · Leyendo colección")
+                .setContentTitle("Pocket Zone · Actualizando colección")
                 .setContentText(count + " cartas distintas · toca para volver")
                 .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
                 .addAction(new Notification.Action.Builder(null, "Detener", stop).build()).build();
@@ -65,15 +68,22 @@ public final class ScanService extends Service {
         if (startWork == null) { stopSelf(); return START_NOT_STICKY; }
         if (Build.VERSION.SDK_INT >= 29) startForeground(ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         else startForeground(ID, notification());
-        if (wake == null) {
-            wake = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":collection");
-            wake.acquire(16 * 60 * 1000L);
-        }
-        handler.removeCallbacks(deadline); handler.postDelayed(deadline, 15 * 60 * 1000L);
-        Runnable work = startWork; startWork = null; work.run();
+        runWork();
         return START_NOT_STICKY;
     }
+    private void runWork() {
+        if (wake == null) {
+            wake = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":collection");
+
+        }
+        if (wake.isHeld()) wake.release();
+        wake.acquire(16 * 60 * 1000L);
+        count = 0;
+        handler.removeCallbacks(deadline); handler.postDelayed(deadline, 15 * 60 * 1000L);
+        Runnable work = startWork; startWork = null; work.run();
+    }
     private void cancel() {
+        stopping = true;
         Runnable cancel = cancelWork; cancelWork = null;
         if (cancel != null) cancel.run();
         stopSelf();

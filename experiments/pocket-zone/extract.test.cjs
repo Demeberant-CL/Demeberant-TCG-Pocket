@@ -179,3 +179,61 @@ test('sync probe recognizes nested task states and camel case flags without reta
   assert.deepEqual(await page.evaluate(() => window.__pocketZoneSyncProbe.drain()), ['sync_transport_xhr', 'sync_status_shape_object', 'sync_status_data_task_task_status_success', 'sync_status_data_task_is_ready_true']);
   await page.close();
 });
+const syncControl = fs.readFileSync(__dirname + '/src/main/assets/sync-control.js', 'utf8');
+const cardsReady = fs.readFileSync(__dirname + '/src/main/assets/cards-ready.js', 'utf8');
+test('automatic Sync clicks once and requires success AND ready from the new operation', async () => {
+  const page = await browser.newPage();
+  let response = { data: { status: 'SUCCESS', ready: true } };
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main><button id="sync">Sync</button></main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.route('**/api/players/sync', route => route.fulfill({ contentType: 'application/json', body: '{"job":"private"}' }));
+  await page.route('**/api/players/sync/status/*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(response) }));
+  await page.evaluate(syncProbe);
+  const poll = async () => {
+    await page.evaluate(() => new Promise(resolve => { const x = new XMLHttpRequest(); x.open('GET', '/api/players/sync/status/job'); x.addEventListener('loadend', resolve); x.send(); }));
+  };
+  await poll();
+  assert.equal(await page.evaluate(() => window.__pocketZoneSyncProbe.state()), 'idle');
+  await page.evaluate(() => { window.clicks = 0; document.querySelector('#sync').onclick = () => { window.clicks++; fetch('/api/players/sync', { method: 'POST' }); }; });
+  assert.equal(await page.evaluate(syncControl), 'waiting');
+  response = { data: { status: 'SUCCESS', ready: false } }; await poll();
+  assert.equal(await page.evaluate(syncControl), 'waiting');
+  response = { data: { status: 'PENDING', ready: true } }; await poll();
+  assert.equal(await page.evaluate(syncControl), 'waiting');
+  response = { data: { status: 'SUCCESS', ready: true } }; await poll();
+  assert.equal(await page.evaluate(syncControl), 'success');
+  assert.equal(await page.evaluate(() => window.clicks), 1);
+  await page.close();
+});
+test('automatic Sync rejects failure and ignores a response belonging to an older start', async () => {
+  const page = await browser.newPage();
+  let oldRoute; let first = true;
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main>Profile</main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.route('**/api/players/sync', route => route.fulfill({ contentType: 'application/json', body: '{}' }));
+  await page.route('**/api/players/sync/status/*', route => {
+    if (first) { first = false; oldRoute = route; return; }
+    return route.fulfill({ contentType: 'application/json', body: '{"data":{"status":"FAILURE","ready":true}}' });
+  });
+  await page.evaluate(syncProbe);
+  await page.evaluate(async () => { await fetch('/api/players/sync', { method: 'POST' }); window.oldPoll = fetch('/api/players/sync/status/old'); });
+  for (let i = 0; !oldRoute && i < 50; i++) await page.waitForTimeout(10);
+  assert.ok(oldRoute);
+  await page.evaluate(async () => { await fetch('/api/players/sync', { method: 'POST' }); });
+  await oldRoute.fulfill({ contentType: 'application/json', body: '{"data":{"status":"SUCCESS","ready":true}}' });
+  await page.evaluate(async () => { await window.oldPoll; });
+  assert.equal(await page.evaluate(() => window.__pocketZoneSyncProbe.state()), 'waiting');
+  await page.evaluate(() => new Promise(resolve => { const x = new XMLHttpRequest(); x.open('GET', '/api/players/sync/status/new'); x.addEventListener('loadend', resolve); x.send(); }));
+  assert.equal(await page.evaluate(() => window.__pocketZoneSyncProbe.state()), 'failed');
+  await page.close();
+});
+test('post-sync readiness waits for actual card rows on the collection route', async () => {
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<main>Loading...</main>' }));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+  assert.equal(await page.evaluate(cardsReady), 'waiting');
+  await page.evaluate(() => { document.querySelector('main').innerHTML = '<div class="player-expansion-collection-card"></div>'; });
+  assert.equal(await page.evaluate(cardsReady), 'ready');
+  assert.equal(await page.evaluate(syncControl), 'blocked');
+  await page.close();
+});
