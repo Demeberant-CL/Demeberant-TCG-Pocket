@@ -2,6 +2,7 @@ package com.example.zoneimport
 
 import android.content.Context
 import android.os.Looper
+import androidx.room.withTransaction
 import com.example.data.local.AppDatabase
 import com.example.data.repository.CardCatalog
 import kotlinx.coroutines.CancellationException
@@ -40,9 +41,19 @@ object ZoneAutoImport {
           val start = android.os.SystemClock.elapsedRealtime()
           CardCatalog.loadBundled(app)
           val plan = prepare(payload, expectedPlayer)
-          ZoneCollectionImport.apply(AppDatabase.getDatabase(app), plan)
+          val db = AppDatabase.getDatabase(app)
+          val stored = db.withTransaction {
+            ZoneCollectionImport.apply(db, plan)
+            db.inventoryDao().getAllCards().filter { it.quantity > 0 }
+          }
+          val importedIds = plan.cards.map { com.example.data.util.CardId.normalize("${it.setCode}-${it.cardNumber}") }.toSet()
+          val retained = stored.count { it.cardId !in importedIds }
+          val appSummary = if (retained > 0)
+            "Total guardado en la app: ${stored.size} cartas distintas · ${stored.sumOf { it.quantity.toLong() }} copias.\n" +
+              "$retained cartas previas fuera del recorrido se conservaron.\n"
+            else ""
           val result = "SINCRONIZACIÓN E IMPORTACIÓN OK\n${plan.uniqueCards} cartas únicas · ${plan.totalCopies} copias · ${plan.sets} sets\n" +
-            "Cantidades verificadas en ambas tablas.\nDuplicados omitidos: ${plan.duplicates}.\n" +
+            "Cantidades verificadas en ambas tablas.\nDuplicados omitidos: ${plan.duplicates}.\n" + appSummary +
             "Reimportar reemplaza cantidades; no suma. Cartas ausentes, deseos y mazos se conservan.\n" +
             "Guardado: ${android.os.SystemClock.elapsedRealtime() - start} ms.\nApp: com.aistudio.tcgpocket2.kxmpzq"
           app.getSharedPreferences("zone-import-test", Context.MODE_PRIVATE).edit()
