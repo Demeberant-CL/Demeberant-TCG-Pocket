@@ -105,7 +105,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         Column(Modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
           MaterialTheme.colorScheme.surface))).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Box(Modifier.fillMaxWidth()) {
-            DexCardFan(Modifier.align(Alignment.CenterEnd).width(130.dp).height(98.dp))
+            DexCardFan(Modifier.align(Alignment.CenterEnd).width(130.dp).height(64.dp))
             Row(Modifier.fillMaxWidth().padding(end = 72.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
               Column(Modifier.weight(1f)) {
                 Text(numbers.format(owned), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)

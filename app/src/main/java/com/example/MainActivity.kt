@@ -46,6 +46,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -143,6 +145,7 @@ class MainActivity : ComponentActivity() {
               val target = with(density) { (itemWidth * activeIndex - (maxWidth - itemWidth) / 2).roundToPx() }
               navigationScroll.animateScrollTo(target.coerceAtLeast(0))
             }
+            val navAccent = androidx.compose.material3.MaterialTheme.colorScheme.primary
             NavigationBar(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background, modifier = Modifier.horizontalScroll(navigationScroll)
               .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
               .testTag("main_bottom_nav")) {
@@ -165,7 +168,11 @@ class MainActivity : ComponentActivity() {
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),
-                  modifier = Modifier.testTag("nav_item_$index")
+                  modifier = Modifier.testTag("nav_item_$index").drawBehind {
+                    if (index == activeIndex) drawLine(navAccent,
+                      Offset(size.width * .27f, size.height - 3.dp.toPx()),
+                      Offset(size.width * .73f, size.height - 3.dp.toPx()), 2.dp.toPx())
+                  }
                 )
               }
             }
