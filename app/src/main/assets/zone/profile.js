@@ -16,7 +16,7 @@
   for (const dt of root.querySelectorAll('dl dt')) {
     if (/^(level|nivel|lv\.?|lvl\.?)$/i.test(text(dt)) && dt.nextElementSibling?.tagName === 'DD') labeledLevel = text(dt.nextElementSibling);
   }
-  const levelText = text(levelNode) || text(heading?.parentElement);
+  const levelText = text(levelNode);
   const match = /(?:\bLevel|\bNivel|\bLv\.?|\bLvl\.?)\s*[:.-]?\s*(\d{1,3})\b/i.exec(levelText);
   const rawNumber = labeledLevel || text(levelNode);
   const numeric = /^\d{1,3}$/.test(rawNumber) ? Number(rawNumber) : 0;
