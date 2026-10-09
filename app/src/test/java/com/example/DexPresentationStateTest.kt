@@ -16,16 +16,16 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DexPresentationStateTest {
-  @Test fun newThemeMigratesOnceAndLaterChoicesSurviveRestarts() = runBlocking {
+  @Test fun retiredDexThemeReturnsToSystemAndOtherSettingsSurvive() = runBlocking {
     val key = stringPreferencesKey("theme_name")
     val avatar = stringPreferencesKey("profile_avatar")
-    val migrated = SettingsMigration.migrate(preferencesOf(key to "light", avatar to "trainer_teal"))
-    assertEquals("dex", migrated[key])
+    val migrated = SettingsMigration.migrate(preferencesOf(key to "dex", avatar to "trainer_teal", booleanPreferencesKey("dex_theme_applied") to true))
+    assertEquals("system", migrated[key])
     assertEquals("trainer_teal", migrated[avatar])
     val later = migrated.toMutablePreferences().apply { this[key] = "light" }.toPreferences()
     assertFalse(SettingsMigration.shouldMigrate(later))
     assertEquals("light", SettingsMigration.migrate(later)[key])
-    assertTrue(ThemeMode.DEX.isDark(false))
+    assertEquals(ThemeMode.SYSTEM, ThemeMode.fromStored("dex"))
   }
 
   @Test fun selectedCoverSurvivesSerializationBackupAndRemovalWithoutChangingCounts() {

@@ -135,7 +135,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/tcg-dex-layout-review'
+    if: github.ref == 'refs/heads/fix/restore-pre-blue'
     needs: android
     runs-on: ubuntu-latest
     steps:
@@ -182,7 +182,7 @@ jobs:
             app/build/reports/androidTests/
 
   delivery:
-    if: github.ref == 'refs/heads/fix/tcg-dex-layout-review'
+    if: github.ref == 'refs/heads/fix/restore-pre-blue'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     permissions:
@@ -203,7 +203,7 @@ jobs:
         run: |
           version="1.0.$((1000 + GITHUB_RUN_NUMBER))"
           mv delivery/app-debug.apk "delivery/TCG-Dex-$version.apk"
-          printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nTema azul nocturno en todas las pantallas. Nick, nivel y Friend ID en Inicio.\nEdita el perfil con el lápiz si el sitio no muestra nick o nivel.\nEn el editor, pulsa Usar como portada en la carta elegida y guarda el mazo.\nLa fecha y las novedades se registran después de sincronizar con esta versión.\nLa colección, deseos, mazos, ajustes y sesión se conservan.\n' "$version" > delivery/LEEME.txt
+          printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nInterfaz anterior al rediseño azul: tonos neutros y acentos naranjas.\nEn el editor, pulsa Usar como portada en la carta elegida y guarda el mazo.\nLa fecha y las novedades se registran después de sincronizar con esta versión.\nLa colección, deseos, mazos, ajustes y sesión se conservan.\n' "$version" > delivery/LEEME.txt
           (cd delivery && zip "TCG-Dex-$version.zip" "TCG-Dex-$version.apk" LEEME.txt signing-certificate.txt)
           (cd preview-assets && zip -r "../delivery/TCG-Dex-$version-vista-previa.zip" . -i '*.png')
-          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.zip" "delivery/TCG-Dex-$version-vista-previa.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Nuevo diseño" --notes "Actualización Android verificada con tema azul nocturno, perfil del jugador y portadas de mazos. Instalar sobre la versión anterior, sin desinstalar."
+          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.zip" "delivery/TCG-Dex-$version-vista-previa.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Diseño anterior recuperado" --notes "Actualización Android verificada que recupera la interfaz anterior al tema azul y mantiene las mejoras de sincronización. Instalar sobre la versión anterior, sin desinstalar."

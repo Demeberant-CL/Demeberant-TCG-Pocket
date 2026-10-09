@@ -1,6 +1,7 @@
 package com.example
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,6 +25,7 @@ class DexVisualTest {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
     CardCatalog.loadBundled(context)
     val db = AppDatabase.getDatabase(context)
+    db.openHelper.writableDatabase.execSQL("DELETE FROM saved_decks")
     val catalog = CardCatalog.ALL_CARDS
     db.inventoryDao().insertCards(catalog.take(1343).mapIndexed { index, card ->
       InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 1097) 2 else 1,false)
@@ -39,10 +41,9 @@ class DexVisualTest {
       .putString("player","0000000000000001").putString("profile_account","0000000000000001")
       .putString("profile_nickname","Demeberant").putInt("profile_level",50)
       .putLong("synced_at",System.currentTimeMillis()).putInt("new_cards",15).putLong("added_copies",26).commit()
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("Demeberant").fetchSemanticsNodes().isNotEmpty() }
-    compose.onNodeWithText("Demeberant").assertIsDisplayed()
-    compose.onNodeWithText("Nivel 50").assertIsDisplayed()
-    compose.onNodeWithText("Sincronizar colección").performScrollTo().assertIsDisplayed()
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("1343 /", substring = true).fetchSemanticsNodes().isNotEmpty() }
+    compose.onNodeWithText("Tu colección").assertIsDisplayed()
+    compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
     capture("inicio")
     compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
@@ -50,7 +51,10 @@ class DexVisualTest {
     capture("inicio-mazos")
     for ((index, name) in listOf(1 to "coleccion",2 to "mazos",3 to "ia",4 to "ajustes")) {
       compose.onNodeWithTag("nav_item_$index").performClick()
+      val expected = when (index) { 1 -> "Mi colección"; 2 -> "Mis mazos (2)"; 3 -> "Asistente IA"; else -> "Herramientas" }
+      compose.waitUntil(15_000) { compose.onAllNodesWithText(expected).fetchSemanticsNodes().isNotEmpty() }
       compose.waitForIdle()
+      Thread.sleep(1500)
       capture(name)
       if (index == 1) {
         compose.onNodeWithText("Filtrar").performClick()
@@ -64,6 +68,7 @@ class DexVisualTest {
       }
       if (index == 2) {
         compose.onNodeWithText("+ Nuevo mazo").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Prepara tu primera baraja").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
         capture("mazos-editor")
       }
@@ -72,7 +77,9 @@ class DexVisualTest {
   private fun capture(name: String) {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val dir = File(instrumentation.targetContext.getExternalFilesDir(null),"design-preview").apply { mkdirs() }
-    val image = instrumentation.uiAutomation.takeScreenshot()
+    compose.waitForIdle()
+    Thread.sleep(800)
+    val image = if (name == "coleccion-filtros" || name == "ajustes-dialogo") instrumentation.uiAutomation.takeScreenshot() else compose.onAllNodes(isRoot(), useUnmergedTree = true).onLast().captureToImage().asAndroidBitmap()
     File(dir,"$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
     image.recycle()
   }
