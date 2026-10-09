@@ -67,3 +67,10 @@ test('legacy blue and language are migrated without losing inventory',()=>{
  assert.deepEqual(parsed.preferences,{theme:'light'});
  assert.deepEqual(parsed.inventory,[record]);
 });
+
+ test('new Android Dex theme and chosen cover remain compatible with web backups',()=>{
+ const content=JSON.stringify({format:2,energies:['Planta'],cards:[{id:'A1-001',count:1}],cover:'A1-001'});
+ const parsed=validateBackup(JSON.stringify({...backup,preferences:{theme:'dex'},decks:[{name:'Portada',archetype:'Manual',strategy:'',cards:content,total:1,createdAt:1}]}));
+ assert.equal(parsed.preferences.theme,'dark');
+ assert.equal(JSON.parse(parsed.decks[0].cards).cover,'A1-001');
+ });

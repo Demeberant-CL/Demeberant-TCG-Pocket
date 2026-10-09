@@ -42,9 +42,9 @@ class DexVisualTest {
     compose.waitUntil(20_000) { compose.onAllNodesWithText("Demeberant").fetchSemanticsNodes().isNotEmpty() }
     compose.onNodeWithText("Demeberant").assertIsDisplayed()
     compose.onNodeWithText("Nivel 50").assertIsDisplayed()
-    compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
+    compose.onNodeWithText("Sincronizar colección").performScrollTo().assertIsDisplayed()
     capture("inicio")
-    compose.onNode(hasScrollAction()).performScrollToNode(hasText("Mazos recientes"))
+    compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Sincronizar colección"))).performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     capture("inicio-mazos")
     for ((index, name) in listOf(1 to "coleccion",2 to "mazos",3 to "ia",4 to "ajustes")) {
