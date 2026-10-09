@@ -62,10 +62,10 @@ class DexVisualTest {
     image.recycle()
     // UTP uninstalls the test application after the run; retain previews outside its directory.
     fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
-      instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
+      instrumentation.uiAutomation.executeShellCommand("sh -c '$command'" )).bufferedReader().use { it.readText().trim() }
     shell("mkdir -p /sdcard/tcg-dex-preview")
     val destination = "/sdcard/tcg-dex-preview/$name.png"
     check(shell("cp ${File(dir, "$name.png").absolutePath} $destination 2>&1").isEmpty())
-    check(shell("ls $destination") == destination)
+    check(shell("test -s $destination && echo retained") == "retained") { "Screenshot was not retained: $destination" }
   }
 }
