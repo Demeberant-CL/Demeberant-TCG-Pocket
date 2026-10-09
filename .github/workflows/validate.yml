@@ -160,13 +160,17 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee normal-test.log
+            grep -F 'OK (1 test)' normal-test.log
             mkdir -p design-preview/normal
-            adb pull /sdcard/tcg-dex-preview/. design-preview/normal/
+            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/normal/
             adb shell settings put system font_scale 1.4
-            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
+            adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee large-test.log
+            grep -F 'OK (1 test)' large-test.log
             mkdir -p design-preview/large-text
-            adb pull /sdcard/tcg-dex-preview/. design-preview/large-text/
+            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/large-text/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
