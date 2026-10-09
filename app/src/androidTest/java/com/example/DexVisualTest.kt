@@ -52,6 +52,21 @@ class DexVisualTest {
       compose.onNodeWithTag("nav_item_$index").performClick()
       compose.waitForIdle()
       capture(name)
+      if (index == 1) {
+        compose.onNodeWithText("Filtrar").performClick()
+        compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
+        capture("coleccion-filtros")
+        compose.onNodeWithText("Ver cartas").performClick()
+        compose.onNodeWithContentDescription("Ajustes").performClick()
+        compose.onNodeWithText("Listo").assertIsDisplayed()
+        capture("ajustes-dialogo")
+        compose.onNodeWithText("Listo").performClick()
+      }
+      if (index == 2) {
+        compose.onNodeWithText("+ Nuevo mazo").performClick()
+        compose.waitForIdle()
+        capture("mazos-editor")
+      }
     }
   }
   private fun capture(name: String) {
