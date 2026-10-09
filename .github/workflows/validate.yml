@@ -162,11 +162,11 @@ jobs:
           script: |
             ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
             mkdir -p design-preview/normal
-            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/normal/
+            adb pull /sdcard/tcg-dex-preview/. design-preview/normal/
             adb shell settings put system font_scale 1.4
             ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
             mkdir -p design-preview/large-text
-            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/large-text/
+            adb pull /sdcard/tcg-dex-preview/. design-preview/large-text/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
