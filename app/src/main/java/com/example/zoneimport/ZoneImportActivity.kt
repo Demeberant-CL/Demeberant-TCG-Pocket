@@ -116,11 +116,13 @@ class ZoneImportActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContent {
+      val preferencesRepository = androidx.compose.runtime.remember { com.example.data.preferences.UserPreferencesRepository(applicationContext) }
+      val preferences by preferencesRepository.userPreferencesFlow.collectAsStateWithLifecycle(initialValue = com.example.data.preferences.UserPreferences())
       val state by model.state.collectAsStateWithLifecycle()
       val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(model::select)
       }
-      PocketAppTheme {
+      PocketAppTheme(darkTheme = preferences.themeMode.isDark(androidx.compose.foundation.isSystemInDarkTheme())) {
         Scaffold { padding ->
           Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {

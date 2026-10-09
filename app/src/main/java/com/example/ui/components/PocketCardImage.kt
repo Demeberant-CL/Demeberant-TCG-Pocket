@@ -19,6 +19,7 @@ import com.example.data.util.ImageAvailability
 fun PocketCardImage(id: String, name: String, language: String = "es",
   highResolution: Boolean = false, modifier: Modifier = Modifier,
   contentScale: ContentScale = ContentScale.Fit,
+  alignment: Alignment = Alignment.Center,
   unavailable: @Composable () -> Unit = { Text(name, style = MaterialTheme.typography.labelSmall) }) {
   val allCandidates = remember(id, language, highResolution) { TcgdexHelper.imageCandidates(id, language, highResolution) }
   var candidates by remember(allCandidates) { mutableStateOf(ImageAvailability.session.candidates(allCandidates)) }
@@ -40,7 +41,7 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
         Text("Reintentar", style = MaterialTheme.typography.labelSmall)
       }
     } else key(retry) {
-      AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale,
+      AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale, alignment = alignment,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
         onSuccess = { loading = false }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {

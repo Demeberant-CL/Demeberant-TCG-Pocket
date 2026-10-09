@@ -75,8 +75,8 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ProfileAvatar(prefs.avatarId, Modifier.size(52.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
         Column(Modifier.weight(1f)) {
-          Text(player.nickname.ifBlank { "Jugador" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-          Text(player.level?.let { "Nivel $it" } ?: "Nivel sin configurar", style = MaterialTheme.typography.bodyMedium,
+          Text(player.nickname.ifBlank { "Tu perfil" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+          Text(player.level?.let { "Nivel $it" } ?: "Nivel —", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = { editProfile = true }) { Icon(Icons.Default.Edit, "Editar perfil del jugador") }
@@ -234,7 +234,7 @@ fun DeckCover(id: String?, name: String, modifier: Modifier = Modifier) {
   Box(modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.secondaryContainer))),
     contentAlignment = Alignment.Center) {
     if (id != null) com.example.ui.components.PocketCardImage(id, name, highResolution = true, modifier = Modifier.fillMaxSize(),
-      contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+      contentScale = androidx.compose.ui.layout.ContentScale.Crop, alignment = androidx.compose.ui.BiasAlignment(0f, -.55f),
       unavailable = { Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium) })
     else Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
   }
