@@ -242,7 +242,7 @@ fun DeckBuilderScreen(
             .testTag("generated_deck_result_card"),
           shape = RoundedCornerShape(16.dp),
           colors = CardDefaults.cardColors(containerColor = PocketSurface),
-          border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.secondary))
+          border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PocketGold))
         ) {
           Column(modifier = Modifier.padding(16.dp)) {
             Row(

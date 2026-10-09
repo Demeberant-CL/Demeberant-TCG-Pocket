@@ -69,9 +69,9 @@ export function validateBackup(text) {
   const data=JSON.parse(text);
   ensure(data.format==='demeberant-tcg-pocket-backup'&&data.version===1&&Array.isArray(data.inventory)&&Array.isArray(data.decks),'Formato de respaldo no compatible.');
   const p=data.preferences;
-  ensure(p&&['dex','dark','blue','light','system'].includes(p.theme)&&(p.dark===undefined||typeof p.dark==='boolean')&&(p.language===undefined||['es','en','ja'].includes(p.language)),'Ajustes no válidos.');
+  ensure(p&&['dark','blue','light','system'].includes(p.theme)&&(p.dark===undefined||typeof p.dark==='boolean')&&(p.language===undefined||['es','en','ja'].includes(p.language)),'Ajustes no válidos.');
   // Accept old settings without retaining obsolete language/blue preferences.
-  data.preferences={theme:p.theme==='blue'?'light':p.theme==='dex'?'dark':p.theme};
+  data.preferences={theme:p.theme==='blue'?'light':p.theme};
   const cards=data.inventory.map(c=>{
     ensure(typeof c.name==='string'&&c.name.trim()&&rarities.includes(c.rarity)&&typeof c.pack==='string'&&Number.isInteger(c.quantity)&&c.quantity>=0&&c.quantity<=2147483647&&typeof c.wishlist==='boolean'&&Number.isSafeInteger(c.acquiredAt),'Registro no válido.');
     return {...c,id:canonical(c.id)};

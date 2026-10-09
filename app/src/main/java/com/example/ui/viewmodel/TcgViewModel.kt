@@ -100,7 +100,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     if (editingDeckId == 0L && current.cards.isEmpty() && current.strategy.isBlank() && current.name == "Mi mazo") return false
     val saved = savedDraftSnapshot?.takeIf { editingDeckId > 0L } ?: return true
     return current.name != saved.name || current.strategy != saved.strategy ||
-      current.archetype != saved.archetype || current.cards != saved.cards || current.energyTypes != saved.energyTypes || current.coverCardId != saved.coverCardId
+      current.archetype != saved.archetype || current.cards != saved.cards || current.energyTypes != saved.energyTypes
   }
 
   private val _deckBuildPrompt = MutableStateFlow("Pikachu ex Turbo")
@@ -354,10 +354,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       listOf("Mazo incompleto: 0/20 cartas."))
   }
   fun editDeckName(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(name = value) }
-  fun setDeckCover(id: String) {
-    val deck = _generatedDeck.value ?: return
-    if (deck.cards.any { it.card.id == id }) _generatedDeck.value = deck.copy(coverCardId = id)
-  }
   fun editDeckStrategy(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(strategy = value) }
   fun toggleDeckEnergy(value: String) {
     require(value in DeckCodec.energyNames)
@@ -378,7 +374,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       reportMessage("Máximo de 20 cartas y dos copias por nombre."); return
     }
     _generatedDeck.value = deck.copy(cards = cards, totalCardCount = cards.sumOf { it.count },
-      coverCardId = deck.coverCardId?.takeIf { id -> cards.any { it.card.id == id } },
       validationWarnings = DeckBuilderEngine.validate(cards),
       energyTypes = if (_automaticEnergies.value) com.example.domain.DeckAutomation.energies(cards) else deck.energyTypes)
   }
@@ -393,7 +388,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       }
       try {
         require(deck.cards.isNotEmpty() && (customName ?: deck.name).isNotBlank()) { "Añade cartas y un nombre." }
-        val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes, deck.coverCardId)
+        val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes)
         val entity = SavedDeckEntity(
           id = editingDeckId,
           name = customName ?: deck.name,
@@ -427,8 +422,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         cards = cardEntries,
         totalCardCount = cardEntries.sumOf { it.count },
         validationWarnings = DeckBuilderEngine.validate(cardEntries),
-        energyTypes = savedEnergies.ifEmpty { com.example.domain.DeckAutomation.energies(cardEntries) },
-        coverCardId = runCatching { DeckCodec.cover(savedDeck.cardListSerialized) }.getOrNull()
+        energyTypes = savedEnergies.ifEmpty { com.example.domain.DeckAutomation.energies(cardEntries) }
       )
       savedDraftSnapshot = _generatedDeck.value
       _deckBuildPrompt.value = savedDeck.name

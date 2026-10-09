@@ -40,7 +40,7 @@ import java.time.Instant;
 public final class ZoneSyncActivity extends Activity {
     private static final int EXPORT_JSON = 71;
     private static final int EXPORT_TRACE = 72;
-    private static final int BG = 0xFF091426, TEXT = 0xFFF3F6FF, ACCENT = 0xFF22D3EE;
+    private static final int BG = 0xFFF1ECE4, TEXT = 0xFF25211C, ACCENT = 0xFFA84400;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WebView browser;
     private TextView status;
@@ -152,7 +152,7 @@ public final class ZoneSyncActivity extends Activity {
         view.setTextSize(15);
         view.setAllCaps(false);
         view.setMinHeight(dp(48));
-        view.setTextColor(0xFF041725);
+        view.setTextColor(Color.WHITE);
         GradientDrawable background = new GradientDrawable();
         background.setColor(ACCENT);
         background.setCornerRadius(dp(12));
@@ -174,7 +174,7 @@ public final class ZoneSyncActivity extends Activity {
         content.addView(button("Conectar cuenta", () -> openBrowser("https://www.pokemon-zone.com/settings/")));
         content.addView(label("Si tu perfil aún no se reconoce, pega tu ID de amigo o su enlace:", 16));
         EditText input = new EditText(this); input.setSingleLine(true); input.setTextColor(TEXT);
-        input.setHintTextColor(0xFFB4C5DE); input.setHint("ID de amigo o enlace de perfil");
+        input.setHintTextColor(0xFF65594C); input.setHint("ID de amigo o enlace de perfil");
         input.setText(profileUrl == null ? "" : profileUrl); content.addView(input);
         content.addView(button("Sincronizar colección", () -> {
             String normalized = ZoneUrl.normalize(input.getText().toString());
@@ -305,7 +305,6 @@ public final class ZoneSyncActivity extends Activity {
             @Override public void onPageFinished(WebView view, String pageUrl) {
                 adoptProfile(pageUrl);
                 loaded = !pageFailed && ZoneUrl.belongsTo(pageUrl, profileUrl);
-                if (loaded) capturePlayerProfile(view, pageUrl);
                 trace.add("page_end", pageUrl, 0);
                 readButton.setEnabled(loaded);
                 status.setText(loaded ? "Página cargada. Si muestra «Loading», espera antes de leer." : "Página de cuenta. Puedes interactuar con el sitio; Leer se habilita solo en tu perfil.");
@@ -435,22 +434,6 @@ public final class ZoneSyncActivity extends Activity {
         trace.add("read_error", null, 0); saveTrace();
     }
 
-    private void capturePlayerProfile(WebView view, String pageUrl) { capturePlayerProfile(view, pageUrl, null); }
-    private void capturePlayerProfile(WebView view, String pageUrl, Runnable after) {
-        if (!ZoneUrl.belongsTo(pageUrl, profileUrl)) { if (after != null) after.run(); return; }
-        final String account = ZoneUrl.friendId(profileUrl);
-        try {
-            view.evaluateJavascript(asset("profile.js"), result -> {
-                try {
-                    if (browser != view || !account.equals(ZoneUrl.friendId(profileUrl))) return;
-                    Object decoded = new JSONTokener(result).nextValue();
-                    if (decoded instanceof String) com.example.data.preferences.PlayerProfiles.capture(this, account, (String) decoded);
-                } catch (Exception ignored) { }
-                finally { if (after != null) after.run(); }
-            });
-        } catch (Exception ignored) { if (after != null) after.run(); }
-    }
-
     private final Runnable syncPoll = new Runnable() {
         @Override public void run() {
             if (syncPhase == 0 || syncBrowser != browser) return;
@@ -466,12 +449,7 @@ public final class ZoneSyncActivity extends Activity {
                         if ("\"success\"".equals(result)) {
                             syncSucceeded = true; syncPhase = 3;
                             status.setText("Sincronización confirmada. Abriendo cartas…");
-                            final WebView confirmedBrowser = syncBrowser;
-                            final String confirmedProfile = syncProfile;
-                            capturePlayerProfile(confirmedBrowser, confirmedProfile, () -> {
-                                if (syncPhase == 3 && syncBrowser == confirmedBrowser && confirmedProfile.equals(syncProfile))
-                                    confirmedBrowser.loadUrl(confirmedProfile + "cards/");
-                            });
+                            syncBrowser.loadUrl(syncProfile + "cards/");
                         } else if ("\"failed\"".equals(result) || "\"blocked\"".equals(result)) {
                             cancelSync("Sync no confirmó éxito. La colección no se ha leído.");
                         }

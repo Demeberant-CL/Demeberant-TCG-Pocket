@@ -33,7 +33,6 @@ fun SettingsScreen(
         Column(Modifier.selectableGroup()) {
           ThemeMode.entries.forEach { mode ->
             val label = stringResource(when (mode) {
-              ThemeMode.DEX -> R.string.theme_dex
               ThemeMode.LIGHT -> R.string.theme_light
               ThemeMode.DARK -> R.string.theme_dark
               ThemeMode.SYSTEM -> R.string.theme_system
@@ -41,7 +40,7 @@ fun SettingsScreen(
             Row(Modifier.fillMaxWidth().selectable(
               selected = themeMode == mode, role = Role.RadioButton,
               onClick = { onThemeModeChange(mode) }
-            ).heightIn(min = 48.dp).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            ).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
               RadioButton(selected = themeMode == mode, onClick = null)
               Spacer(Modifier.width(8.dp))
               Text(label)

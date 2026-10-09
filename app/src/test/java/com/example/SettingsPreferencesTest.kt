@@ -19,10 +19,10 @@ class SettingsPreferencesTest {
     assertTrue(ThemeMode.DARK.isDark(false))
     assertFalse(ThemeMode.SYSTEM.isDark(false))
     assertTrue(ThemeMode.SYSTEM.isDark(true))
-    assertEquals(ThemeMode.DEX, UserPreferences().themeMode)
+    assertEquals(ThemeMode.SYSTEM, UserPreferences().themeMode)
   }
 
-  @Test fun migrationAppliesApprovedThemeOnceAndPreservesOtherSettings() = runBlocking {
+  @Test fun migrationDropsOnlyObsoleteSettingsAndPreservesModes() = runBlocking {
     val theme = stringPreferencesKey("theme_name")
     val unrelated = stringPreferencesKey("unrelated")
     for (oldMode in listOf("blue", "light", "dark", "system")) {
@@ -30,7 +30,7 @@ class SettingsPreferencesTest {
         stringPreferencesKey("app_language") to "ja", booleanPreferencesKey("is_dark_mode") to true)
       assertTrue(SettingsMigration.shouldMigrate(before))
       val after = SettingsMigration.migrate(before)
-      assertEquals("dex", after[theme])
+      assertEquals(if (oldMode == "blue") "light" else oldMode, after[theme])
       assertEquals("preserved", after[unrelated])
       assertFalse(after.asMap().keys.any { it.name in setOf("app_language", "is_dark_mode") })
       assertFalse(SettingsMigration.shouldMigrate(after))

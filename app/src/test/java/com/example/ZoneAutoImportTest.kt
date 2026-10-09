@@ -63,12 +63,4 @@ class ZoneAutoImportTest {
       }
     } finally { db.close() }
   }
-  @Test fun synchronizationNewsCountsOnlyPositiveChangesAndReimportProducesZero() {
-    val plan = ZoneAutoImport.prepare(payload().toString(),player)
-    assertEquals(1 to 2L,ZoneAutoImport.additions(plan,emptyMap()))
-    assertEquals(0 to 1L,ZoneAutoImport.additions(plan,mapOf("A1-001" to 1)))
-    assertEquals(0 to 0L,ZoneAutoImport.additions(plan,mapOf("A1-001" to 2)))
-    assertEquals(0 to 0L,ZoneAutoImport.additions(plan,mapOf("A1-001" to 5,"A1-033" to 10)))
-  }
-
 }

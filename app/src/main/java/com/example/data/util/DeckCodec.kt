@@ -7,24 +7,9 @@ import org.json.JSONObject
 
 object DeckCodec {
   val energyNames = listOf("Planta", "Fuego", "Agua", "Rayo", "Psíquico", "Lucha", "Oscuridad", "Metal")
-  fun encode(cards: List<DeckCardEntry>, energies: List<String>, coverCardId: String? = null): String =
-    JSONObject().put("format", 2).put("energies", JSONArray(energies))
-      .put("cover", coverCardId?.takeIf { id -> cards.any { it.card.id == id } }).put("cards",
+  fun encode(cards: List<DeckCardEntry>, energies: List<String>): String =
+    JSONObject().put("format", 2).put("energies", JSONArray(energies)).put("cards",
       JSONArray(cards.map { JSONObject().put("id", it.card.id).put("count", it.count) })).toString()
-
-  fun cover(text: String): String? {
-    val refs = references(text)
-    if (text.trim().startsWith("{")) {
-      val chosen = JSONObject(text).optString("cover").takeIf { it.isNotBlank() }
-      if (chosen != null && refs.any { it.first == chosen }) return chosen
-    }
-    return defaultCover(refs.mapNotNull { CardCatalog.getCardById(it.first) })
-  }
-
-  fun defaultCover(cards: List<com.example.data.model.PokemonCard>): String? =
-    cards.sortedWith(compareByDescending<com.example.data.model.PokemonCard> { it.category.equals("Pokemon", ignoreCase = true) || it.hp > 0 }
-      .thenByDescending { it.isEx }.thenByDescending { it.isImmersive || it.isFullArt }
-      .thenByDescending { it.hp }).firstOrNull()?.id
 
   fun references(text: String): List<Pair<String, Int>> {
     val result = if (text.trim().startsWith("{")) {

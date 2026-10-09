@@ -126,8 +126,6 @@ fun CollectionScreen(
   var listView by rememberSaveable { mutableStateOf(false) }
   var largeCards by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
-  val profileFlow = remember(context) { com.example.data.preferences.PlayerProfiles.observe(context.applicationContext) }
-  val player by profileFlow.collectAsStateWithLifecycle(initialValue = com.example.data.preferences.PlayerProfiles.read(context))
   val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val filteredCards by viewModel.filteredCards.collectAsStateWithLifecycle()
@@ -260,10 +258,8 @@ fun CollectionScreen(
             Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
               style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
             if (showProfileDetails) {
-              if (player.nickname.isNotBlank()) Text(player.nickname, style = MaterialTheme.typography.bodySmall)
-              player.level?.let { Text("Nivel $it", style = MaterialTheme.typography.bodySmall) }
-              if (player.friendId.matches(Regex("[0-9]{16}")))
-                Text("Friend ID: " + player.friendId.chunked(4).joinToString(" "), style = MaterialTheme.typography.bodySmall)
+              Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
+              Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
             }
           }
           IconButton(onClick = { showSettingsDialog = true }) {
@@ -297,7 +293,7 @@ fun CollectionScreen(
             Spacer(modifier = Modifier.width(6.dp))
             Text(text = msg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
           }
-          IconButton(onClick = { viewModel.clearCsvStatusMessage() }, modifier = Modifier.size(48.dp)) {
+          IconButton(onClick = { viewModel.clearCsvStatusMessage() }, modifier = Modifier.size(20.dp)) {
             Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(14.dp))
           }
         }

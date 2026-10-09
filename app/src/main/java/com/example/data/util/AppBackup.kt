@@ -50,7 +50,7 @@ object AppBackup {
     }
     val prefs = root.getJSONObject("preferences")
     val theme = prefs.getString("theme")
-    require(theme in setOf("dex", "dark", "blue", "light", "system")) { "Ajustes no válidos." }
+    require(theme in setOf("dark", "blue", "light", "system")) { "Ajustes no válidos." }
     return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme),
       com.example.data.preferences.ProfileAvatars.normalize(prefs.optString("avatar"))), prefs.has("avatar"))
   }

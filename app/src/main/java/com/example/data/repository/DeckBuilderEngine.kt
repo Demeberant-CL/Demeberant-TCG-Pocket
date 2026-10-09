@@ -14,8 +14,7 @@ data class GeneratedDeck(
   val cards: List<DeckCardEntry>,
   val totalCardCount: Int,
   val validationWarnings: List<String> = emptyList(),
-  val energyTypes: List<String> = emptyList(),
-  val coverCardId: String? = null
+  val energyTypes: List<String> = emptyList()
 ) {
   fun toExportText(): String {
     val sb = StringBuilder()

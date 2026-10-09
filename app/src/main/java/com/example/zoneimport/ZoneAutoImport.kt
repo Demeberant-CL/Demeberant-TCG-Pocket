@@ -30,18 +30,6 @@ object ZoneAutoImport {
     return plan
   }
 
-  internal fun additions(plan: ZoneImportPlan, before: Map<String, Int>): Pair<Int, Long> {
-    var distinct = 0
-    var copies = 0L
-    for (row in plan.cards) {
-      val id = com.example.data.util.CardId.normalize("${row.setCode}-${row.cardNumber}")
-      val previous = before[id] ?: 0
-      if (previous == 0 && row.quantity > 0) distinct++
-      copies += maxOf(0L, row.quantity.toLong() - previous.toLong())
-    }
-    return distinct to copies
-  }
-
   @JvmStatic fun start(context: Context, payload: String, expectedPlayer: String, callback: Callback): Boolean {
     check(Looper.myLooper() == Looper.getMainLooper())
     if (active) return false
@@ -54,12 +42,7 @@ object ZoneAutoImport {
           CardCatalog.loadBundled(app)
           val plan = prepare(payload, expectedPlayer)
           val db = AppDatabase.getDatabase(app)
-          var newCards = 0
-          var addedCopies = 0L
           val stored = db.withTransaction {
-            val before = db.inventoryDao().getAllCards().associate { it.cardId to it.quantity }
-            val changes = additions(plan, before)
-            newCards = changes.first; addedCopies = changes.second
             ZoneCollectionImport.apply(db, plan)
             db.inventoryDao().getAllCards().filter { it.quantity > 0 }
           }
@@ -74,9 +57,7 @@ object ZoneAutoImport {
             "Reimportar reemplaza cantidades; no suma. Cartas ausentes, deseos y mazos se conservan.\n" +
             "Guardado: ${android.os.SystemClock.elapsedRealtime() - start} ms.\nApp: com.aistudio.tcgpocket2.kxmpzq"
           app.getSharedPreferences("zone-import-test", Context.MODE_PRIVATE).edit()
-            .putString("result", result).putString("player", plan.playerId)
-            .putLong("synced_at", System.currentTimeMillis()).putInt("new_cards", newCards)
-            .putLong("added_copies", addedCopies).apply()
+            .putString("result", result).putString("player", plan.playerId).apply()
           result
         }
         callback.onResult(true, message)
