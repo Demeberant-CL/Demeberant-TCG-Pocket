@@ -135,7 +135,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/tcg-dex-visual-theme'
+    if: github.ref == 'refs/heads/fix/tcg-dex-layout-review'
     needs: android
     runs-on: ubuntu-latest
     steps:
@@ -182,7 +182,7 @@ jobs:
             app/build/reports/androidTests/
 
   delivery:
-    if: github.ref == 'refs/heads/fix/tcg-dex-visual-theme'
+    if: github.ref == 'refs/heads/fix/tcg-dex-layout-review'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     permissions:

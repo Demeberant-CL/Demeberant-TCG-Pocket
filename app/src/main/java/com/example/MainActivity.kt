@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
               navigationScroll.animateScrollTo(target.coerceAtLeast(0))
             }
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
-              .width(itemWidth * labels.size).heightIn(min = (80f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
+              .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
               .testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
@@ -136,9 +136,9 @@ class MainActivity : ComponentActivity() {
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),

@@ -66,7 +66,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     modelName = connection.model; url = connection.endpoint
   }
   Column(modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
       OutlinedCard(Modifier.fillMaxWidth()) {
@@ -93,7 +93,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           border = BorderStroke(1.dp, if (action == choice) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
           colors = CardDefaults.outlinedCardColors(containerColor = if (action == choice)
             MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)) {
-          Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+          Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(when (choice) {
               AiDeckAction.CREATE -> Icons.Filled.AutoAwesome
               AiDeckAction.COMPLETE -> Icons.Filled.AddCircleOutline

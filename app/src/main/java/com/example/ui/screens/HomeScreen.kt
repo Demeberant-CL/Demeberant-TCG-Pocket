@@ -66,18 +66,18 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     ).map { (symbol, name, rarities) -> Triple(symbol, name, inventory.filter { it.card.rarity in rarities && it.ownedCount > 0 }.size) }
   }
   val updated = remember(player.syncedAt) {
-    if (player.syncedAt == 0L) "Todavía no has sincronizado" else
+    if (player.syncedAt == 0L) "Fecha de última sincronización no disponible" else
       "Última sincronización · " + DateTimeFormatter.ofPattern("dd/MM · HH:mm")
         .withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(player.syncedAt))
   }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ProfileAvatar(prefs.avatarId, Modifier.size(52.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
+        ProfileAvatar(prefs.avatarId, Modifier.size(44.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
         Column(Modifier.weight(1f)) {
-          Text(player.nickname.ifBlank { "Tu perfil" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-          Text(player.level?.let { "Nivel $it" } ?: "Nivel —", style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(player.nickname.ifBlank { "Completar perfil" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+          player.level?.let { level -> Text("Nivel $level", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         IconButton(onClick = { editProfile = true }) { Icon(Icons.Default.Edit, "Editar perfil del jugador") }
       }
@@ -97,7 +97,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     item {
       OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
-          MaterialTheme.colorScheme.surface))).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+          MaterialTheme.colorScheme.surface))).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Column(Modifier.weight(1f)) {
               Text(numbers.format(owned), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
@@ -109,8 +109,8 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
             }
           }
           Text("${(progress * 100).toInt()} % del catálogo · ${numbers.format(inventory.size)} cartas", style = MaterialTheme.typography.bodySmall)
-          LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape))
-          Button(onClick = onSync, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+          LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape))
+          Button(onClick = onSync, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Icon(Icons.Default.Sync, null); Spacer(Modifier.width(8.dp)); Text("Sincronizar colección")
           }
           Text(updated, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -123,9 +123,9 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
       } }
     } }
-    item {
+    if (player.syncedAt > 0L) item {
       OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text("Últimas novedades", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
           if (player.syncedAt > 0L) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DexMetric("+${numbers.format(player.newCards)}", "cartas nuevas", false)
@@ -139,13 +139,19 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text("Resumen por rareza", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-          FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            rarityGroups.forEachIndexed { index, (symbol, name, count) ->
-              Surface(shape = RoundedCornerShape(14.dp), color = if (index % 2 == 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer) {
-                Column(Modifier.widthIn(min = 120.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                  Text("$symbol  $name", style = MaterialTheme.typography.labelLarge,
-                    color = if (index % 2 == 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer)
-                  Text("${numbers.format(count)} cartas", style = MaterialTheme.typography.bodySmall)
+          rarityGroups.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              pair.forEachIndexed { index, (_, name, count) ->
+                Surface(modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.small,
+                  color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                  Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f)) {
+                      Text(name, style = MaterialTheme.typography.labelMedium,
+                        color = if (index == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)
+                      Text(numbers.format(count), style = MaterialTheme.typography.titleMedium)
+                    }
+                  }
                 }
               }
             }
@@ -209,9 +215,10 @@ private fun RecentDeckTile(saved: com.example.data.local.SavedDeckEntity, catalo
   val cover = remember(saved.cardListSerialized) { runCatching { DeckCodec.cover(saved.cardListSerialized) }.getOrNull() }
   val canOpen = refs != null && refs.all { it.first in catalogIds }
   OutlinedCard(onClick = onOpen, enabled = canOpen, modifier = modifier) {
-    DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(132.dp))
+    DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(104.dp))
     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-      Text(saved.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+      Text(saved.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+        minLines = 2, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
       Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       Text(if (canOpen) "Abrir →" else "Por revisar", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
     }
@@ -234,7 +241,7 @@ fun DeckCover(id: String?, name: String, modifier: Modifier = Modifier) {
   Box(modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.secondaryContainer))),
     contentAlignment = Alignment.Center) {
     if (id != null) com.example.ui.components.PocketCardImage(id, name, highResolution = true, modifier = Modifier.fillMaxSize(),
-      contentScale = androidx.compose.ui.layout.ContentScale.Crop, alignment = androidx.compose.ui.BiasAlignment(0f, -.55f),
+      contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = Alignment.Center,
       unavailable = { Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium) })
     else Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
   }

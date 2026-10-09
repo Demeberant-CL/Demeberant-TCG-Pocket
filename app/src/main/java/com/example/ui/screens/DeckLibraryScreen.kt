@@ -51,8 +51,8 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       var showMenu by remember(saved.id) { mutableStateOf(false) }
       OutlinedCard(Modifier.fillMaxWidth()) {
         val cover = remember(saved.cardListSerialized) { runCatching { DeckCodec.cover(saved.cardListSerialized) }.getOrNull() }
-        DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(148.dp))
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+          DeckCover(cover, saved.name, Modifier.width(76.dp).height(106.dp))
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(saved.name, style = MaterialTheme.typography.titleMedium)
             Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
