@@ -184,6 +184,10 @@ jobs:
         with:
           name: android-apk
           path: delivery
+      - uses: actions/download-artifact@v4
+        with:
+          name: design-preview
+          path: preview-assets
       - name: Package verified update
         env:
           GH_TOKEN: ${{ github.token }}
@@ -193,4 +197,5 @@ jobs:
           mv delivery/app-debug.apk "delivery/TCG-Dex-$version.apk"
           printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nTema azul nocturno en todas las pantallas. Nick, nivel y Friend ID en Inicio.\nEdita el perfil con el lápiz si el sitio no muestra nick o nivel.\nEn el editor, pulsa Usar como portada en la carta elegida y guarda el mazo.\nLa fecha y las novedades se registran después de sincronizar con esta versión.\nLa colección, deseos, mazos, ajustes y sesión se conservan.\n' "$version" > delivery/LEEME.txt
           (cd delivery && zip "TCG-Dex-$version.zip" "TCG-Dex-$version.apk" LEEME.txt signing-certificate.txt)
-          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Nuevo diseño" --notes "Actualización Android verificada con tema azul nocturno, perfil del jugador y portadas de mazos. Instalar sobre la versión anterior, sin desinstalar."
+          (cd preview-assets && zip -r "../delivery/TCG-Dex-$version-vista-previa.zip" . -i '*.png')
+          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.zip" "delivery/TCG-Dex-$version-vista-previa.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Nuevo diseño" --notes "Actualización Android verificada con tema azul nocturno, perfil del jugador y portadas de mazos. Instalar sobre la versión anterior, sin desinstalar."
