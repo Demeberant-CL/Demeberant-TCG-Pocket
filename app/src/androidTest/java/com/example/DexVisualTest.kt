@@ -1,6 +1,7 @@
 package com.example
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -78,7 +79,9 @@ class DexVisualTest {
   private fun capture(name: String) {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val dir = File(instrumentation.targetContext.getExternalFilesDir(null),"design-preview").apply { mkdirs() }
-    val image = instrumentation.uiAutomation.takeScreenshot()
+    compose.waitForIdle()
+    Thread.sleep(800)
+    val image = compose.onAllNodes(isRoot(), useUnmergedTree = true).onLast().captureToImage().asAndroidBitmap()
     File(dir,"$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
     image.recycle()
   }
