@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
         if (globalSettings) com.example.ui.screens.SettingsScreen(userPrefs.themeMode, viewModel::setThemeMode, { globalSettings = false })
         Scaffold(
           containerColor = Color.Transparent,
+          contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
             androidx.compose.material3.MaterialTheme.colorScheme.background,
             androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerLowest))),

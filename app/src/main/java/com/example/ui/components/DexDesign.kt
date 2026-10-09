@@ -19,7 +19,7 @@ import kotlin.math.*
 @Composable
 fun DexPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
   val colors = MaterialTheme.colorScheme
-  Surface(modifier, shape = RoundedCornerShape(16.dp), color = Color.Transparent,
+  Surface(modifier, shape = RoundedCornerShape(16.dp), color = Color.Transparent, contentColor = colors.onSurface,
     border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = .7f)), shadowElevation = 3.dp) {
     Column(Modifier.background(Brush.linearGradient(listOf(colors.surfaceContainerHigh.copy(alpha = .65f), colors.surface))), content = content)
   }

@@ -24,6 +24,7 @@ class DexVisualTest {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
     CardCatalog.loadBundled(context)
     val db = AppDatabase.getDatabase(context)
+    db.openHelper.writableDatabase.execSQL("DELETE FROM saved_decks")
     val catalog = CardCatalog.ALL_CARDS
     db.inventoryDao().insertCards(catalog.take(1343).mapIndexed { index, card ->
       InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 1097) 2 else 1,false)
@@ -40,6 +41,7 @@ class DexVisualTest {
       .putString("profile_nickname","Demeberant").putInt("profile_level",50)
       .putLong("synced_at",System.currentTimeMillis()).putInt("new_cards",15).putLong("added_copies",26).commit()
     compose.waitUntil(20_000) { compose.onAllNodesWithText("Demeberant").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("1.343").fetchSemanticsNodes().isNotEmpty() }
     compose.onNodeWithText("Demeberant").assertIsDisplayed()
     compose.onNodeWithText("Nivel 50").assertIsDisplayed()
     compose.onNodeWithText("Sincronizar colección").performScrollTo().assertIsDisplayed()
