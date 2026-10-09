@@ -18,6 +18,7 @@ import com.example.data.util.ImageAvailability
 @Composable
 fun PocketCardImage(id: String, name: String, language: String = "es",
   highResolution: Boolean = false, modifier: Modifier = Modifier,
+  artworkOnly: Boolean = false, fullArt: Boolean = false,
   contentScale: ContentScale = ContentScale.Fit,
   alignment: Alignment = Alignment.Center,
   unavailable: @Composable () -> Unit = { Text(name, style = MaterialTheme.typography.labelSmall) }) {
@@ -41,7 +42,13 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
         Text("Reintentar", style = MaterialTheme.typography.labelSmall)
       }
     } else key(retry) {
-      AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale, alignment = alignment,
+      val context = androidx.compose.ui.platform.LocalContext.current
+      val request = remember(candidates[index], artworkOnly, fullArt) {
+        coil.request.ImageRequest.Builder(context).data(candidates[index]).apply {
+          if (artworkOnly) transformations(CardArtworkCrop(fullArt))
+        }.build()
+      }
+      AsyncImage(model = request, contentDescription = name, contentScale = contentScale, alignment = alignment,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
         onSuccess = { loading = false }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {
@@ -51,5 +58,16 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
         })
     }
     if (loading && !failed) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+  }
+}
+
+/** Crop artwork only for panoramic deck covers; original catalog requests are unchanged. */
+private class CardArtworkCrop(private val fullArt: Boolean) : coil.transform.Transformation {
+  override val cacheKey = "dex-artwork-v1:$fullArt"
+  override suspend fun transform(input: android.graphics.Bitmap, size: coil.size.Size): android.graphics.Bitmap {
+    val top = (input.height * if (fullArt) .10f else .18f).toInt()
+    val bottom = (input.height * if (fullArt) .70f else .52f).toInt().coerceAtMost(input.height)
+    val left = (input.width * .035f).toInt()
+    return android.graphics.Bitmap.createBitmap(input, left, top, (input.width - left * 2).coerceAtLeast(1), (bottom-top).coerceAtLeast(1))
   }
 }

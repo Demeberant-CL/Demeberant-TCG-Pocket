@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import com.example.ui.components.DexPanel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       val total = refs?.sumOf { it.second } ?: saved.totalCards
       val available = refs?.sumOf { (id, count) -> minOf(count, owned[id] ?: 0) }
       var showMenu by remember(saved.id) { mutableStateOf(false) }
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      DexPanel(Modifier.fillMaxWidth()) {
         val cover = remember(saved.cardListSerialized) { runCatching { DeckCodec.cover(saved.cardListSerialized) }.getOrNull() }
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
           DeckCover(cover, saved.name, Modifier.width(76.dp).height(106.dp))

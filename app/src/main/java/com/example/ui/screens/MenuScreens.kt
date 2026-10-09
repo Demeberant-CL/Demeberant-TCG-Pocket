@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.ui.components.DexPanel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -215,7 +216,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
       listOf("Colección y juego" to listOf(1, 2, 3, 4, 5),
         "Información" to listOf(6, 0), "Mi app" to listOf(7)).forEach { (group, indices) ->
         item(key = group) {
-          OutlinedCard(Modifier.fillMaxWidth()) {
+          DexPanel(Modifier.fillMaxWidth()) {
             Column {
               Text(group, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(horizontal = 16.dp, vertical = 10.dp), style = MaterialTheme.typography.titleSmall)

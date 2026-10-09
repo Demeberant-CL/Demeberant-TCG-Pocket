@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.ui.components.AdaptiveActionRow
+import com.example.ui.components.DexPanel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.Dialog
@@ -69,7 +70,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
           if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
           Text(if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,

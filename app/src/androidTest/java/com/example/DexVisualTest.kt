@@ -50,7 +50,10 @@ class DexVisualTest {
     capture("inicio-mazos")
     for ((index, name) in listOf(1 to "coleccion",2 to "mazos",3 to "ia",4 to "ajustes")) {
       compose.onNodeWithTag("nav_item_$index").performClick()
+      val expected = when (index) { 1 -> "Mi colección"; 2 -> "Mis mazos (2)"; 3 -> "Asistente IA"; else -> "Herramientas" }
+      compose.waitUntil(15_000) { compose.onAllNodesWithText(expected).fetchSemanticsNodes().isNotEmpty() }
       compose.waitForIdle()
+      Thread.sleep(1500)
       capture(name)
       if (index == 1) {
         compose.onNodeWithText("Filtrar").performClick()
@@ -64,6 +67,7 @@ class DexVisualTest {
       }
       if (index == 2) {
         compose.onNodeWithText("+ Nuevo mazo").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Prepara tu primera baraja").fetchSemanticsNodes().isNotEmpty() }
         compose.waitForIdle()
         capture("mazos-editor")
       }

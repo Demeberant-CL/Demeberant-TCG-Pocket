@@ -22,6 +22,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.BorderStroke
+import com.example.ui.components.DexPanel
+import com.example.ui.components.DexCardFan
+import com.example.ui.components.DexRarityIcon
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CardRarity
 import com.example.data.preferences.PlayerProfiles
@@ -73,13 +80,12 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ProfileAvatar(prefs.avatarId, Modifier.size(44.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
         Column(Modifier.weight(1f)) {
-          Text(player.nickname.ifBlank { "Completar perfil" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+          Text(player.nickname.ifBlank { "Completar perfil" }, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
           player.level?.let { level -> Text("Nivel $level", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        IconButton(onClick = { editProfile = true }) { Icon(Icons.Default.Edit, "Editar perfil del jugador") }
+        IconButton(onClick = { editProfile = true }) { Icon(Icons.Default.Edit, "Editar perfil del jugador", modifier = Modifier.size(20.dp)) }
       }
       if (player.friendId.matches(Regex("[0-9]{16}"))) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -95,25 +101,35 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     item {
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
           MaterialTheme.colorScheme.surface))).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Column(Modifier.weight(1f)) {
-              Text(numbers.format(owned), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-              Text("cartas", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Column(Modifier.weight(1f)) {
-              Text(numbers.format(copies), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-              Text("copias", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Box(Modifier.fillMaxWidth()) {
+            DexCardFan(Modifier.align(Alignment.CenterEnd).width(130.dp).height(98.dp))
+            Row(Modifier.fillMaxWidth().padding(end = 72.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+              Column(Modifier.weight(1f)) {
+                Text(numbers.format(owned), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
+                Text("cartas", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+              VerticalDivider(Modifier.height(48.dp), color = MaterialTheme.colorScheme.outline)
+              Column(Modifier.weight(1f)) {
+                Text(numbers.format(copies), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
+                Text("copias", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
             }
           }
           Text("${(progress * 100).toInt()} % del catálogo · ${numbers.format(inventory.size)} cartas", style = MaterialTheme.typography.bodySmall)
-          LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape))
-          Button(onClick = onSync, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Icon(Icons.Default.Sync, null); Spacer(Modifier.width(8.dp)); Text("Sincronizar colección")
+          LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape))
+          Surface(onClick = onSync, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color.Transparent) {
+            Row(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF42EBF5), MaterialTheme.colorScheme.primary)))
+              .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
+              horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.Sync, null, tint = MaterialTheme.colorScheme.onPrimary)
+              Spacer(Modifier.width(8.dp))
+              Text("Sincronizar colección", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
+            }
           }
-          Text(updated, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(updated, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
       }
     }
@@ -123,66 +139,76 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
       } }
     } }
-    if (player.syncedAt > 0L) item {
-      OutlinedCard(Modifier.fillMaxWidth()) {
+    item {
+      DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text("Últimas novedades", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-          if (player.syncedAt > 0L) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DexMetric("+${numbers.format(player.newCards)}", "cartas nuevas", false)
-            DexMetric("+${numbers.format(player.addedCopies)}", "copias añadidas", true)
-          } else Text("Las novedades aparecerán después de sincronizar.", color = MaterialTheme.colorScheme.onSurfaceVariant,
+          if (player.syncedAt > 0L) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DexMetric("+${numbers.format(player.newCards)}", "cartas nuevas", false, Modifier.weight(1f))
+            DexMetric("+${numbers.format(player.addedCopies)}", "copias añadidas", true, Modifier.weight(1f))
+          } else Text("Sincroniza para ver tus nuevas cartas y copias.", color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall)
+
         }
       }
     }
     item {
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Resumen por rareza", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-          rarityGroups.chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              pair.forEachIndexed { index, (_, name, count) ->
-                Surface(modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.small,
-                  color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                  Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f)) {
-                      Text(name, style = MaterialTheme.typography.labelMedium,
-                        color = if (index == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)
-                      Text(numbers.format(count), style = MaterialTheme.typography.titleMedium)
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Resumen por rareza", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            TextButton(onClick = onCollection, contentPadding = PaddingValues(4.dp)) { Text("Ver detalle ›", style = MaterialTheme.typography.labelSmall) }
+          }
+          BoxWithConstraints {
+            val stack = maxWidth < 310.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
+            val groups = if (stack) rarityGroups.chunked(2) else listOf(rarityGroups)
+            Column { groups.forEachIndexed { rowIndex, pair ->
+              Column {
+                if (rowIndex > 0) Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  pair.forEach { (_, name, count) ->
+                    val index = rarityGroups.indexOfFirst { it.second == name }
+                    Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp),
+                      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .5f)) {
+                      Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DexRarityIcon(index, Modifier.size(26.dp))
+                        Text(name, style = MaterialTheme.typography.labelSmall)
+                        Text(numbers.format(count), style = MaterialTheme.typography.labelLarge)
+                      }
                     }
                   }
                 }
               }
             }
+            }
           }
-          TextButton(onClick = onCollection) { Text("Ver colección") }
+
         }
       }
     }
     item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Mazos recientes", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onDecks) { Text("Ver todos") }
-      }
-      if (decks.isEmpty()) {
-        Text("Todavía no hay mazos guardados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(onClick = onEditor) { Text("Crear mazo") }
-      }
-    }
-    decks.take(4).chunked(2).forEach { pair -> item(key = "recent_${pair.first().id}") {
-      BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val compact = maxWidth >= 330.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f
-        if (compact) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          pair.forEach { saved -> RecentDeckTile(saved, catalogIds, Modifier.weight(1f)) { openSavedDeck(saved) } }
-          if (pair.size == 1) Spacer(Modifier.weight(1f))
-        } else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-          pair.forEach { saved -> RecentDeckTile(saved, catalogIds, Modifier.fillMaxWidth()) { openSavedDeck(saved) } }
+      DexPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Mazos recientes", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            TextButton(onClick = onDecks, contentPadding = PaddingValues(4.dp)) { Text("Ver todos ›", style = MaterialTheme.typography.labelSmall) }
+          }
+          if (decks.isEmpty()) {
+            Text("Todavía no hay mazos guardados.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = onEditor) { Text("Crear mazo") }
+          } else BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 280.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              decks.take(2).forEach { saved -> RecentDeckTile(saved, catalogIds, Modifier.weight(1f)) { openSavedDeck(saved) } }
+              if (decks.size == 1) Spacer(Modifier.weight(1f))
+            } else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              decks.take(2).forEach { saved -> RecentDeckTile(saved, catalogIds, Modifier.fillMaxWidth()) { openSavedDeck(saved) } }
+            }
+          }
         }
       }
-    } }
+    }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
-      OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Continuar edición", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         Text(deck.name, style = MaterialTheme.typography.titleMedium)
         Text("${deck.totalCardCount}/20 cartas", style = MaterialTheme.typography.bodySmall)
@@ -215,23 +241,27 @@ private fun RecentDeckTile(saved: com.example.data.local.SavedDeckEntity, catalo
   val cover = remember(saved.cardListSerialized) { runCatching { DeckCodec.cover(saved.cardListSerialized) }.getOrNull() }
   val canOpen = refs != null && refs.all { it.first in catalogIds }
   OutlinedCard(onClick = onOpen, enabled = canOpen, modifier = modifier) {
-    DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(104.dp))
-    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(76.dp))
+    Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
       Text(saved.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
         minLines = 2, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
       Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      Text(if (canOpen) "Abrir →" else "Por revisar", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+      if (!canOpen) Text("Por revisar", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
     }
   }
 }
 
 @Composable
-private fun DexMetric(value: String, label: String, violet: Boolean) {
-  Surface(shape = RoundedCornerShape(16.dp), color = if (violet) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer) {
-    Column(Modifier.widthIn(min = 136.dp).padding(16.dp)) {
-      Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
-        color = if (violet) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer)
-      Text(label, style = MaterialTheme.typography.bodySmall)
+private fun DexMetric(value: String, label: String, violet: Boolean, modifier: Modifier) {
+  val accent = if (violet) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+  Surface(modifier, shape = RoundedCornerShape(10.dp), color = Color.Transparent, border = BorderStroke(1.dp, accent.copy(alpha = .3f))) {
+    Row(Modifier.background(Brush.linearGradient(listOf(accent.copy(alpha = .2f), accent.copy(alpha = .06f))))
+      .padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Icon(if (violet) Icons.Default.ContentCopy else Icons.Default.Sync, null, Modifier.size(24.dp), tint = accent)
+      Column(Modifier.weight(1f)) {
+        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
     }
   }
 }
@@ -241,7 +271,8 @@ fun DeckCover(id: String?, name: String, modifier: Modifier = Modifier) {
   Box(modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.secondaryContainer))),
     contentAlignment = Alignment.Center) {
     if (id != null) com.example.ui.components.PocketCardImage(id, name, highResolution = true, modifier = Modifier.fillMaxSize(),
-      contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = Alignment.Center,
+      artworkOnly = true, fullArt = com.example.data.repository.CardCatalog.ALL_CARDS.firstOrNull { it.id == id }?.isFullArt == true,
+      contentScale = androidx.compose.ui.layout.ContentScale.Crop, alignment = Alignment.Center,
       unavailable = { Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium) })
     else Text(name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
   }

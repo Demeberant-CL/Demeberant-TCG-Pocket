@@ -12,6 +12,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -94,17 +105,29 @@ class MainActivity : ComponentActivity() {
         )
 
         val labels = listOf("Inicio", "Colección", "Mazos", "Mi IA", "Más")
-        val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
-          Icons.Filled.AutoAwesome, Icons.Filled.Menu)
+        val icons = listOf(Icons.Outlined.Home, Icons.Outlined.Collections, Icons.Outlined.Style,
+          Icons.Outlined.AutoAwesome, Icons.Outlined.MoreHoriz)
+        var globalSettings by rememberSaveable { mutableStateOf(false) }
+        if (globalSettings) com.example.ui.screens.SettingsScreen(userPrefs.themeMode, viewModel::setThemeMode, { globalSettings = false })
         Scaffold(
-          modifier = Modifier.fillMaxSize(),
+          containerColor = Color.Transparent,
+          modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            androidx.compose.material3.MaterialTheme.colorScheme.background,
+            androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerLowest))),
           topBar = {
             androidx.compose.foundation.layout.Row(Modifier.statusBarsPadding().fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp),
               verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-              Text("TCG Dex", modifier = Modifier.weight(1f), style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+              com.example.ui.components.DexBall(Modifier.size(24.dp))
+              Spacer(Modifier.width(8.dp))
+              val brandAccent = androidx.compose.material3.MaterialTheme.colorScheme.primary
+              Text(androidx.compose.ui.text.buildAnnotatedString {
+                append("TCG ")
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = brandAccent))
+                append("Dex"); pop()
+              }, modifier = Modifier.weight(1f), style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-              androidx.compose.material3.IconButton(onClick = { moreSection = -1; navigateTo(4) }) {
-                Icon(Icons.Filled.Menu, "Herramientas y ajustes")
+              androidx.compose.material3.IconButton(onClick = { globalSettings = true }) {
+                Icon(Icons.Outlined.Settings, "Configuración")
               }
             }
           },
@@ -120,7 +143,7 @@ class MainActivity : ComponentActivity() {
               val target = with(density) { (itemWidth * activeIndex - (maxWidth - itemWidth) / 2).roundToPx() }
               navigationScroll.animateScrollTo(target.coerceAtLeast(0))
             }
-            NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
+            NavigationBar(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background, modifier = Modifier.horizontalScroll(navigationScroll)
               .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
               .testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
@@ -138,7 +161,7 @@ class MainActivity : ComponentActivity() {
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
+                    indicatorColor = Color.Transparent,
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),
