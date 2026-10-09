@@ -44,8 +44,9 @@ class DexVisualTest {
     compose.onNodeWithText("Nivel 50").assertIsDisplayed()
     compose.onNodeWithText("Sincronizar colección").performScrollTo().assertIsDisplayed()
     capture("inicio")
-    compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("Sincronizar colección"))).performScrollToNode(hasText("Mazos recientes"))
+    compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
+    Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
     capture("inicio-mazos")
     for ((index, name) in listOf(1 to "coleccion",2 to "mazos",3 to "ia",4 to "ajustes")) {
       compose.onNodeWithTag("nav_item_$index").performClick()

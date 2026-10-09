@@ -150,6 +150,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build disposable emulator test APKs
         run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+      - name: Enable emulator acceleration
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: Phone layout and screenshots
         uses: reactivecircus/android-emulator-runner@v2
         with:
