@@ -11,16 +11,17 @@ import kotlinx.coroutines.flow.map
 import java.io.IOException
 
 enum class ThemeMode(val storedValue: String) {
-  LIGHT("light"), DARK("dark"), SYSTEM("system");
+  DEX("dex"), LIGHT("light"), DARK("dark"), SYSTEM("system");
 
   fun isDark(systemDark: Boolean): Boolean = when (this) {
     LIGHT -> false
-    DARK -> true
+    DEX, DARK -> true
     SYSTEM -> systemDark
   }
 
   companion object {
     fun fromStored(value: String?): ThemeMode = when (value) {
+      "dex" -> DEX
       "light", "blue" -> LIGHT
       "dark" -> DARK
       else -> SYSTEM
@@ -34,21 +35,23 @@ object ProfileAvatars {
   fun normalize(id: String?): String = id?.takeIf { it in ids } ?: ids.first()
 }
 
-data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first())
+data class UserPreferences(val themeMode: ThemeMode = ThemeMode.DEX, val avatarId: String = ProfileAvatars.ids.first())
 
 private val avatarKey = stringPreferencesKey("profile_avatar")
+private val dexThemeApplied = booleanPreferencesKey("dex_theme_applied")
 private val themeKey = stringPreferencesKey("theme_name")
 
 internal object SettingsMigration : DataMigration<Preferences> {
   private val obsoleteKeys = setOf("app_language", "is_dark_mode")
   override suspend fun shouldMigrate(currentData: Preferences): Boolean =
-    currentData.asMap().keys.any { it.name in obsoleteKeys } ||
+    currentData[dexThemeApplied] != true || currentData.asMap().keys.any { it.name in obsoleteKeys } ||
       currentData[themeKey]?.let { it !in ThemeMode.entries.map { mode -> mode.storedValue } } == true
 
   override suspend fun migrate(currentData: Preferences): Preferences {
     val preferences = currentData.toMutablePreferences()
     preferences.asMap().keys.filter { it.name in obsoleteKeys }.forEach { preferences.remove(it) }
-    preferences[themeKey] = ThemeMode.fromStored(currentData[themeKey]).storedValue
+    preferences[themeKey] = if (currentData[dexThemeApplied] != true) "dex" else ThemeMode.fromStored(currentData[themeKey]).storedValue
+    preferences[dexThemeApplied] = true
     return preferences.toPreferences()
   }
 

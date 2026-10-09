@@ -110,26 +110,26 @@ fun MetaDeckAnalyzerScreen(
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFFEF3C7))
-                .border(1.dp, PocketGold.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
                 .padding(12.dp)
             ) {
               Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                  Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
                     text = "Sobre para plantillas A1: ${analysis.bestPackToOpenNext}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color(0xFF92400E)
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                   )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                   text = analysis.packReasoning,
                   fontSize = 11.sp,
-                  color = Color(0xFF78350F),
+                  color = MaterialTheme.colorScheme.onSecondaryContainer,
                   lineHeight = 15.sp
                 )
               }

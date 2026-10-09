@@ -25,17 +25,14 @@ fun RarityBadge(
   rarity: CardRarity,
   modifier: Modifier = Modifier
 ) {
-  val (bgColor, textColor, borderColor) = when (rarity) {
-    CardRarity.SHINY_ONE, CardRarity.SHINY_TWO -> Triple(Color(0xFFE0F2FE), Color(0xFF0284C7), PocketBluePrimary)
-    CardRarity.CROWN -> Triple(Color(0xFFFEF3C7), PocketGold, Color(0xFFF59E0B))
-    CardRarity.THREE_STARS -> Triple(Color(0xFFF3E8FF), Color(0xFF0369A1), Color(0xFFA855F7))
-    CardRarity.TWO_STARS -> Triple(Color(0xFFFFFBEB), Color(0xFFD97706), Color(0xFFFBBF24))
-    CardRarity.ONE_STAR -> Triple(Color(0xFFFEF9C3), Color(0xFFCA8A04), Color(0xFFFACC15))
-    CardRarity.FOUR_DIAMONDS -> Triple(Color(0xFFE0F2FE), Color(0xFF0284C7), PocketBluePrimary)
-    CardRarity.THREE_DIAMONDS -> Triple(Color(0xFFE0F7FA), Color(0xFF0097A7), Color(0xFF80DEEA))
-    CardRarity.TWO_DIAMONDS -> Triple(MaterialTheme.colorScheme.surfaceContainer, Color(0xFF475569), Color(0xFF94A3B8))
-    CardRarity.ONE_DIAMOND -> Triple(MaterialTheme.colorScheme.surfaceContainerLow, Color(0xFF64748B), MaterialTheme.colorScheme.outlineVariant)
+  val color = when (rarity) {
+    CardRarity.CROWN -> MaterialTheme.colorScheme.tertiary
+    CardRarity.ONE_STAR, CardRarity.TWO_STARS, CardRarity.THREE_STARS -> MaterialTheme.colorScheme.secondary
+    else -> MaterialTheme.colorScheme.primary
   }
+  val bgColor = MaterialTheme.colorScheme.surfaceContainerHigh
+  val textColor = color
+  val borderColor = color
 
   Box(
     modifier = modifier

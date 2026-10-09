@@ -42,7 +42,16 @@ object ZoneAutoImport {
           CardCatalog.loadBundled(app)
           val plan = prepare(payload, expectedPlayer)
           val db = AppDatabase.getDatabase(app)
+          var additions = 0
+          var addedCopies = 0L
           val stored = db.withTransaction {
+            val before = db.inventoryDao().getAllCards().associate { it.cardId to it.quantity }
+            for (row in plan.cards) {
+              val id = com.example.data.util.CardId.normalize("${row.setCode}-${row.cardNumber}")
+              val previous = before[id] ?: 0
+              if (previous == 0 && row.quantity > 0) additions++
+              addedCopies += maxOf(0L, row.quantity.toLong() - previous.toLong())
+            }
             ZoneCollectionImport.apply(db, plan)
             db.inventoryDao().getAllCards().filter { it.quantity > 0 }
           }
@@ -57,7 +66,9 @@ object ZoneAutoImport {
             "Reimportar reemplaza cantidades; no suma. Cartas ausentes, deseos y mazos se conservan.\n" +
             "Guardado: ${android.os.SystemClock.elapsedRealtime() - start} ms.\nApp: com.aistudio.tcgpocket2.kxmpzq"
           app.getSharedPreferences("zone-import-test", Context.MODE_PRIVATE).edit()
-            .putString("result", result).putString("player", plan.playerId).apply()
+            .putString("result", result).putString("player", plan.playerId)
+            .putLong("synced_at", System.currentTimeMillis()).putInt("new_cards", additions)
+            .putLong("added_copies", addedCopies).apply()
           result
         }
         callback.onResult(true, message)

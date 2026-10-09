@@ -179,10 +179,10 @@ fun CardItemView(
           .align(Alignment.TopEnd)
           .padding(4.dp)
           .clip(RoundedCornerShape(6.dp))
-          .background(if (isOwned) Color(0xFFFEF3C7) else Color(0xFF0F172A).copy(alpha = 0.8f))
+          .background(if (isOwned) MaterialTheme.colorScheme.primaryContainer else Color(0xFF0F172A).copy(alpha = 0.8f))
           .border(
             1.dp,
-            if (isOwned) PocketGold else Color.White.copy(alpha = 0.3f),
+            if (isOwned) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.3f),
             RoundedCornerShape(6.dp)
           )
           .padding(horizontal = 5.dp, vertical = 1.dp)
@@ -191,7 +191,7 @@ fun CardItemView(
           text = if (isOwned) "x$ownedCount" else "Falta",
           fontSize = 10.sp,
           fontWeight = FontWeight.Black,
-          color = if (isOwned) Color(0xFFB45309) else Color.White
+          color = if (isOwned) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
         )
       }
 

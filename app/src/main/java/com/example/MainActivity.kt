@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -92,17 +93,19 @@ class MainActivity : ComponentActivity() {
           dismissButton = { androidx.compose.material3.TextButton(onClick = { showExitConfirmation = false }) { Text("Continuar") } }
         )
 
-        val labels = listOf("Inicio", "Colección", "Mazos", "IA", "Más")
+        val labels = listOf("Inicio", "Colección", "Mazos", "Mi IA", "Más")
         val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
           Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           topBar = {
-            androidx.compose.foundation.layout.Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp)) {
-              androidx.compose.material3.Button(onClick = {
-                navigateTo(0)
-                startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java))
-              }) { Text("Sincronizar colección") }
+            androidx.compose.foundation.layout.Row(Modifier.statusBarsPadding().fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+              Text("TCG Dex", modifier = Modifier.weight(1f), style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+              androidx.compose.material3.IconButton(onClick = { moreSection = -1; navigateTo(4) }) {
+                Icon(Icons.Filled.Menu, "Herramientas y ajustes")
+              }
             }
           },
           bottomBar = {
@@ -152,7 +155,9 @@ class MainActivity : ComponentActivity() {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
               onEditor = { deckEditorRequest++; navigateTo(2) },
-              onMeta = { metaReturnTab = 0; navigateTo(5) })
+              onMeta = { metaReturnTab = 0; navigateTo(5) },
+              onSync = { startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java)) },
+              onCollection = { navigateTo(1) })
             1 -> CollectionScreen(viewModel, screenModifier)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)

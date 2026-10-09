@@ -49,12 +49,10 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       val total = refs?.sumOf { it.second } ?: saved.totalCards
       val available = refs?.sumOf { (id, count) -> minOf(count, owned[id] ?: 0) }
       var showMenu by remember(saved.id) { mutableStateOf(false) }
-      ElevatedCard(Modifier.fillMaxWidth()) {
+      OutlinedCard(Modifier.fillMaxWidth()) {
+        val cover = remember(saved.cardListSerialized) { runCatching { DeckCodec.cover(saved.cardListSerialized) }.getOrNull() }
+        DeckCover(cover, saved.name, Modifier.fillMaxWidth().height(148.dp))
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-          // Keep the text column usable on narrow phones and with enlarged system text.
-          if (LocalDensity.current.fontScale < 1.3f) {
-            refs?.firstOrNull()?.let { (id, _) -> DeckThumbnail(id, cards[id]?.name ?: "Portada del mazo") }
-          }
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(saved.name, style = MaterialTheme.typography.titleMedium)
             Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {

@@ -237,3 +237,31 @@ test('post-sync readiness waits for actual card rows on the collection route', a
   assert.equal(await page.evaluate(syncControl), 'blocked');
   await page.close();
 });
+
+test('profile reads only the visible nick, level and exact account route', async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route('**/*', r => r.fulfill({contentType:'text/html', body:'<main><h1>Demeberant</h1><dl><dt>Nivel</dt><dd>50</dd></dl><form><input value="secret"></form><script type="application/json">{"token":"secret"}</script></main>'}));
+    await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+    const profile = fs.readFileSync(__dirname + '/../../app/src/main/assets/zone/profile.js', 'utf8');
+    assert.deepEqual(JSON.parse(await page.evaluate(profile)), {friendId:'3778164033299021',nickname:'Demeberant',level:50});
+    await page.locator('h1').evaluate(e => e.hidden = true);
+    assert.equal(JSON.parse(await page.evaluate(profile)).nickname, '');
+    await page.goto('https://www.pokemon-zone.com/players/3778164033299021/cards/');
+    assert.deepEqual(JSON.parse(await page.evaluate(profile)), {});
+    await page.goto('https://www.pokemon-zone.com/players/3778164033299021/?token=secret');
+    assert.deepEqual(JSON.parse(await page.evaluate(profile)), {});
+  } finally { await page.close(); }
+});
+
+test('profile never fills a fabricated level or loading heading', async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route('**/*', r => r.fulfill({contentType:'text/html', body:'<main><h1>Loading...</h1><dl><dt>Nivel</dt><dd>50</dd></dl></main>'}));
+    await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+    const script = fs.readFileSync(__dirname + '/../../app/src/main/assets/zone/profile.js', 'utf8');
+    assert.deepEqual(JSON.parse(await page.evaluate(script)), {});
+    await page.locator('main').evaluate(e => e.innerHTML = '<h1>Jugador real</h1><p>1343 cartas</p>');
+    assert.equal(JSON.parse(await page.evaluate(script)).level, null);
+  } finally { await page.close(); }
+});

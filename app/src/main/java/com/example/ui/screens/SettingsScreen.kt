@@ -33,6 +33,7 @@ fun SettingsScreen(
         Column(Modifier.selectableGroup()) {
           ThemeMode.entries.forEach { mode ->
             val label = stringResource(when (mode) {
+              ThemeMode.DEX -> R.string.theme_dex
               ThemeMode.LIGHT -> R.string.theme_light
               ThemeMode.DARK -> R.string.theme_dark
               ThemeMode.SYSTEM -> R.string.theme_system

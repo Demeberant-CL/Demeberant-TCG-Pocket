@@ -130,3 +130,42 @@ jobs:
         env:
           NODE_PATH: /tmp/zone-browser-tests/node_modules
         run: node --test experiments/zone-import/browser.test.cjs
+
+  design-preview:
+    if: github.ref == 'refs/heads/fix/tcg-dex-visual-theme'
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build disposable emulator test APKs
+        run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+      - name: Phone layout and screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
+            mkdir -p design-preview/normal
+            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/normal/
+            adb shell settings put system font_scale 1.4
+            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.DexVisualTest --no-daemon
+            mkdir -p design-preview/large-text
+            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/large-text/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-preview
+          path: |
+            design-preview/
+            app/build/reports/androidTests/

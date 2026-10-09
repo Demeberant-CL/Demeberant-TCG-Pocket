@@ -58,6 +58,8 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
             Text("${current.totalCardCount}/20 cartas · " + current.energyTypes.joinToString().ifBlank { "Sin energías" },
               style = MaterialTheme.typography.bodySmall)
           }
+          val coverId = current.coverCardId ?: DeckCodec.defaultCover(current.cards.map { it.card })
+          coverId?.let { DeckThumbnail(it, "Portada de ${current.name}") }
           Box {
             IconButton(onClick = { showActions = true }) {
               Icon(Icons.Filled.MoreVert, "Opciones del mazo")
@@ -115,6 +117,9 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
               DeckThumbnail(entry.card.id, entry.card.name)
               Column(Modifier.weight(1f)) {
                 Text(entry.card.name, style = MaterialTheme.typography.titleSmall)
+                TextButton(onClick = { viewModel.setDeckCover(entry.card.id) }, enabled = !generating) {
+                  Text(if (current.coverCardId == entry.card.id) "✓ Portada" else "Usar como portada", style = MaterialTheme.typography.labelSmall)
+                }
                 Text("$available disponibles", style = MaterialTheme.typography.bodySmall)
                 val missing = maxOf(0, entry.count - available)
                 if (missing > 0) Text("Faltan $missing copias", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
