@@ -41,7 +41,7 @@ fun SettingsScreen(
             Row(Modifier.fillMaxWidth().selectable(
               selected = themeMode == mode, role = Role.RadioButton,
               onClick = { onThemeModeChange(mode) }
-            ).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            ).heightIn(min = 48.dp).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
               RadioButton(selected = themeMode == mode, onClick = null)
               Spacer(Modifier.width(8.dp))
               Text(label)
