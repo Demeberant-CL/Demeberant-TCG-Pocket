@@ -80,8 +80,8 @@ fun DexCardFan(modifier: Modifier = Modifier) {
     val w=size.width;val h=size.height
     for(i in 0..2) {
       rotate(-22f+i*18f,Offset(w*.6f,h*.6f)) {
-        val x=w*(.08f+i*.12f);val y=h*(.3f-i*.1f)
-        val card=Size(w*.48f,h*.7f)
+        val x=w*(.10f+i*.12f);val y=h*(.08f-i*.04f)
+        val card=Size(w*.34f,h*1.02f)
         drawRoundRect(Brush.linearGradient(listOf(Color(0xFF173D85),Color(0xFF10203E))),Offset(x,y),card,androidx.compose.ui.geometry.CornerRadius(w*.04f))
         drawRoundRect(if(i==2) Color(0xFF28C5ED) else Color(0xFF7661D5),Offset(x,y),card,androidx.compose.ui.geometry.CornerRadius(w*.04f),style=Stroke(w*.012f))
         val center=Offset(x+card.width/2,y+card.height*.52f)
