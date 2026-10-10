@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.domain.*
@@ -34,7 +35,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
       it.card.type != "Entrenador" && (it.card.name.contains(query.trim(), true) || it.card.id.contains(query.trim(), true)) }
       .sortedBy { it.card.id }.take(6)
   }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  LazyColumn(modifier.fillMaxSize().testTag("local_planner_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Constructor de mazos", style = MaterialTheme.typography.headlineSmall)
       Text("Con tus cartas · Sin conexión ni cuotas", style = MaterialTheme.typography.labelMedium,

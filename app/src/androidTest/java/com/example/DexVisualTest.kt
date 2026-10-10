@@ -112,7 +112,7 @@ class DexVisualTest {
         val plannerModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
         compose.waitUntil(45_000) { !plannerModel.isGeneratingDeck.value }
         check(plannerModel.localDeckPlans.value.isNotEmpty()) { plannerModel.localPlannerMessage.value ?: "No local proposals" }
-        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Abrir en editor"))
+        compose.onNodeWithTag("local_planner_list").performScrollToNode(hasText("Abrir en editor"))
         capture("constructor-local")
         compose.onAllNodesWithText("Ver cartas").onFirst().performScrollTo().performClick()
         capture("constructor-cartas")
