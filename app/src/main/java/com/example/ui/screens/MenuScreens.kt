@@ -64,7 +64,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
   }
   BackHandler(enabled = section != 0) { section = if (section in listOf(4, 5)) 3 else 0 }
   Column(modifier.fillMaxSize()) {
-    if (section == 1 || section == 3) {
+    if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
     } else if (section == 0 || section == 2) {
       MenuChoices(listOf("Mis mazos", "Plantillas A1"), if (section == 0) 0 else 1) {
@@ -73,7 +73,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
     }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
-      1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onAskAi)
+      1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onBack = { section = 0 })
       3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, modifier = Modifier.weight(1f))
       4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
         { section = 5 }, Modifier.weight(1f), creating = true)

@@ -32,7 +32,7 @@ import com.example.ui.viewmodel.TcgViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
+fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier, onBack: () -> Unit = {}) {
   val deck by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val message by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
@@ -82,6 +82,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     return
   }
   Column(modifier.fillMaxSize()) {
+    TextButton(onClick = onBack) { Text("← Mis mazos") }
     Surface(tonalElevation = 2.dp) {
       Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
