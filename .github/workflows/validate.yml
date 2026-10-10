@@ -133,7 +133,6 @@ jobs:
 
   design-preview:
     if: github.ref == 'refs/heads/fix/tcg-dex-design-b'
-    needs: android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -158,19 +157,20 @@ jobs:
           disable-animations: true
           script: |
             adb root
-            adb shell cmd uimode night yes
             adb wait-for-device
+            adb shell cmd uimode night yes
+            adb shell wm size 1080x2400
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee normal-test.log
-            grep -F 'OK (1 test)' normal-test.log
             mkdir -p design-preview/normal
             adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/normal/
+            grep -F 'OK (1 test)' normal-test.log
             adb shell settings put system font_scale 1.4
             adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee large-test.log
-            grep -F 'OK (1 test)' large-test.log
             mkdir -p design-preview/large-text
             adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/large-text/
+            grep -F 'OK (1 test)' large-test.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -178,6 +178,8 @@ jobs:
           path: |
             design-preview/
             app/build/reports/androidTests/
+            normal-test.log
+            large-test.log
 
   delivery:
     if: github.ref == 'refs/heads/fix/tcg-dex-design-b'
@@ -204,4 +206,4 @@ jobs:
           printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nDiseño B: gris oscuro y naranja, paneles compactos y navegación uniforme.\nSincronizar colección está en Ajustes y en el acceso rápido de Colección.\nLa colección y los mazos se conservan.\n' "$version" > delivery/LEEME.txt
           (cd delivery && zip "TCG-Dex-$version.zip" "TCG-Dex-$version.apk" LEEME.txt signing-certificate.txt)
           (cd preview-assets && zip -r "../delivery/TCG-Dex-$version-vista-previa.zip" . -i '*.png')
-          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.zip" "delivery/TCG-Dex-$version-vista-previa.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Nuevo diseño" --notes "Actualización Android verificada con diseño B gris oscuro y naranja. Sincronización en Ajustes y acceso rápido en Colección. Instalar sobre la versión anterior, sin desinstalar."
+          gh release create "tcg-dex-$version" "delivery/TCG-Dex-$version.apk" "delivery/TCG-Dex-$version.zip" "delivery/TCG-Dex-$version-vista-previa.zip" --target "$GITHUB_SHA" --prerelease --title "TCG Dex $version · Nuevo diseño" --notes "Actualización Android verificada con diseño B gris oscuro y naranja. Sincronización en Ajustes y acceso rápido en Colección. Instalar sobre la versión anterior, sin desinstalar."

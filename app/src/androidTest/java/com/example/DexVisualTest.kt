@@ -63,12 +63,14 @@ class DexVisualTest {
         compose.onNodeWithText("Cerrar").performClick()
       }
       if (index == 4) {
-        compose.onNodeWithText("Ajustes", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Ajustes"))
+        compose.onNodeWithText("Ajustes").performClick()
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
         capture("mas-ajustes")
         compose.onNodeWithText("Listo").performClick()
         for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Simulador" to "simulador", "Calculadora" to "calculadora", "Filtros por efectos" to "efectos")) {
-          compose.onNodeWithText(label).performScrollTo().performClick()
+          compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
+          compose.onNodeWithText(label).performClick()
           compose.waitForIdle()
           capture(file)
           compose.onNodeWithText("← Más herramientas").performClick()
