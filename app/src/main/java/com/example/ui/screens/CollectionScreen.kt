@@ -122,7 +122,11 @@ import kotlinx.coroutines.withContext
 @Composable
 fun CollectionScreen(
   viewModel: TcgViewModel,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  settingsOnly: Boolean = false,
+  onSettingsBack: () -> Unit = {},
+  onAiConnections: (() -> Unit)? = null,
+  advanced: com.example.ui.viewmodel.AdvancedViewModel? = null
 ) {
   var listView by rememberSaveable { mutableStateOf(false) }
   var largeCards by rememberSaveable { mutableStateOf(false) }
@@ -142,7 +146,8 @@ fun CollectionScreen(
   var pendingRestore by remember { mutableStateOf<BackupSnapshot?>(null) }
   var pendingBackup by remember { mutableStateOf<String?>(null) }
   var showPasteDialog by remember { mutableStateOf(false) }
-  var showSettingsDialog by remember { mutableStateOf(false) }
+  var showSettingsDialog by remember { mutableStateOf(settingsOnly) }
+  var effectPage by rememberSaveable { mutableStateOf(false) }
   var showDiagnosticReport by remember { mutableStateOf(false) }
   var pasteInputText by remember { mutableStateOf("") }
 
@@ -229,7 +234,19 @@ fun CollectionScreen(
   val totalCopies = fullInventory.sumOf { it.ownedCount }
   val completionPercent = if (totalCatalog > 0) (totalOwned.toFloat() / totalCatalog.toFloat()) else 0f
 
-  LazyVerticalGrid(
+  if (effectPage && advanced != null) {
+    androidx.activity.compose.BackHandler { effectPage = false }
+    Column(modifier.fillMaxSize()) {
+      TextButton(onClick = { effectPage = false }) { Text("← Colección") }
+      EffectFiltersScreen(viewModel, advanced, Modifier.weight(1f))
+    }
+    return
+  }
+  if (settingsOnly) Column(modifier.fillMaxSize().padding(16.dp)) {
+    TextButton(onClick = onSettingsBack) { Text("← Más herramientas") }
+    TextButton(onClick = { showSettingsDialog = true }) { Text("Abrir Ajustes") }
+  }
+  if (!settingsOnly) LazyVerticalGrid(
     columns = if (listView) GridCells.Fixed(1) else GridCells.Adaptive(
       ((if (largeCards) 150f else 100f) * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp),
     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
@@ -273,7 +290,9 @@ fun CollectionScreen(
       }
     }
 
-    TextButton(onClick = { showSettingsDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Ajustes de colección") }
+    TextButton(onClick = { showSettingsDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Ajustes") }
+
+    if (advanced != null) TextButton(onClick = { effectPage = true }) { Text("Buscar por efectos") }
 
     // CSV Import Success / Info Toast Banner
     csvMessage?.let { msg ->
@@ -453,31 +472,31 @@ fun CollectionScreen(
     )
   }
 
-  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
 
   if (showSettingsDialog) {
     SettingsScreen(
       themeMode = userPreferences.themeMode,
       onThemeModeChange = viewModel::setThemeMode,
-      onDismiss = { showSettingsDialog = false }
+      onDismiss = { showSettingsDialog = false; if (settingsOnly) onSettingsBack() }
     ) {
+          if (onAiConnections != null) OutlinedButton(onClick = onAiConnections, modifier = Modifier.fillMaxWidth()) { Text("Conexiones IA") }
           HelpButton()
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             context.startActivity(android.content.Intent(context, com.example.zoneimport.ZoneImportActivity::class.java))
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Pokémon Zone: resultado / importar JSON") }
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             try { csvPickerLauncher.launch("*/*") } catch (_: Exception) { showPasteDialog = true }
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Importar CSV") }
-          OutlinedButton(onClick = { showSettingsDialog = false; showPasteDialog = true },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; showPasteDialog = true },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Pegar CSV") }
-          OutlinedButton(onClick = { showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Exportar colección CSV") }
           Text("El CSV contiene cantidades y Deseos. El respaldo JSON incluye también mazos y ajustes.", fontSize = 12.sp)
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             scope.launch {
               try {
                 pendingBackup = viewModel.generateBackupContent()
@@ -486,36 +505,15 @@ fun CollectionScreen(
               catch (e: Exception) { Toast.makeText(context, "No se pudo preparar el respaldo.", Toast.LENGTH_LONG).show() }
             }
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Guardar respaldo completo") }
-          OutlinedButton(onClick = { showSettingsDialog = false; backupImport.launch("*/*") },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; backupImport.launch("*/*") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Restaurar respaldo completo") }
           Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
-          // Error Logging Export Section
-          Column {
-            Text("Diagnóstico", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PocketTextPrimary)
-            Spacer(modifier = Modifier.height(6.dp))
-            Button(onClick = { showSettingsDialog = false; showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Copiar diagnóstico para el chat") }
-            Text("Resumen breve sin adjuntos. El TXT completo queda disponible abajo.", fontSize = 12.sp)
-            OutlinedButton(onClick = {
-              showSettingsDialog = false
-              diagnosticSave.launch("diagnostico-tcg-pocket.txt")
-            }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Guardar diagnóstico TXT") }
-            HelpButton("diagnostico")
-            OutlinedButton(
-              onClick = {
-                ErrorLogManager.exportErrorLogs(context)
-              },
-              modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp),
-              shape = RoundedCornerShape(8.dp)
-            ) {
-              Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Compartir diagnóstico TXT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-          }
+          OutlinedButton(onClick = { showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth()) { Text("Diagnóstico y ayuda") }
+
     }
   }
+
+  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
 
   // CSV Paste Modal Dialog
   if (showPasteDialog) {

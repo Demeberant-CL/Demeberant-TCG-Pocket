@@ -64,6 +64,15 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
   val candidates = remember(inventory, filter, counts, rules) { filter.select(inventory, counts, rules) }
   val expansions = remember(inventory) { inventory.map { it.card.id.substringBeforeLast('-') }.distinct().sorted() }
   LaunchedEffect(filter) { visibleLimit = 80 }
+  if (chatPage == 3 || chatPage == 4) {
+    BackHandler { chatPage = 0 }
+    Column(modifier.fillMaxSize()) {
+      TextButton(onClick = { chatPage = 0 }) { Text("← Editor del mazo") }
+      if (chatPage == 3) SandboxScreen(viewModel, advanced, Modifier.weight(1f))
+      else ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = true, deck = current)
+    }
+    return
+  }
   if (chatPage == 1) {
     DeckChatScreen(viewModel, advanced, { chatPage = 0 }, { chatPage = 2 }, modifier, initialAction = chatAction)
     return
@@ -72,7 +81,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     BackHandler { chatPage = 1 }
     Column(modifier.fillMaxSize()) {
       TextButton(onClick = { chatPage = 1 }) { Text("← Chat del mazo") }
-      AIAssistantScreen(viewModel, advanced, { chatPage = 0 }, Modifier.weight(1f), initialConfigure = true)
+      AIAssistantScreen(viewModel, advanced, { chatPage = 0 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
     }
     return
   }
@@ -138,7 +147,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
             Text("${candidates.size} resultados", style = MaterialTheme.typography.bodySmall)
             if (filter.effect.isNotBlank()) {
               Text("Los efectos solo filtran cartas con datos cargados.", style = MaterialTheme.typography.bodySmall)
-              TextButton(enabled = !aiBusy, onClick = { advanced.indexCards(filter.copy(effect = "").select(inventory, counts, rules).map { it.card.id }, "es") }) { Text("Cargar efectos de hasta 25 cartas") }
+              TextButton(enabled = !aiBusy, onClick = { advanced.indexCards(filter.copy(effect = "").select(inventory, counts, rules).map { it.card.id }, "es") }) { Text("Cargar efectos de esta búsqueda") }
               val status by advanced.message.collectAsStateWithLifecycle()
               status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
@@ -224,6 +233,8 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
           }, shape = MaterialTheme.shapes.medium) { Text("Compartir lista") }
           if (current.totalCardCount == 20 && current.energyTypes.isNotEmpty()) com.example.ui.components.DeckQrExportButton(current)
           else Text("Exportar al juego requiere 20 cartas y energías seleccionadas.", style = MaterialTheme.typography.bodySmall)
+          OutlinedButton(onClick = { chatPage = 4 }) { Text("Probabilidad de robo") }
+          OutlinedButton(enabled = current.totalCardCount == 20, onClick = { chatPage = 3 }) { Text("Tapete de práctica") }
           HelpButton("mazos")
         }
       }

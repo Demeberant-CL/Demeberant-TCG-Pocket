@@ -26,6 +26,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   val suggestion by model.deckChatSuggestion.collectAsStateWithLifecycle()
   val status by model.deckChatStatus.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
+  val retryAvailable by model.deckChatRetryAvailable.collectAsStateWithLifecycle()
   val connection by model.connection.collectAsStateWithLifecycle()
   val ready by model.connectionReady.collectAsStateWithLifecycle()
   val current = deck ?: return
@@ -34,6 +35,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
     "improve" -> "Mejora la consistencia de este mazo y explica los cambios."
     else -> ""
   }) }
+  LaunchedEffect(messages.lastOrNull()) { if (messages.lastOrNull()?.user == false) input = "" }
   var energy by rememberSaveable { mutableStateOf(current.energyTypes.firstOrNull() ?: "") }
   var style by rememberSaveable { mutableStateOf("Equilibrado") }
   var reviewing by rememberSaveable { mutableStateOf(false) }
@@ -82,6 +84,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
         } }
       } }
       status?.let { item { Text(it, style = MaterialTheme.typography.bodySmall) } }
+      if (retryAvailable && !busy) item { OutlinedButton(onClick = { model.retryDeckChat(current) }) { Text("Reintentar consulta") } }
       if (busy) item {
         LinearProgressIndicator(Modifier.fillMaxWidth())
         TextButton(onClick = { model.cancel(); model.deckChatStatus.value = "Consulta cancelada. Puedes volver a enviar tu mensaje." }) { Text("Cancelar consulta") }
@@ -93,9 +96,9 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
           label = { Text(if (creating && messages.isEmpty()) "Idea para el mazo" else "Mensaje para la IA") }, maxLines = 4)
         Button(enabled = ready && !busy && input.isNotBlank() && connection.apiKey.isNotBlank(), onClick = {
           val text = input
-          model.sendDeckChat(current, if (creating && messages.isEmpty()) "$text\nEstilo: $style" else text,
-            if (creating && messages.isEmpty()) "create" else initialAction, if (creating) energy else "")
-          input = ""
+          model.sendDeckChat(current, if (creating) "$text\nEstilo: $style" else text,
+            if (creating) "create" else initialAction, if (creating) energy else "")
+          // Keep the instructions available after errors and cancellation.
         }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
           Text(if (creating && messages.isEmpty()) "Generar propuesta" else "Enviar")
         }

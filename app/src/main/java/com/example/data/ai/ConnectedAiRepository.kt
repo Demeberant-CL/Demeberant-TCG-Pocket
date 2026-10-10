@@ -2,6 +2,7 @@ package com.example.data.ai
 
 import com.example.data.network.await
 import com.example.data.util.readBytesBounded
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
@@ -12,11 +13,26 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** No private bodies, credentials, or custom URLs are logged. No retries or provider fallback. */
+/** Bounded transient retries; no private logging or automatic provider changes. */
 class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Builder()
   .connectTimeout(15, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).callTimeout(100, TimeUnit.SECONDS)
   .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false).build(),
-  private val allowLocalTests: Boolean = false) {
+  private val allowLocalTests: Boolean = false,
+  private val retryWait: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) }) {
+  private suspend fun execute(request: Request, onStatus: (String) -> Unit): Response {
+    for (attempt in 0..2) {
+      val response = client.newCall(request).await()
+      val retryAfter = response.header("Retry-After")?.toLongOrNull()?.takeIf { it in 0..30 }
+      val transient = response.code in setOf(502, 503, 504) || (response.code == 429 && retryAfter != null)
+      if (!transient || attempt == 2) return response
+      val pause = retryAfter?.times(1000) ?: (1000L shl attempt) + kotlin.random.Random.nextLong(250)
+      response.close()
+      onStatus("Servicio ocupado. Reintentando ${attempt + 1}/2…")
+      retryWait(pause)
+      kotlinx.coroutines.currentCoroutineContext().ensureActive()
+    }
+    error("La API no está disponible temporalmente. Puedes reintentar.")
+  }
   suspend fun models(config: AiConnection): List<String> = withContext(Dispatchers.IO) {
     require(config.apiKey.isNotBlank()) { "Introduce tu clave API." }
     val base = when (config.provider) {
@@ -46,7 +62,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
       }.distinct().sorted()
     }
   }
-  suspend fun request(config: AiConnection, prompt: String): String = withContext(Dispatchers.IO) {
+  suspend fun request(config: AiConnection, prompt: String, onStatus: (String) -> Unit = {}): String = withContext(Dispatchers.IO) {
     require(config.apiKey.isNotBlank() && config.apiKey.length <= 4096) { "Introduce tu clave API." }
     require(config.model.matches(Regex("[a-zA-Z0-9._:/-]{1,120}"))) { "Revisa el identificador del modelo." }
     require(prompt.toByteArray(Charsets.UTF_8).size <= 60000) { "Hay demasiadas cartas. Selecciona un tipo para reducir la consulta." }
@@ -67,7 +83,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
       .put("max_completion_tokens", 4096)
     val builder = Request.Builder().url(url).post(payload.toString().toRequestBody("application/json".toMediaType()))
     if (gemini) builder.header("x-goog-api-key", config.apiKey) else builder.header("Authorization", "Bearer ${config.apiKey}")
-    client.newCall(builder.build()).await().use { response ->
+    execute(builder.build(), onStatus).use { response ->
       if (!response.isSuccessful) error(when (response.code) {
         401, 403 -> "La API rechazó la clave o el acceso al modelo. Revisa tu configuración."
         429 -> "Cuota o límite de consultas alcanzado. No se cambiará a otro proveedor."

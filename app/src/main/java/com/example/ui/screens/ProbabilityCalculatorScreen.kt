@@ -10,14 +10,17 @@ import androidx.compose.ui.unit.dp
 import com.example.data.util.CollectionInsights
 
 @Composable
-fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier) {
+fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier, deckOnly: Boolean = false, packsOnly: Boolean = false, deck: com.example.data.repository.GeneratedDeck? = null) {
+  var targetId by rememberSaveable { mutableStateOf("") }
+  var chooseTarget by remember { mutableStateOf(false) }
+  val actualTargets = deck?.cards?.find { it.card.id == targetId }?.count
   var rate by rememberSaveable { mutableStateOf("") }
   var attempts by rememberSaveable { mutableFloatStateOf(10f) }
   var targets by rememberSaveable { mutableFloatStateOf(2f) }
   var draws by rememberSaveable { mutableFloatStateOf(5f) }
   val parsed = rate.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..100.0 }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    item {
+    if (!deckOnly) item {
       Text("Probabilidad de conseguir una carta", style = MaterialTheme.typography.titleLarge)
       Text("Introduce la probabilidad total por sobre que muestra el juego para tu objetivo. No uses la tasa de una sola ranura.")
       OutlinedTextField(rate, { rate = it }, label = { Text("Probabilidad por sobre (%)") },
@@ -30,13 +33,24 @@ fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier) {
       }
       Text("Modelo de aperturas independientes con tasa constante. Un promedio no garantiza el resultado.")
     }
-    item {
+    if (!packsOnly) item {
       HorizontalDivider()
       Text("Robar una carta objetivo", style = MaterialTheme.typography.titleLarge)
       Text("Mazo de 20 cartas; robo aleatorio sin reemplazo.")
-      Text("${targets.toInt()} copias objetivo"); Slider(targets, { targets = it }, valueRange = 0f..20f, steps = 19)
+      if (deck != null) {
+        Text(deck.name + " · " + deck.totalCardCount + "/20")
+        Box {
+          OutlinedButton(onClick = { chooseTarget = true }) { Text(deck.cards.find { it.card.id == targetId }?.card?.name ?: "Elegir carta del mazo") }
+          DropdownMenu(expanded = chooseTarget, onDismissRequest = { chooseTarget = false }) {
+            deck.cards.forEach { entry -> DropdownMenuItem(text = { Text("${entry.card.name} · ${entry.count} copias") }, onClick = { targetId = entry.card.id; chooseTarget = false }) }
+          }
+        }
+      }
+      if (actualTargets == null) {
+        Text("${targets.toInt()} copias objetivo"); Slider(targets, { targets = it }, valueRange = 0f..20f, steps = 19)
+      } else Text("$actualTargets copias objetivo")
       Text("${draws.toInt()} cartas robadas"); Slider(draws, { draws = it }, valueRange = 0f..20f, steps = 19)
-      Text("Al menos una: ${"%.2f".format(CollectionInsights.drawChance(20, targets.toInt(), draws.toInt()) * 100)} %")
+      Text("Al menos una: ${"%.2f".format(CollectionInsights.drawChance(20, actualTargets ?: targets.toInt(), draws.toInt()) * 100)} %")
       Text("No simula la garantía de Pokémon básico en la mano inicial ni habilidades, búsqueda o efectos del juego.")
     }
   }

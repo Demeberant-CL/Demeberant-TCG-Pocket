@@ -30,10 +30,17 @@ object DeckAutomation {
       val count = minOf(2 - sameName, item.ownedCount - old, 20 - entries.values.sumOf { it.count })
       if (count > 0) entries[card.id] = DeckCardEntry(card, old + count)
     }
-    pool.filter { it.card.type == type && it.card.stage == "basic" }.take(3).forEach(::add)
+    pool.filter { it.card.type == type && it.card.stage == "basic" }
+      .sortedWith(compareByDescending<CardWithInventory> { basic ->
+        pool.count { it.card.evolvesFrom.equals(basic.card.rulesName, true) }
+      }.thenByDescending { minOf(2, it.ownedCount) }.thenBy { it.card.id })
+      .take(3).forEach(::add)
     pool.filter { it.card.type == "Entrenador" }.forEach {
       if (entries.values.filter { e -> e.card.type == "Entrenador" }.sumOf { e -> e.count } < 8) add(it)
     }
+    // Add matching evolution lines before filling with unrelated basics.
+    pool.filter { it.card.stage == "1" && it.card.type != "Entrenador" }.forEach(::add)
+    pool.filter { it.card.stage == "2" && it.card.type != "Entrenador" }.forEach(::add)
     repeat(3) { pool.filter { it.card.type != "Entrenador" }.forEach(::add) }
     val cards = entries.values.toList()
     require(cards.any { it.card.stage == "basic" && it.card.type != "Entrenador" }) {

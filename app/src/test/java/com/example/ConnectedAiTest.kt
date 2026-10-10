@@ -46,6 +46,30 @@ class ConnectedAiTest {
       assertEquals("Bearer test-secret", server.takeRequest().getHeader("Authorization"))
     } finally { server.shutdown() }
   }
+  @Test fun transientServiceErrorRetriesSameRequestWithoutProviderFallback() = runBlocking {
+    val server = MockWebServer(); server.start()
+    try {
+      server.enqueue(MockResponse().setResponseCode(503).setBody("PRIVATE"))
+      server.enqueue(MockResponse().setBody("""{"choices":[{"finish_reason":"stop","message":{"content":"ok"}}]}"""))
+      val config = AiConnection(AiProvider.COMPATIBLE, "model", "test", server.url("/v1/chat/completions").toString())
+      val statuses = mutableListOf<String>()
+      assertEquals("ok", ConnectedAiRepository(allowLocalTests = true, retryWait = {}).request(config, "same context") { statuses.add(it) })
+      assertEquals(2, server.requestCount)
+      assertEquals(server.takeRequest().body.readUtf8(), server.takeRequest().body.readUtf8())
+      assertEquals(1, statuses.size)
+    } finally { server.shutdown() }
+  }
+  @Test fun serviceRetriesAreBoundedAndAuthenticationIsNotRetried() = runBlocking {
+    for ((code, count) in listOf(503 to 3, 401 to 1)) {
+      val server = MockWebServer(); server.start()
+      try {
+        repeat(count) { server.enqueue(MockResponse().setResponseCode(code).setBody("PRIVATE")) }
+        val config = AiConnection(AiProvider.COMPATIBLE, "model", "test", server.url("/v1/chat/completions").toString())
+        assertTrue(runCatching { ConnectedAiRepository(allowLocalTests = true, retryWait = {}).request(config, "cards") }.isFailure)
+        assertEquals(count, server.requestCount)
+      } finally { server.shutdown() }
+    }
+  }
   @Test fun rejectsInsecureCredentialUrlsAndOversizedPromptsBeforeNetwork() = runBlocking {
     val repo = ConnectedAiRepository()
     for (url in listOf("http://example.com/chat", "https://user:pass@example.com/chat", "https://example.com/chat?key=secret")) {

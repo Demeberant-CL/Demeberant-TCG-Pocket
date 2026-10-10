@@ -17,6 +17,8 @@ import com.example.ui.viewmodel.TcgViewModel
 @Composable
 fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
+  var query by rememberSaveable { mutableStateOf("") }
+  var showCodes by rememberSaveable { mutableStateOf(false) }
   var codes by rememberSaveable { mutableStateOf("") }
   val tokens = codes.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }
   val invalid = tokens.filter { token -> runCatching { CardCatalog.getCardById(CardId.normalize(token)) }.getOrNull() == null }
@@ -26,11 +28,29 @@ fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier
     item {
       Text("Sobres para completar tu colección", style = MaterialTheme.typography.titleLarge)
       Text("Comparación de todas las expansiones con datos de sobre. Prioriza cartas que faltan, Deseos y tus objetivos. Las promociones se excluyen.")
-      OutlinedTextField(codes, { codes = it }, label = { Text("Objetivos por código (opcional)") },
+      OutlinedTextField(query, { query = it }, label = { Text("Buscar carta objetivo") }, modifier = Modifier.fillMaxWidth())
+      TextButton(onClick = { showCodes = !showCodes }) { Text("Introducir códigos manualmente") }
+      if (showCodes) OutlinedTextField(codes, { codes = it }, label = { Text("Objetivos por código (opcional)") },
         placeholder = { Text("A1-036, A2-001") }, isError = invalid.isNotEmpty(), modifier = Modifier.fillMaxWidth())
       if (invalid.isNotEmpty()) Text("Códigos no disponibles: ${invalid.joinToString()}", color = MaterialTheme.colorScheme.error)
       Text("Puntuación: 1 por faltante, 3 adicionales por Deseo y 5 adicionales por objetivo. Mide cobertura; no probabilidades de apertura.")
       if (coverage.isEmpty()) Text("No hay cartas faltantes con datos de sobre.")
+    }
+    if (query.isNotBlank()) items(inventory.filter { it.card.name.contains(query, true) || it.card.id.contains(query, true) }.take(20), key = { "target-${it.card.id}" }) { item ->
+      OutlinedCard(onClick = {
+        val next = targets.toMutableSet()
+        if (!next.add(item.card.id)) next.remove(item.card.id)
+        codes = next.joinToString(", ")
+      }, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          DeckThumbnail(item.card.id, item.card.name)
+          Column { Text(item.card.name); Text(if (item.card.id in targets) "Objetivo seleccionado ✓" else item.card.id) }
+        }
+      }
+    }
+    if (targets.isNotEmpty()) item {
+      Text("Objetivos: " + targets.joinToString { id -> CardCatalog.getCardById(id)?.name ?: id })
+      TextButton(onClick = { codes = "" }) { Text("Limpiar objetivos") }
     }
     items(coverage, key = { "${it.set}:${it.pack}" }) { pack ->
       Card(Modifier.fillMaxWidth()) {

@@ -12,7 +12,7 @@ object ExternalAiExchange {
     val context = JSONObject().put("goal", goal.take(2000)).put("meta", meta.take(16000))
       .put("cards", JSONArray(candidates.map { c -> JSONObject().put("id", c.card.id).put("name", c.card.rulesName)
         .put("quantity", minOf(c.owned, 2)).put("type", c.card.type).put("category", c.card.category)
-        .put("stage", c.card.stage).put("evolvesFrom", c.card.evolvesFrom).put("effects", c.text.take(2000)) }))
+        .put("stage", c.card.stage).put("evolvesFrom", c.card.evolvesFrom).put("hp", c.card.hp).put("effects", c.text).put("effectsKnown", c.text.isNotBlank()) }))
       .put("target", JSONArray(target?.map { JSONObject().put("id", it.card.id).put("count", it.count) } ?: emptyList<JSONObject>()))
     context.put("reference", JSONArray(reference?.map { JSONObject().put("id", it.card.id).put("count", it.count).put("name", it.card.rulesName) } ?: emptyList<JSONObject>()))
     val instructions = """
