@@ -198,11 +198,11 @@ fun CardItemView(
       // A full touch target with a small visible badge keeps the card art readable.
       IconButton(onClick = onToggleWishlist,
         modifier = Modifier.align(Alignment.TopStart).size(48.dp).testTag("wishlist_btn_${card.id}")) {
-        Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.85f)),
+        Box(Modifier.size(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.72f)),
           contentAlignment = Alignment.Center) {
           Icon(imageVector = if (isWishlist) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
             contentDescription = if (isWishlist) "Quitar de deseadas" else "Añadir a deseadas",
-            tint = if (isWishlist) PocketRed else Color(0xFF59616F), modifier = Modifier.size(14.dp))
+            tint = if (isWishlist) Color(0xFFFF8F9B) else Color.White, modifier = Modifier.size(20.dp))
         }
       }
 

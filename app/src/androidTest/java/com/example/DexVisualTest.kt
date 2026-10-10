@@ -39,7 +39,7 @@ class DexVisualTest {
       db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=2,
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2)),listOf("Rayo"))))
     }
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("TCG Dex").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
@@ -56,7 +56,7 @@ class DexVisualTest {
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithContentDescription("Ajustes").performClick()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         capture("ajustes-dialogo")
         compose.onNodeWithText("Listo").performClick()

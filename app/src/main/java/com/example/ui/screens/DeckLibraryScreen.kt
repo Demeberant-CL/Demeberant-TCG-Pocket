@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +34,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
+        Text("Mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
         Button(onClick = onCreate, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("+ Nuevo mazo") }
         if (draft?.cards?.isNotEmpty() == true) OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar borrador · ${draft?.totalCardCount}/20") }
         OutlinedTextField(search, { search = it }, modifier = Modifier.fillMaxWidth(),
@@ -48,7 +49,9 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       val total = refs?.sumOf { it.second } ?: saved.totalCards
       val available = refs?.sumOf { (id, count) -> minOf(count, owned[id] ?: 0) }
       var showMenu by remember(saved.id) { mutableStateOf(false) }
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      OutlinedCard(onClick = { openSavedDeck(saved) },
+        enabled = refs != null && refs.all { cards.containsKey(it.first) },
+        modifier = Modifier.fillMaxWidth().testTag("saved_deck_${saved.id}")) {
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
           // Keep the text column usable on narrow phones and with enlarged system text.
           if (LocalDensity.current.fontScale < 1.3f) {
@@ -62,24 +65,21 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
                 Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
-            Text("Energías: " + energies.joinToString().ifBlank { "Por revisar en el editor" }, style = MaterialTheme.typography.bodySmall)
-            if (available != null) Text(if (available < total) "Faltan ${total-available} copias · $available/$total disponibles" else "Todas las copias disponibles · $available/$total",
+            if (energies.isNotEmpty()) com.example.ui.components.EnergyBadges(energies)
+            else Text("Energías por revisar", style = MaterialTheme.typography.bodySmall)
+            if (available != null) Text(if (available < total) "Faltan ${total-available} copias · $available/$total disponibles" else "Disponibles · $available/$total",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             if (refs == null) Text("No se pudo interpretar la lista guardada. El mazo se conserva.", style = MaterialTheme.typography.bodySmall)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              OutlinedButton(enabled = refs != null && refs.all { cards.containsKey(it.first) },
-                onClick = { openSavedDeck(saved) }, shape = MaterialTheme.shapes.medium) { Text("Abrir") }
-              Spacer(Modifier.weight(1f))
+            if (refs != null && refs.any { !cards.containsKey(it.first) }) Text("Hay cartas fuera del catálogo actual.", style = MaterialTheme.typography.bodySmall)
+          }
               Box {
                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                   DropdownMenuItem(text = { Text("Eliminar mazo") }, onClick = { showMenu = false; pendingDelete = saved })
                 }
               }
-            }
-            if (refs != null && refs.any { !cards.containsKey(it.first) }) Text("Hay cartas fuera del catálogo actual.", style = MaterialTheme.typography.bodySmall)
-          }
+
         }
       }
     }

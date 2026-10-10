@@ -48,15 +48,14 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
-            Text("TCG Dex", style = MaterialTheme.typography.headlineSmall)
-            Text("Resumen de tu colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("POCKET ATLAS", style = MaterialTheme.typography.headlineSmall)
           }
         }
-        Text("Tu colección", style = MaterialTheme.typography.titleMedium)
+        Text("Resumen", style = MaterialTheme.typography.titleMedium)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
           listOf(owned.toString() to "cartas", copies.toString() to "copias",
             "${(progress * 100).toInt()}%" to "catálogo").forEach { (value, label) ->
-            Column { Text(value, style = MaterialTheme.typography.headlineSmall)
+            Column { Text(value, style = MaterialTheme.typography.headlineLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
               Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
           }
         }
@@ -101,8 +100,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
             val energies = remember(saved.cardListSerialized) {
               runCatching { DeckCodec.energies(saved.cardListSerialized) }.getOrDefault(emptyList())
             }
-            if (energies.isNotEmpty()) Text(energies.joinToString(" · "),
-              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            if (energies.isNotEmpty()) com.example.ui.components.EnergyBadges(energies)
             if (!canOpen) Text("Lista no disponible en el catálogo actual",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }

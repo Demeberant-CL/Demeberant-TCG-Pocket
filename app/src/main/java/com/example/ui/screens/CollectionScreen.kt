@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
@@ -272,13 +273,16 @@ fun CollectionScreen(
           com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
             Modifier.size(48.dp).clip(CircleShape).clickable { showAvatarPicker = true }, "Cambiar avatar de perfil")
           Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
-            Text("Mi colección", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Colección", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
               style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
             if (showProfileDetails) {
               Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
               Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
             }
+          }
+          IconButton(onClick = { showSettingsDialog = true }) {
+            Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = PocketBluePrimary)
           }
           IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
             Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección", tint = PocketBluePrimary)
@@ -290,7 +294,6 @@ fun CollectionScreen(
       }
     }
 
-    TextButton(onClick = { showSettingsDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Ajustes") }
 
     if (advanced != null) TextButton(onClick = { effectPage = true }) { Text("Buscar por efectos") }
 
@@ -371,13 +374,10 @@ fun CollectionScreen(
         CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.weight(1f))
         CollectionAdvancedFilterButton(expansionFilter != null || rarityFilter != null, { showFiltersDialog = true })
       }
-      if (stackControls) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CollectionViewSelector(listView, { listView = it }, false, Modifier.fillMaxWidth())
-        CollectionCardSizeButton(largeCards, !listView, { largeCards = it }, Modifier.align(Alignment.End))
-      } else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        CollectionViewSelector(listView, { listView = it }, true, Modifier.weight(1f))
-        CollectionCardSizeButton(largeCards, !listView, { largeCards = it })
-      }
+      CollectionViewSelector(if (listView) 1 else if (largeCards) 0 else 2, {
+        listView = it == 1
+        if (it != 1) largeCards = it == 0
+      }, Modifier.fillMaxWidth())
     }
     Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
@@ -626,37 +626,21 @@ private fun CollectionAdvancedFilterButton(active: Boolean, onClick: () -> Unit,
 }
 
 @Composable
-private fun CollectionViewSelector(listView: Boolean, onSelect: (Boolean) -> Unit,
-  showIcons: Boolean, modifier: Modifier = Modifier) {
-  val shape = RoundedCornerShape(10.dp)
-  Row(modifier.height(IntrinsicSize.Min).clip(shape).background(PocketSurface)
-    .border(1.dp, PocketBorder, shape).selectableGroup()) {
-    listOf(false to "Cuadrícula", true to "Lista").forEach { (value, label) ->
-      val selected = listView == value
-      val color = if (selected) MaterialTheme.colorScheme.onPrimary else PocketTextPrimary
-      Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)
-        .background(if (selected) PocketBluePrimary else Color.Transparent)
-        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(value) })
-        .padding(horizontal = if (showIcons) 8.dp else 2.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          if (showIcons) Icon(if (value) Icons.Filled.ViewList else Icons.Filled.GridView, null,
-            Modifier.size(20.dp), tint = color)
-          Text(label, color = color, style = MaterialTheme.typography.labelLarge)
-        }
-      }
-    }
-  }
-}
-
-@Composable
-private fun CollectionCardSizeButton(large: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit,
+private fun CollectionViewSelector(mode: Int, onSelect: (Int) -> Unit,
   modifier: Modifier = Modifier) {
   val shape = RoundedCornerShape(10.dp)
-  IconToggleButton(checked = large, enabled = enabled, onCheckedChange = onChange,
-    modifier = modifier.size(48.dp).clip(shape)
-      .background(if (large && enabled) MaterialTheme.colorScheme.primaryContainer else PocketSurface)
-      .border(1.dp, if (large && enabled) PocketBluePrimary else PocketBorder, shape)) {
-    Icon(Icons.Filled.ViewModule, if (large) "Usar cartas pequeñas" else "Usar cartas grandes",
-      tint = if (!enabled) PocketTextMuted else if (large) PocketBluePrimary else PocketTextPrimary)
+  Row(modifier.height(IntrinsicSize.Min).clip(shape).background(PocketSurface)
+    .border(2.dp, PocketBorder, shape).selectableGroup()) {
+    listOf("Cuadrícula", "Lista", "Compacta").forEachIndexed { index, label ->
+      val selected = mode == index
+      val color = if (selected) MaterialTheme.colorScheme.onPrimary else PocketTextPrimary
+      Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 52.dp)
+        .background(if (selected) PocketBluePrimary else Color.Transparent)
+        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
+        .padding(horizontal = 6.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
+          Text(label, color = color, style = MaterialTheme.typography.labelLarge,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+      }
+    }
   }
 }
