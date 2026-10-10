@@ -66,22 +66,20 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
-    } else if (section == 0 || section == 2) {
-      MenuChoices(listOf("Mis mazos", "Plantillas A1"), if (section == 0) 0 else 1) {
-        section = if (it == 0) 0 else 2
-      }
+    } else if (section == 2) {
+      TextButton(onClick = { section = 3 }) { Text("← Crear mazo") }
     }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
       1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onBack = { section = 0 })
-      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, modifier = Modifier.weight(1f))
+      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, onTemplates = { section = 2 }, modifier = Modifier.weight(1f))
       4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
         { section = 5 }, Modifier.weight(1f), creating = true)
       5 -> Column(Modifier.weight(1f)) {
         TextButton(onClick = { section = 4 }) { Text("← Crear con IA") }
-        AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true)
+        AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
       }
-      else -> DeckBuilderScreen(viewModel, Modifier.weight(1f), onOpenSavedDeck = { section = 1 })
+      else -> MetaDeckAnalyzerScreen(viewModel, { name -> viewModel.generateDeck(name); section = 1 }, Modifier.weight(1f))
     }
   }
 }
@@ -213,18 +211,23 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   BackHandler(enabled = section >= 0) { section = -1 }
   var showDiagnostic by remember { mutableStateOf(false) }
   var showSettings by remember { mutableStateOf(false) }
+  var calculation by rememberSaveable { mutableIntStateOf(0) }
   val prefs by main.userPreferences.collectAsStateWithLifecycle()
-  if (showSettings) SettingsScreen(prefs.themeMode, main::setThemeMode, { showSettings = false })
+  if (showSettings) {
+    CollectionScreen(main, modifier, settingsOnly = true, onSettingsBack = { showSettings = false },
+      onAiConnections = { section = 9; showSettings = false }, advanced = advanced)
+    return
+  }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Apariencia y sincronización")
+  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
-      listOf("Colección y juego" to listOf(1, 2, 3, 4, 5),
-        "Información" to listOf(6, 0), "Mi app" to listOf(8, 7)).forEach { (group, indices) ->
+      listOf("Colección y juego" to listOf(1, 2, 3, 4),
+        "Información" to listOf(6, 0), "Mi app" to listOf(8, 9)).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
             Column {
@@ -258,7 +261,11 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
         1 -> PackRecommenderScreen(main, Modifier.weight(1f))
         2 -> TradeMenuScreen(main, Modifier.weight(1f))
         3 -> SandboxScreen(main, advanced, Modifier.weight(1f))
-        4 -> ProbabilityCalculatorScreen(Modifier.weight(1f))
+        4 -> Column(Modifier.weight(1f)) {
+          MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }
+          ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = calculation == 1, packsOnly = calculation == 0)
+        }
+        9 -> AIAssistantScreen(main, advanced, {}, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
         else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))
       }
     }

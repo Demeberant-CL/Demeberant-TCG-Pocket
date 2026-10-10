@@ -36,7 +36,7 @@ private fun AdvancedStatus(model: AdvancedViewModel) {
 }
 
 @Composable
-fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier, initialConfigure: Boolean = false) {
+fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier, initialConfigure: Boolean = false, configurationOnly: Boolean = false) {
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
   val proposal by model.proposal.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
@@ -82,7 +82,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       }
     }
 
-    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    if (!configurationOnly) LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
       AiDeckAction.entries.forEach { choice ->
@@ -145,6 +145,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     }
   }
   }
+  if (configurationOnly && !configure) Button(onClick = { configure = true }) { Text("Conexiones") }
   if (configure) Dialog(onDismissRequest = { configure = false },
     properties = DialogProperties(usePlatformDefaultWidth = false)) {
     Card(Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 620.dp)) {
@@ -314,25 +315,25 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
     item {
       Text("Filtros por efectos", style = MaterialTheme.typography.titleLarge)
       HelpButton("analisis")
-      Text("Solo consulta reglas obtenidas de TCGdex y almacenadas en Room. Las etiquetas de rol se estiman por palabras clave; pueden tener falsos positivos.")
-      OutlinedTextField(query, { query = it }, label = { Text("Nombre o código para indexar y buscar") }, modifier = Modifier.fillMaxWidth())
+      Text("Busca entre los efectos descargados. Las categorías se estiman a partir del texto y pueden contener errores.")
+      OutlinedTextField(query, { query = it }, label = { Text("Nombre o código de carta") }, modifier = Modifier.fillMaxWidth())
       OutlinedTextField(keyword, { keyword = it }, label = { Text("Texto del ataque o habilidad") }, modifier = Modifier.fillMaxWidth())
       AdaptiveActionRow { fieldModifier ->
         OutlinedTextField(minHp, { if (it.length <= 3 && it.all(Char::isDigit)) minHp = it }, label = { Text("PS mínimo") }, modifier = fieldModifier)
         OutlinedTextField(maxHp, { if (it.length <= 3 && it.all(Char::isDigit)) maxHp = it }, label = { Text("PS máximo") }, modifier = fieldModifier)
       }
-      OutlinedTextField(element, { element = it }, label = { Text("Tipo exacto de TCGdex (ej. Grass)") }, modifier = Modifier.fillMaxWidth())
+      DeckChoice("Tipo", element, listOf("" to "Todos", "Grass" to "Planta", "Fire" to "Fuego", "Water" to "Agua", "Lightning" to "Rayo", "Psychic" to "Psíquico", "Fighting" to "Lucha", "Darkness" to "Oscuridad", "Metal" to "Metal", "Dragon" to "Dragón", "Colorless" to "Incoloro")) { element = it }
       LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         item { FilterChip(selected = role.isBlank(), onClick = { role = "" }, label = { Text("Todos los roles") }) }
         items(CardRole.entries) { value -> FilterChip(selected = role == value.key,
           onClick = { role = if (role == value.key) "" else value.key }, label = { Text(value.label) }) }
       }
-      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }, shape = MaterialTheme.shapes.medium) { Text("Indexar hasta 25 cartas de esta búsqueda") }
+      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }, shape = MaterialTheme.shapes.medium) { Text("Cargar datos de esta búsqueda") }
       TextButton(onClick = { query = ""; keyword = ""; role = ""; minHp = ""; maxHp = ""; element = "" }) { Text("Limpiar filtros") }
-      Text("También se indexa una carta al abrir sus detalles en Colección. No se descarga todo el catálogo automáticamente.")
+      Text("También se descargan sus datos al abrir una carta. Puedes cancelar la carga cuando quieras.")
       AdvancedStatus(model)
-      Text("${visible.size} coincidencias indexadas")
-      if (visible.isEmpty()) Text("No hay resultados. Indexa cartas o limpia los filtros.")
+      Text("${visible.size} cartas con datos")
+      if (visible.isEmpty()) Text("No hay resultados. Carga los datos o limpia los filtros.")
     }
     items(visible, key = { it.cardId }) { rules ->
       val name = inventory.find { it.card.id == rules.cardId }?.card?.name ?: rules.cardId

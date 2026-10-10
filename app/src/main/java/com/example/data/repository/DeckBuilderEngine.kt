@@ -82,7 +82,7 @@ object DeckBuilderEngine {
     val canonicalOwned = ownedMap.entries.groupBy {
       runCatching { com.example.data.util.CardId.normalize(it.key) }.getOrDefault(it.key)
     }.mapValues { (_, entries) -> entries.maxOf { it.value } }
-    val pool = CardCatalog.ALL_CARDS.filter { it.id.startsWith("A1-") }.sortedBy { it.id }.filter {
+    val pool = CardCatalog.ALL_CARDS.filter { it.type != "Sin verificar" }.sortedBy { it.id }.filter {
       !onlyFromInventory || (canonicalOwned[it.id] ?: 0) > 0
     }
     val quantities = linkedMapOf<String, DeckCardEntry>()

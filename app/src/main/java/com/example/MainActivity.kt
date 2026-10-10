@@ -92,9 +92,10 @@ class MainActivity : ComponentActivity() {
           dismissButton = { androidx.compose.material3.TextButton(onClick = { showExitConfirmation = false }) { Text("Continuar") } }
         )
 
-        val labels = listOf("Inicio", "Colección", "Mazos", "IA", "Más")
+        val destinations = listOf(0, 1, 2, 4)
+        val labels = listOf("Inicio", "Colección", "Mazos", "Más")
         val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
-          Icons.Filled.AutoAwesome, Icons.Filled.Menu)
+          Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
@@ -104,7 +105,7 @@ class MainActivity : ComponentActivity() {
             val widestLabel = labels.maxOf { textMeasurer.measure(it, TextStyle(fontSize = 12.sp)).size.width }
             val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 24.dp)
             val navigationScroll = rememberScrollState()
-            val activeIndex = if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex
+            val activeIndex = destinations.indexOf(if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex).coerceAtLeast(0)
             LaunchedEffect(activeIndex, itemWidth, maxWidth) {
               val target = with(density) { (itemWidth * activeIndex - (maxWidth - itemWidth) / 2).roundToPx() }
               navigationScroll.animateScrollTo(target.coerceAtLeast(0))
@@ -112,7 +113,8 @@ class MainActivity : ComponentActivity() {
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
               .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
               .testTag("main_bottom_nav")) {
-              labels.forEachIndexed { index, label ->
+              labels.forEachIndexed { position, label ->
+                val index = destinations[position]
                 NavigationBarItem(
                   selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
                   onClick = {
@@ -122,7 +124,7 @@ class MainActivity : ComponentActivity() {
                       navigateTo(index)
                     }
                   },
-                  icon = { Icon(icons[index], contentDescription = label) },
+                  icon = { Icon(icons[position], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
@@ -145,9 +147,9 @@ class MainActivity : ComponentActivity() {
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
               onEditor = { deckEditorRequest++; navigateTo(2) },
               onMeta = { metaReturnTab = 0; navigateTo(5) })
-            1 -> CollectionScreen(viewModel, screenModifier)
+            1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
               com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { navigateTo(3) }, Modifier.weight(1f))

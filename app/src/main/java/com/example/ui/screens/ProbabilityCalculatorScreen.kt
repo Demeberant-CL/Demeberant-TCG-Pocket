@@ -10,14 +10,14 @@ import androidx.compose.ui.unit.dp
 import com.example.data.util.CollectionInsights
 
 @Composable
-fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier) {
+fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier, deckOnly: Boolean = false, packsOnly: Boolean = false) {
   var rate by rememberSaveable { mutableStateOf("") }
   var attempts by rememberSaveable { mutableFloatStateOf(10f) }
   var targets by rememberSaveable { mutableFloatStateOf(2f) }
   var draws by rememberSaveable { mutableFloatStateOf(5f) }
   val parsed = rate.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..100.0 }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    item {
+    if (!deckOnly) item {
       Text("Probabilidad de conseguir una carta", style = MaterialTheme.typography.titleLarge)
       Text("Introduce la probabilidad total por sobre que muestra el juego para tu objetivo. No uses la tasa de una sola ranura.")
       OutlinedTextField(rate, { rate = it }, label = { Text("Probabilidad por sobre (%)") },
@@ -30,7 +30,7 @@ fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier) {
       }
       Text("Modelo de aperturas independientes con tasa constante. Un promedio no garantiza el resultado.")
     }
-    item {
+    if (!packsOnly) item {
       HorizontalDivider()
       Text("Robar una carta objetivo", style = MaterialTheme.typography.titleLarge)
       Text("Mazo de 20 cartas; robo aleatorio sin reemplazo.")

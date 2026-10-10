@@ -36,7 +36,8 @@ object CardDetailsClient {
       return CardDetails(if (root.has("hp")) root.getInt("hp") else null, root.optString("category"),
         root.optString("stage"), root.optString("effect"), if (attacks == null) emptyList() else
         (0 until attacks.length()).map { i -> val attack = attacks.getJSONObject(i)
-          listOf(attack.optString("name"), attack.optString("damage"), attack.optString("effect"))
+          listOf(attack.optString("name"), attack.optString("damage"),
+            attack.optJSONArray("cost")?.let { cost -> "Coste: " + (0 until cost.length()).joinToString(", ") { cost.getString(it) } } ?: "Coste: sin datos", attack.optString("effect"))
             .filter { it.isNotBlank() }.joinToString(" · ")
         }, if (root.has("retreat")) root.getInt("retreat") else null,
         source,
@@ -48,7 +49,7 @@ object CardDetailsClient {
     val cache = File(context.cacheDir, "details-$lang-$canonical.json")
     val cached = runCatching { parse(cache.readText(), true) }.getOrNull()
     fun persist(value: CardDetails) {
-      val rules = (listOf(value.description, value.abilityText) + value.attacks).filter { it.isNotBlank() }.joinToString("\n")
+      val rules = (listOf("PS: ${value.hp ?: "sin datos"}", "Retirada: ${value.retreat ?: "sin datos"}", value.description, value.abilityText) + value.attacks).filter { it.isNotBlank() }.joinToString("\n")
       val tags = RoleClassifier.classify(rules).joinToString("", prefix = "|") { it.key + "|" }
       try {
         runBlocking(kotlinx.coroutines.Dispatchers.IO) {

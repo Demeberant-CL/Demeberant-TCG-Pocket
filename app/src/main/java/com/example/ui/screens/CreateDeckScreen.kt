@@ -11,7 +11,7 @@ import com.example.ui.components.DexPanel
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit, onContinue: () -> Unit, modifier: Modifier = Modifier) {
+fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit, onContinue: () -> Unit, onTemplates: () -> Unit = {}, modifier: Modifier = Modifier) {
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
   var pending by remember { mutableStateOf<String?>(null) }
   fun start(mode: String) {
@@ -30,6 +30,7 @@ fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit,
       Text("Describe tu idea. Revisa una propuesta usando tus cartas y conversa para ajustarla.")
       OutlinedButton(onClick = { start("ai") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con IA") }
     } } }
+    item { OutlinedButton(onClick = onTemplates, modifier = Modifier.fillMaxWidth()) { Text("Empezar con una plantilla") } }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
       Text("Borrador actual", style = MaterialTheme.typography.titleMedium)
       Text("${deck.name} · ${deck.totalCardCount}/20")

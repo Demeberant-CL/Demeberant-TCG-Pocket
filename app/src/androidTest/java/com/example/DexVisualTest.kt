@@ -47,7 +47,7 @@ class DexVisualTest {
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
     capture("inicio-mazos")
-    for ((index, name) in listOf(1 to "coleccion",2 to "mazos",3 to "ia",4 to "ajustes")) {
+    for ((index, name) in listOf(1 to "coleccion",2 to "mazos",4 to "ajustes")) {
       compose.onNodeWithTag("nav_item_$index").performClick()
       compose.waitForIdle()
       capture(name)
@@ -56,7 +56,7 @@ class DexVisualTest {
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithText("Ajustes de colección").performClick()
+        compose.onNodeWithText("Ajustes").performClick()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         capture("ajustes-dialogo")
         compose.onNodeWithText("Listo").performClick()
@@ -73,7 +73,7 @@ class DexVisualTest {
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
         capture("mas-ajustes")
         compose.onNodeWithText("Listo").performClick()
-        for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Simulador" to "simulador", "Calculadora" to "calculadora", "Filtros por efectos" to "efectos")) {
+        for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
           compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
           compose.onNodeWithText(label).performClick()
           compose.waitForIdle()

@@ -1,5 +1,7 @@
 package com.example.ui.viewmodel
 
+import kotlinx.coroutines.async
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -129,23 +131,35 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val deckChatMessages = MutableStateFlow<List<DeckChatMessage>>(emptyList())
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
   val deckChatStatus = MutableStateFlow<String?>(null)
+  val deckChatRetryAvailable = MutableStateFlow(false)
+  private data class PendingChat(val deck: GeneratedDeck, val text: String, val action: String, val element: String)
+  private var pendingChat: PendingChat? = null
   private var deckChatBase: GeneratedDeck? = null
   private var deckChatSession = 0L
 
   fun startDeckChat(deck: GeneratedDeck, force: Boolean = false) {
     if (!force && deckChatBase == deck) return
     deckChatSession++
+    pendingChat = null
+    deckChatRetryAvailable.value = false
     deckChatBase = deck
     deckChatMessages.value = emptyList()
     deckChatSuggestion.value = null
     deckChatStatus.value = null
   }
   fun discardDeckChatSuggestion() { deckChatSuggestion.value = null }
-  fun sendDeckChat(deck: GeneratedDeck, text: String, action: String = "chat", element: String = "") {
+  fun retryDeckChat(deck: GeneratedDeck) {
+    val request = pendingChat ?: return
+    if (request.deck != deck) { deckChatStatus.value = "El mazo cambió. Envía una nueva consulta."; return }
+    sendDeckChat(request.deck, request.text, request.action, request.element, retry = true)
+  }
+  fun sendDeckChat(deck: GeneratedDeck, text: String, action: String = "chat", element: String = "", retry: Boolean = false) {
     if (busy.value || text.isBlank()) return
     startDeckChat(deck)
     val question = text.trim().take(2000)
-    deckChatMessages.value = (deckChatMessages.value + DeckChatMessage(true, question)).takeLast(20)
+    if (!retry) deckChatMessages.value = (deckChatMessages.value + DeckChatMessage(true, question)).takeLast(20)
+    pendingChat = PendingChat(deck, question, action, element)
+    deckChatRetryAvailable.value = true
     deckChatSuggestion.value = null
     deckChatStatus.value = null
     val history = deckChatMessages.value
@@ -154,25 +168,31 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       try {
         require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
         val inventory = repository.inventoryFlow.first()
-        val rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+        var rules = db.cardRulesDao().all("es").associateBy { it.cardId }
         val referenceIds = deck.cards.map { it.card.id }.toSet()
         val types = element.takeIf { it.isNotBlank() }?.let { setOf(it) } ?: deck.energyTypes.toSet()
         val pool = inventory.filter { it.ownedCount > 0 && (types.isEmpty() || it.card.type in types ||
           it.card.type in setOf("Entrenador", "Incoloro") || it.card.id in referenceIds) }
           .sortedWith(compareByDescending<CardWithInventory> { it.card.id in referenceIds }
             .thenByDescending { it.card.type == "Entrenador" }.thenBy { it.card.id })
+        val selectedPool = (pool.filter { it.card.id in referenceIds } + pool.filter { it.card.type == "Entrenador" }.take(16) + pool.filter { it.card.type != "Entrenador" }).distinctBy { it.card.id }.take(60)
+        loadMissingRules(selectedPool.map { it.card.id }, "es") { deckChatStatus.value = it }
+        rules = db.cardRulesDao().all("es").associateBy { it.cardId }
         val candidates = mutableListOf<AiCandidate>()
         // Keep the complete context below the provider's 60 KB request limit.
         var size = DeckChat.prompt(deck, emptyList(), history, action).toByteArray(Charsets.UTF_8).size
         val overhead = DeckChat.prompt(deck, emptyList(), emptyList(), action).toByteArray(Charsets.UTF_8).size
-        for (item in pool) {
+        for (item in selectedPool) {
           val candidate = AiCandidate(hydrate(item.card, rules[item.card.id]), item.ownedCount, rules[item.card.id]?.rulesText ?: "")
           val cost = (DeckChat.prompt(deck, listOf(candidate), emptyList(), action).toByteArray(Charsets.UTF_8).size -
             overhead) + 2
           if (size + cost > 57000) continue
           candidates.add(candidate); size += cost
         }
-        val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action))
+        deckChatStatus.value = "Consultando ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
+        val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action)) { status ->
+          if (deckChatSession == session) deckChatStatus.value = status
+        }
         val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
         val answer = withContext(Dispatchers.Default) { DeckChat.parse(result, candidates.map { it.copy(owned = current[it.card.id] ?: 0) }) }
         if (action == "complete" && answer.proposal != null) {
@@ -180,6 +200,8 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
           require(deck.cards.all { (counts[it.card.id] ?: 0) >= minOf(it.count, current[it.card.id] ?: 0) })
         }
         if (deckChatBase != deck || deckChatSession != session) return@task
+        pendingChat = null; deckChatRetryAvailable.value = false
+        deckChatStatus.value = null
         deckChatMessages.value = (history + DeckChatMessage(false, answer.text)).takeLast(20)
         deckChatSuggestion.value = answer.proposal?.let { DeckChatSuggestion(deck, it) }
         if (candidates.size < pool.size) deckChatStatus.value = "La consulta usó ${candidates.size} cartas para ajustarse al límite del proveedor. Acota por energía si necesitas otras."
@@ -241,7 +263,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun indexCards(ids: List<String>, language: String) = task("RULES_INDEX") {
     val known = db.cardRulesDao().all(language).map { it.cardId }.toSet()
-    val pending = ids.distinct().filter { it !in known }.take(25)
+    val pending = ids.distinct().filter { it !in known }
     if (pending.isEmpty()) { message.value = "Estas cartas ya están indexadas. Abre sus detalles para actualizarlas."; return@task }
     var completed = 0
     pending.forEachIndexed { index, id ->
@@ -257,6 +279,26 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     message.value = "Indexadas $completed de ${pending.size}. Las cartas sin datos no aparecen en filtros de efectos."
   }
 
+  private suspend fun loadMissingRules(ids: List<String>, language: String, progress: (String) -> Unit) {
+    val known = db.cardRulesDao().all(language).associateBy { it.cardId }
+    val missing = ids.distinct().filter { known[it]?.rulesText?.contains("Retirada:") != true }
+    val limit = missing.take(24)
+    kotlinx.coroutines.withTimeoutOrNull(30_000) {
+      for (batch in limit.chunked(3)) {
+        currentCoroutineContext().ensureActive()
+        progress("Cargando datos de cartas… Puedes cancelar.")
+        kotlinx.coroutines.coroutineScope {
+          batch.map { id -> async(kotlinx.coroutines.Dispatchers.IO) {
+            try { CardDetailsClient.load(getApplication(), id, language) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Missing effects remain explicit in the prompt. */ }
+          } }.forEach { it.await() }
+        }
+      }
+    }
+
+  }
+
   private fun hydrate(card: com.example.data.model.PokemonCard, rule: CardRulesEntity?): com.example.data.model.PokemonCard {
     if (rule == null) return card
     val normalizedStage = when (RoleClassifier.normalize(rule.stage)) {
@@ -270,7 +312,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
     val pokemon = RoleClassifier.normalize(rule.category) == "pokemon"
     val trainer = RoleClassifier.normalize(rule.category) in setOf("trainer", "entrenador")
-    return card.copy(category = if (pokemon) "pokemon" else if (trainer && card.category == "unknown") "trainer" else card.category,
+    return card.copy(hp = rule.hp ?: card.hp, category = if (pokemon) "pokemon" else if (trainer && card.category == "unknown") "trainer" else card.category,
       stage = normalizedStage, type = if (trainer) "Entrenador" else type,
       evolvesFrom = card.evolvesFrom.ifBlank { rule.evolvesFrom })
   }
@@ -287,6 +329,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   private suspend fun assistantContext(replace: Boolean, target: GeneratedDeck?, language: String):
     Pair<List<AiCandidate>, List<DeckCardEntry>?> {
     val inventory = repository.inventoryFlow.first()
+    loadMissingRules(inventory.filter { it.ownedCount > 0 && (candidateType.isBlank() || it.card.type in setOf(candidateType, "Entrenador", "Incoloro")) }.sortedBy { it.card.id }.take(80).map { it.card.id }, language) { message.value = it }
     val rules = db.cardRulesDao().all(language).associateBy { it.cardId }
     val targetIds = target?.cards?.map { it.card.id }?.toSet() ?: emptySet()
     val candidates = inventory.filter { item ->
