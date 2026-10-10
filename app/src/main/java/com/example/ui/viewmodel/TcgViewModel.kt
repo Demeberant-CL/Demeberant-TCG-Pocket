@@ -287,7 +287,9 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         initialization.await()
         val inventory = repository.inventoryFlow.first()
         val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+        val started = android.os.SystemClock.elapsedRealtime()
         val plans = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts, options) }
+        ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size}")
         _localDeckPlans.value = plans
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
