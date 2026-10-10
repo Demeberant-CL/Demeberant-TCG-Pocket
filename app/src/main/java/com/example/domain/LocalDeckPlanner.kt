@@ -99,6 +99,8 @@ object LocalDeckPlanner {
     for (palette in palettes) {
       val pool = owned.filter { compatible(it.card, palette, data[it.card.id]) }
       val rating = pool.associate { it.card.id to strength(it.card, data[it.card.id], palette, options.style) }
+      val costs = pool.associate { item -> item.card.id to data[item.card.id]?.attacks.orEmpty()
+        .filter { usable(it, palette) }.map { it.cost!!.size } }
       val byName = pool.groupBy { name(it.card.rulesName) }.mapValues { (_, variants) ->
         variants.sortedWith(compareByDescending<CardWithInventory> { it.card.id == options.anchorId }
           .thenByDescending { rating.getValue(it.card.id) }
@@ -157,8 +159,7 @@ object LocalDeckPlanner {
           val accelerators = rs.count { CardRole.ENERGY in it }
           val healing = rs.count { CardRole.HEAL in it }
           val attacker = pokemon.maxOfOrNull { rating.getValue(it.card.id) } ?: 0.0
-          val averageCost = pokemon.flatMap { data[it.card.id]?.attacks.orEmpty() }.filter { usable(it, palette) }
-            .map { it.cost!!.size }.average().takeIf { !it.isNaN() } ?: 2.0
+          val averageCost = pokemon.flatMap { costs[it.card.id].orEmpty() }.average().takeIf { !it.isNaN() } ?: 2.0
           val tcTarget = when(options.style) { DeckStyle.FAST -> 12; DeckStyle.RESILIENT -> 10; else -> 11 }
           var value = rows.sumOf { it.count } * 4.0 + attacker * 2.0 +
             pokemon.sumOf { rating.getValue(it.card.id) * it.count } * 0.35
@@ -166,8 +167,9 @@ object LocalDeckPlanner {
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0
+          val quantities = rows.groupBy { name(it.card.rulesName) }.mapValues { (_, group) -> group.sumOf { it.count } }
           rows.filter { !trainer(it.card) && it.card.evolvesFrom.isNotBlank() }.forEach { child ->
-            val parentCount = rows.filter { name(it.card.rulesName) == name(child.card.evolvesFrom) }.sumOf { it.count }
+            val parentCount = quantities[name(child.card.evolvesFrom)] ?: 0
             value -= (child.count - parentCount).coerceAtLeast(0) * 8.0
           }
           // Avoid dead named-target support when its required Pokémon is absent.
