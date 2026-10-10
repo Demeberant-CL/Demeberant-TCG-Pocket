@@ -52,7 +52,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     client.newCall(builder.build()).await().use { response ->
       require(response.isSuccessful) { "La API no permite listar modelos (HTTP ${response.code}). Puedes introducir el modelo manualmente." }
       val body = response.body ?: error("La API no devolvió modelos.")
-      val json = JSONObject(body.byteStream().use { it.readBytesBounded(1000000).toString(Charsets.UTF_8) })
+      val json = JSONObject(body.byteStream().use { it.readBytesBounded(if (config.provider == AiProvider.OPENROUTER) 4000000 else 1000000).toString(Charsets.UTF_8) })
       val gemini = config.provider == AiProvider.GEMINI
       val rows = json.optJSONArray(if (gemini) "models" else "data") ?: JSONArray()
       (0 until minOf(rows.length(), 1000)).mapNotNull { n ->
