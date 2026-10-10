@@ -56,6 +56,24 @@ class DexVisualTest {
         capture("ajustes-dialogo")
         compose.onNodeWithText("Listo").performClick()
       }
+      if (index == 3) {
+        compose.waitUntil(20_000) { compose.onNodeWithText("Conexiones").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled).not() }
+        compose.onNodeWithText("Conexiones").performClick()
+        capture("ia-conexiones")
+        compose.onNodeWithText("Cerrar").performClick()
+      }
+      if (index == 4) {
+        compose.onNodeWithText("Ajustes", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
+        capture("mas-ajustes")
+        compose.onNodeWithText("Listo").performClick()
+        for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Simulador" to "simulador", "Calculadora" to "calculadora", "Filtros por efectos" to "efectos")) {
+          compose.onNodeWithText(label).performScrollTo().performClick()
+          compose.waitForIdle()
+          capture(file)
+          compose.onNodeWithText("← Más herramientas").performClick()
+        }
+      }
       if (index == 2) {
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
