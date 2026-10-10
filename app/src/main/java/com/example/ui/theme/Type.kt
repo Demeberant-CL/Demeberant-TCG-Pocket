@@ -11,19 +11,16 @@ import com.example.R
 // Consistent Pokémon TCG Pocket Font Families
 // Outfit: Modern, geometric rounded sans-serif matching official mobile UI and cards
 val PocketFontFamily = FontFamily(
-  Font(R.font.outfit, FontWeight.Normal),
-  Font(R.font.outfit, FontWeight.Medium),
-  Font(R.font.outfit, FontWeight.SemiBold),
-  Font(R.font.outfit, FontWeight.Bold)
+  Font(R.font.outfit, FontWeight.Normal)
 )
 
 // Nunito: Friendly rounded gaming display font
 val PocketDisplayFontFamily = FontFamily(
-  Font(R.font.nunito, FontWeight.Normal),
-  Font(R.font.nunito, FontWeight.Bold)
+  Font(R.font.nunito, FontWeight.Normal)
 )
 
-// Complete Material 3 Typography definition
+// Register each static font at its actual weight so Compose can synthesize heavier text.
+// Shared sizes preserve readable hierarchy at the system font scale.
 val Typography = Typography(
   displayLarge = TextStyle(
     fontFamily = PocketDisplayFontFamily,
@@ -65,60 +62,60 @@ val Typography = Typography(
   titleLarge = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.Bold,
+    fontSize = 20.sp,
+    lineHeight = 26.sp
+  ),
+  titleMedium = TextStyle(
+    fontFamily = PocketFontFamily,
+    fontWeight = FontWeight.SemiBold,
     fontSize = 16.sp,
     lineHeight = 22.sp
   ),
-  titleMedium = TextStyle(
+  titleSmall = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 14.sp,
     lineHeight = 20.sp
   ),
-  titleSmall = TextStyle(
-    fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Medium,
-    fontSize = 13.sp,
-    lineHeight = 18.sp
-  ),
   bodyLarge = TextStyle(
     fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Normal,
-    fontSize = 15.sp,
+    fontWeight = FontWeight.Medium,
+    fontSize = 16.sp,
     lineHeight = 22.sp,
     letterSpacing = 0.15.sp
   ),
   bodyMedium = TextStyle(
     fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Normal,
-    fontSize = 13.sp,
-    lineHeight = 18.sp,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 14.sp,
+    lineHeight = 20.sp,
     letterSpacing = 0.25.sp
   ),
   bodySmall = TextStyle(
     fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Normal,
-    fontSize = 11.sp,
+    fontWeight = FontWeight.Medium,
+    fontSize = 12.sp,
     lineHeight = 16.sp,
     letterSpacing = 0.4.sp
   ),
   labelLarge = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.Bold,
-    fontSize = 13.sp,
-    lineHeight = 18.sp,
+    fontSize = 14.sp,
+    lineHeight = 20.sp,
     letterSpacing = 0.1.sp
   ),
   labelMedium = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 11.sp,
+    fontSize = 12.sp,
     lineHeight = 16.sp,
     letterSpacing = 0.5.sp
   ),
   labelSmall = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 10.sp,
+    fontSize = 11.sp,
     lineHeight = 14.sp,
     letterSpacing = 0.5.sp
   )

@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
             BoxWithConstraints {
             val density = LocalDensity.current
             val textMeasurer = rememberTextMeasurer()
-            val widestLabel = labels.maxOf { textMeasurer.measure(it, TextStyle(fontSize = 12.sp)).size.width }
+            val widestLabel = labels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelLarge).size.width }
             val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 24.dp)
             val navigationScroll = rememberScrollState()
             val activeIndex = destinations.indexOf(if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex).coerceAtLeast(0)
@@ -130,11 +130,11 @@ class MainActivity : ComponentActivity() {
                     }
                   },
                   icon = { Icon(icons[position], contentDescription = label) },
-                  label = { Text(label, fontSize = 12.sp, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                  label = { Text(label, style = androidx.compose.material3.MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),
