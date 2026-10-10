@@ -108,6 +108,9 @@ class DexVisualTest {
         compose.waitForIdle()
         capture("mazos-crear")
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
+        if (compose.onAllNodesWithText("Crear nuevo").fetchSemanticsNodes().isNotEmpty()) {
+          compose.onNodeWithText("Crear nuevo").performClick()
+        }
         compose.waitForIdle()
         capture("mazos-editor")
         compose.onNodeWithText("Guía").assertDoesNotExist()
