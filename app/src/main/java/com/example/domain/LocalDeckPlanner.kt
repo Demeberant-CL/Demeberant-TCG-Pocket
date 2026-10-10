@@ -228,8 +228,15 @@ object LocalDeckPlanner {
           if (rows.none { CardRole.DRAW in roleMap[it.card.id].orEmpty() }) add("Sin robo de cartas identificado.")
           if (rows.none { CardRole.SEARCH in roleMap[it.card.id].orEmpty() }) add("Sin búsqueda identificada.")
         }
+        val consistency = if (rows.sumOf { it.count } == 20) {
+          val copies = lineage.map { key -> rows.filter { name(it.card.rulesName) == key }.sumOf { it.count } }
+          val chance = DeckConsistency.allPieces(20, copies, 8)
+          "Núcleo completo entre 8 cartas al azar: ${String.format(Locale.ROOT, "%.1f", chance * 100)} %. " +
+            "Sin búsqueda, robo extra ni básico inicial garantizado; no estima turnos ni victorias."
+        } else "Completa las 20 cartas para calcular consistencia."
         val reasons = listOf("Núcleo: ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}",
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
+          consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.")
         val strategy = (reasons + cautions).joinToString("\n")
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",

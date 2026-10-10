@@ -20,3 +20,25 @@ https://www.pokemon.com/es/estrategia/aprende-a-crear-una-baraja-en-jcc-pokemon-
 ## Comprobación
 
 Pruebas de inventario y límites entre impresiones, líneas completas, carta principal seleccionada, ataques compatibles, energía Dragón explícita, entrenadores de energía incompatibles, datos faltantes, determinismo y datos incluidos reales. El recorrido Android genera propuestas sin configurar IA, examina cartas, abre el editor y verifica las escalas normal y 1.4.
+
+## Offline data trial · 2026-10-10
+
+Adds 3181 directly matched gameplay records from PocketDecks v5 (AGPL-3.0-or-later).
+1424 card IDs were absent from the existing combat bundle. IDs and English names
+must both match the bundled catalog; promotional identifiers are normalized.
+The compact supplement adds 657708 uncompressed bytes. Existing Spanish effects
+are retained. Data is read lazily on the IO dispatcher and reused in memory;
+no provider keys or network request are required by the constructor.
+
+Expanded proposals show the exact probability of collecting every core card-name
+group among 8 uniformly drawn cards from 20, using inclusion-exclusion. This is
+a theoretical sampling metric, not the actual opening-hand algorithm, a turn
+prediction, or a win rate. It excludes guaranteed Basic selection, searches,
+extra draws and evolution timing. Incomplete decks do not receive a metric.
+
+The shared image loader uses a persistent, evictable 256 MiB disk cache. Images
+are fetched as requested; this does not package every card image or increase
+the memory cache. Offline display requires a previously successful cached load.
+
+This first trial does not add a tournament template snapshot or mass simulations.
+Performance on the user's phone is still to be measured, not guaranteed by APK size.
