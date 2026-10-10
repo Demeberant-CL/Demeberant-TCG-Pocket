@@ -12,7 +12,7 @@ object AiFailure {
       in 500..599 -> "SERVICE"
       else -> "HTTP"
     }
-    error is java.net.SocketTimeoutException -> "TIMEOUT"
+    error is java.io.InterruptedIOException -> "TIMEOUT"
     error is java.io.IOException -> "NETWORK"
     stage == "VALIDATE" -> "INVALID_DECK"
     error is org.json.JSONException -> "RESPONSE"

@@ -119,7 +119,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
   }
   val deckRules = db.cardRulesDao().observeAll("es")
-    .catch { e -> if (e is CancellationException) throw e; emit(emptyList()) }
+    .catch { e -> if (e is CancellationException) throw e; ErrorLogManager.event("RULES_READ", "Rules observation failed", e); emit(emptyList()) }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
   val deckChatMessages = MutableStateFlow<List<DeckChatMessage>>(emptyList())
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
@@ -160,7 +160,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     task("DECK_CHAT") {
       var stage = "PREPARE"
       val requestId = java.util.UUID.randomUUID().toString().take(8)
-      ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=PREPARE")
+      ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=PREPARE provider=${connection.value.provider.name}")
       try {
         require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
         val inventory = repository.inventoryFlow.first()
