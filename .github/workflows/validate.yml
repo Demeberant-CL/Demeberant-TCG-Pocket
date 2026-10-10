@@ -156,7 +156,6 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            adb root
             adb wait-for-device
             adb shell cmd uimode night yes
             adb shell wm size 1080x2400
