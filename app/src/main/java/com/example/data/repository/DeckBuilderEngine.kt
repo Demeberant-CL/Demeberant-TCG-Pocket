@@ -149,7 +149,7 @@ object DeckBuilderEngine {
       }
       if (entry.card.type == "Sin verificar") add("Datos de ${entry.card.name} sin verificar.")
     }
-    if (cards.none { it.card.type != "Entrenador" && it.card.type != "Sin verificar" && it.card.name.lowercase() !in evolutionParents }) {
+    if (cards.none { it.card.type != "Entrenador" && it.card.type != "Sin verificar" && it.card.stage == "basic" }) {
       add("Falta un Pokémon básico con datos verificados.")
     }
   }.distinct()

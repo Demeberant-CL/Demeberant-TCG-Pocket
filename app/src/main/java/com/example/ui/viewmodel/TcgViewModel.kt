@@ -272,19 +272,59 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     _generatedDeck.value = _generatedDeck.value?.let { it.copy(energyTypes = com.example.domain.DeckAutomation.energies(it.cards)) }
   }
 
-  fun createWithMyCards(type: String) {
+  private val _localDeckPlans = MutableStateFlow<List<com.example.domain.DeckPlan>>(emptyList())
+  val localDeckPlans = _localDeckPlans.asStateFlow()
+  private val _localPlannerMessage = MutableStateFlow<String?>(null)
+  val localPlannerMessage = _localPlannerMessage.asStateFlow()
+
+  fun recommendLocalDecks(options: com.example.domain.PlannerOptions = com.example.domain.PlannerOptions()) {
+    if (_isGeneratingDeck.value) return
+    _isGeneratingDeck.value = true
+    _localPlannerMessage.value = null
+    _localDeckPlans.value = emptyList()
     viewModelScope.launch {
       try {
-        _isGeneratingDeck.value = true
         initialization.await()
         val inventory = repository.inventoryFlow.first()
-        val draft = withContext(Dispatchers.Default) { com.example.domain.DeckAutomation.build(inventory, type) }
-        editingDeckId = 0
-        _automaticEnergies.value = true
-        _generatedDeck.value = draft
-        reportMessage("Borrador preparado con tus cartas. Revisa y pulsa Guardar mazo.")
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+        val plans = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts, options) }
+        _localDeckPlans.value = plans
       } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { ErrorLogManager.event("DECK_BUILD", "Local builder failed", e); reportMessage(e.message ?: "No se pudo crear el borrador.") }
+      catch (e: Exception) {
+        ErrorLogManager.event("DECK_PLAN", "Local recommendations failed", e)
+        _localPlannerMessage.value = e.message ?: "No se pudo analizar la colección."
+      } finally { _isGeneratingDeck.value = false }
+    }
+  }
+  fun openLocalDeckPlan(plan: com.example.domain.DeckPlan, onOpened: () -> Unit) = viewModelScope.launch {
+    try {
+      initialization.await()
+      val owned = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
+      val deck = plan.deck
+      require(deck.cards.all { it.count in 1..2 && it.count <= (owned[it.card.id] ?: 0) })
+      require(deck.cards.sumOf { it.count } <= 20)
+      require(DeckBuilderEngine.validate(deck.cards).none { !it.startsWith("Mazo incompleto:") })
+      editingDeckId = 0; _automaticEnergies.value = false; _generatedDeck.value = deck
+      reportMessage("Propuesta abierta. Guarda el mazo para conservarlo.")
+      onOpened()
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) { ErrorLogManager.event("DECK_PLAN_OPEN", "Inventory changed before accepting proposal", e)
+      _localPlannerMessage.value = "Tu colección cambió. Genera propuestas nuevamente." }
+  }
+  fun createWithMyCards(type: String) {
+    if (_isGeneratingDeck.value) return
+    _isGeneratingDeck.value = true
+    viewModelScope.launch {
+      try {
+        initialization.await()
+        val inventory = repository.inventoryFlow.first()
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+        val plan = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts,
+          com.example.domain.PlannerOptions(type = type)).first() }
+        editingDeckId = 0; _automaticEnergies.value = false; _generatedDeck.value = plan.deck
+        reportMessage("Propuesta local preparada. Revisa y guarda el mazo.")
+      } catch (e: CancellationException) { throw e }
+      catch (e: Exception) { ErrorLogManager.event("DECK_BUILD", "Local builder failed", e); reportMessage(e.message ?: "No se pudo crear el mazo.") }
       finally { _isGeneratingDeck.value = false }
     }
   }

@@ -107,6 +107,17 @@ class DexVisualTest {
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
         capture("mazos-crear")
+        compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        compose.waitUntil(45_000) { compose.onAllNodesWithText("Abrir en editor").fetchSemanticsNodes().isNotEmpty() }
+        capture("constructor-local")
+        compose.onAllNodesWithText("Ver cartas").onFirst().performScrollTo().performClick()
+        capture("constructor-cartas")
+        compose.onAllNodesWithText("Abrir en editor").onFirst().performScrollTo().performClick()
+        if (compose.onAllNodesWithText("Reemplazar").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Reemplazar").performClick()
+        compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
+        compose.onNodeWithText("← Mis mazos").performClick()
+        compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
         if (compose.onAllNodesWithText("Crear nuevo").fetchSemanticsNodes().isNotEmpty()) {
           compose.onNodeWithText("Crear nuevo").performClick()

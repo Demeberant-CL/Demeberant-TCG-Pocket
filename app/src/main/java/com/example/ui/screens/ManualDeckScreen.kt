@@ -256,10 +256,10 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("Cancelar") } })
   if (create) AlertDialog(onDismissRequest = { create = false }, title = { Text("Crear con mis cartas") },
     text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-      Text("Elige un tipo. Se usará tu colección actual, con hasta dos copias por nombre y las preevoluciones conocidas. Reemplaza el borrador abierto, no los mazos guardados.")
+      Text("Preparar una propuesta con tu colección. Reemplaza el borrador abierto.")
       DeckCodec.energyNames.forEach { type -> FilterChip(selected = type == chosenType, onClick = { chosenType = type }, label = { Text(type) }) }
-      Text("Es un punto de partida local, no IA. Si faltan cartas quedará incompleto.")
-    } }, confirmButton = { TextButton(onClick = { viewModel.createWithMyCards(chosenType); adding = false; create = false }) { Text("Preparar borrador") } },
+      Text("Sin conexión ni cuotas. Si faltan cartas quedará incompleto.")
+    } }, confirmButton = { TextButton(onClick = { viewModel.createWithMyCards(chosenType); adding = false; create = false }) { Text("Crear propuesta") } },
     dismissButton = { TextButton(onClick = { create = false }) { Text("Cancelar") } })
 }
 
