@@ -163,12 +163,12 @@ jobs:
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee normal-test.log
             mkdir -p design-preview/normal
-            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/normal/
+            adb exec-out run-as com.aistudio.tcgpocket2.kxmpzq tar -cf - -C files/design-preview . | tar -xf - -C design-preview/normal/
             grep -F 'OK (1 test)' normal-test.log
             adb shell settings put system font_scale 1.4
             adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee large-test.log
             mkdir -p design-preview/large-text
-            adb pull /sdcard/Android/data/com.aistudio.tcgpocket2.kxmpzq/files/design-preview/. design-preview/large-text/
+            adb exec-out run-as com.aistudio.tcgpocket2.kxmpzq tar -cf - -C files/design-preview . | tar -xf - -C design-preview/large-text/
             grep -F 'OK (1 test)' large-test.log
       - uses: actions/upload-artifact@v4
         if: always()

@@ -145,7 +145,7 @@ class DexVisualTest {
     compose.waitForIdle()
     Thread.sleep(1200) // Semantics can settle before the Android surface renders its final frame.
     val instrumentation = InstrumentationRegistry.getInstrumentation()
-    val dir = File(instrumentation.targetContext.getExternalFilesDir(null),"design-preview").apply { mkdirs() }
+    val dir = File(instrumentation.targetContext.filesDir,"design-preview").apply { mkdirs() }
     val image = instrumentation.uiAutomation.takeScreenshot()
     File(dir,"$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
     image.recycle()
