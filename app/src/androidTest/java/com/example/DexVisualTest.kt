@@ -92,10 +92,17 @@ class DexVisualTest {
         compose.onNodeWithText("Filtrar · 0").performClick()
         compose.onNodeWithText("Objeto").performClick()
         capture("mazos-filtros")
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Efectos"))
+        capture("mazos-filtros-efectos")
         compose.onNode(hasText("Ver ", substring = true) and hasText(" cartas", substring = true)).performClick()
-        compose.onNodeWithText("Buscar nombre o código").performTextInput("Potion")
+        val manualItem = catalog.take(1343).first { it.category == "item" }
+        compose.onNodeWithText("Buscar nombre o código").performTextInput(manualItem.name)
         capture("mazos-anadir")
         val main = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+        compose.onAllNodesWithContentDescription("Añadir ${manualItem.name}").onFirst().performScrollTo().performClick()
+        compose.waitUntil(10_000) { main.generatedDeck.value?.totalCardCount == 1 }
+        compose.onAllNodesWithContentDescription("Quitar ${manualItem.name}").onFirst().performScrollTo().performClick()
+        compose.waitUntil(10_000) { main.generatedDeck.value?.totalCardCount == 0 }
         val advanced = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
         val basic = catalog.first { it.category == "pokemon" && it.stage == "basic" && it.type == "Fuego" }
         compose.runOnIdle { main.editDeckQuantity(basic.id, 2) }
