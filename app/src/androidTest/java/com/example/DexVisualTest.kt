@@ -54,9 +54,9 @@ class DexVisualTest {
       if (index == 1) {
         compose.onNodeWithText("Lista").performClick()
         capture("coleccion-lista")
-        compose.onNodeWithText("Cuadrícula").performClick()
+        compose.onNodeWithText("Cuadrícula").performScrollTo().performClick()
         capture("coleccion-grande")
-        compose.onNodeWithText("Compacta").performClick()
+        compose.onNodeWithText("Compacta").performScrollTo().performClick()
         compose.onNodeWithText("Filtrar").performClick()
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
@@ -101,7 +101,7 @@ class DexVisualTest {
       }
       if (index == 2) {
         compose.onNodeWithText("Abrir").assertDoesNotExist()
-        compose.onNode(hasText(sample[0].name) and hasClickAction()).performClick()
+        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
         compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
         compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()

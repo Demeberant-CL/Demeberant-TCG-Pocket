@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
@@ -629,17 +630,24 @@ private fun CollectionAdvancedFilterButton(active: Boolean, onClick: () -> Unit,
 private fun CollectionViewSelector(mode: Int, onSelect: (Int) -> Unit,
   modifier: Modifier = Modifier) {
   val shape = RoundedCornerShape(10.dp)
-  Row(modifier.height(IntrinsicSize.Min).clip(shape).background(PocketSurface)
-    .border(2.dp, PocketBorder, shape).selectableGroup()) {
-    listOf("Cuadrícula", "Lista", "Compacta").forEachIndexed { index, label ->
-      val selected = mode == index
-      val color = if (selected) MaterialTheme.colorScheme.onPrimary else PocketTextPrimary
-      Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 52.dp)
-        .background(if (selected) PocketBluePrimary else Color.Transparent)
-        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
-        .padding(horizontal = 6.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
-          Text(label, color = color, style = MaterialTheme.typography.labelLarge,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+  androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+    val labels = listOf("Cuadrícula", "Lista", "Compacta")
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = LocalDensity.current
+    val labelWidth = labels.maxOf { measurer.measure(it, MaterialTheme.typography.labelLarge).size.width }
+    val itemWidth = maxOf(maxWidth / 3, with(density) { labelWidth.toDp() } + 24.dp)
+    Row(Modifier.horizontalScroll(rememberScrollState()).height(IntrinsicSize.Min).clip(shape).background(PocketSurface)
+      .border(2.dp, PocketBorder, shape).selectableGroup()) {
+      labels.forEachIndexed { index, label ->
+        val selected = mode == index
+        val color = if (selected) MaterialTheme.colorScheme.onPrimary else PocketTextPrimary
+        Box(Modifier.width(itemWidth).fillMaxHeight().heightIn(min = 52.dp)
+          .background(if (selected) PocketBluePrimary else Color.Transparent)
+          .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
+          .padding(horizontal = 6.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
+            Text(label, color = color, style = MaterialTheme.typography.labelLarge,
+              maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
       }
     }
   }
