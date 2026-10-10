@@ -74,7 +74,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
       1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onAskAi)
-      3 -> CreateDeckScreen(viewModel, onManual = { section = 1 }, onAi = { section = 4 }, onContinue = { section = 1 }, modifier = Modifier.weight(1f))
+      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, modifier = Modifier.weight(1f))
       4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
         { section = 5 }, Modifier.weight(1f), creating = true)
       5 -> Column(Modifier.weight(1f)) {

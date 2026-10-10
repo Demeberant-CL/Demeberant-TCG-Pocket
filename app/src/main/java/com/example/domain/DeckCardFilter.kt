@@ -28,7 +28,8 @@ data class DeckCardFilter(
         (element.isEmpty() || card.type == element) &&
         (expansion.isEmpty() || card.id.substringBeforeLast('-') == expansion) &&
         (rarity.isEmpty() || card.rarity.name == rarity) &&
-        (effect.isEmpty() || rules[card.id]?.roles?.contains("|$effect|") == true)
+        (effect.isEmpty() || rules[card.id]?.let { rule -> rule.roles.contains("|$effect|") ||
+          RoleClassifier.classify(rule.rulesText).any { it.key == effect } } == true)
     }
     return when (sort) {
       "name" -> selected.sortedWith(compareBy({ RoleClassifier.normalize(it.card.name) }, { it.card.id }))

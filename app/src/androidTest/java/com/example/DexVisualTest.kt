@@ -130,6 +130,11 @@ class DexVisualTest {
     }
   }
   private fun capture(name: String) {
+    compose.runOnIdle {
+      val view = compose.activity.window.decorView
+      (compose.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+        .hideSoftInputFromWindow(view.windowToken, 0)
+    }
     compose.waitForIdle()
     Thread.sleep(1200) // Semantics can settle before the Android surface renders its final frame.
     val instrumentation = InstrumentationRegistry.getInstrumentation()

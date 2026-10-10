@@ -130,9 +130,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
   val deckChatStatus = MutableStateFlow<String?>(null)
   private var deckChatBase: GeneratedDeck? = null
+  private var deckChatSession = 0L
 
-  fun startDeckChat(deck: GeneratedDeck) {
-    if (deckChatBase == deck) return
+  fun startDeckChat(deck: GeneratedDeck, force: Boolean = false) {
+    if (!force && deckChatBase == deck) return
+    deckChatSession++
     deckChatBase = deck
     deckChatMessages.value = emptyList()
     deckChatSuggestion.value = null
@@ -147,6 +149,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     deckChatSuggestion.value = null
     deckChatStatus.value = null
     val history = deckChatMessages.value
+    val session = deckChatSession
     task("DECK_CHAT") {
       try {
         require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
@@ -176,13 +179,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
           val counts = answer.proposal.deck.cards.associate { it.card.id to it.count }
           require(deck.cards.all { (counts[it.card.id] ?: 0) >= minOf(it.count, current[it.card.id] ?: 0) })
         }
-        if (deckChatBase != deck) return@task
+        if (deckChatBase != deck || deckChatSession != session) return@task
         deckChatMessages.value = (history + DeckChatMessage(false, answer.text)).takeLast(20)
         deckChatSuggestion.value = answer.proposal?.let { DeckChatSuggestion(deck, it) }
         if (candidates.size < pool.size) deckChatStatus.value = "La consulta usó ${candidates.size} cartas para ajustarse al límite del proveedor. Acota por energía si necesitas otras."
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
-        if (deckChatBase == deck) {
+        if (deckChatBase == deck && deckChatSession == session) {
           val safe = e.message?.takeIf { it.startsWith("Cuota") || it.startsWith("La API") || it.startsWith("Modelo o") ||
             it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
           deckChatStatus.value = safe ?: "No se obtuvo una respuesta válida. Revisa tu conexión y vuelve a intentarlo. Tu mazo se conserva."
