@@ -37,10 +37,10 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     require(config.apiKey.isNotBlank()) { "Introduce tu clave API." }
     val base = when (config.provider) {
       AiProvider.GEMINI -> "https://generativelanguage.googleapis.com/v1beta/models"
-      AiProvider.OPENAI -> "https://api.openai.com/v1/models"
-      AiProvider.COMPATIBLE -> {
-        require(config.endpoint.endsWith("/chat/completions")) { "La URL debe terminar en /chat/completions." }
-        config.endpoint.removeSuffix("/chat/completions") + "/models"
+      else -> {
+        val endpoint = config.provider.endpoint(config.endpoint)
+        require(endpoint.endsWith("/chat/completions")) { "La URL debe terminar en /chat/completions." }
+        endpoint.removeSuffix("/chat/completions") + "/models"
       }
     }
     val url = base.toHttpUrl()
@@ -52,7 +52,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     client.newCall(builder.build()).await().use { response ->
       require(response.isSuccessful) { "La API no permite listar modelos (HTTP ${response.code}). Puedes introducir el modelo manualmente." }
       val body = response.body ?: error("La API no devolvió modelos.")
-      val json = JSONObject(body.byteStream().use { it.readBytesBounded(1000000).toString(Charsets.UTF_8) })
+      val json = JSONObject(body.byteStream().use { it.readBytesBounded(if (config.provider == AiProvider.OPENROUTER) 4000000 else 1000000).toString(Charsets.UTF_8) })
       val gemini = config.provider == AiProvider.GEMINI
       val rows = json.optJSONArray(if (gemini) "models" else "data") ?: JSONArray()
       (0 until minOf(rows.length(), 1000)).mapNotNull { n ->
@@ -69,8 +69,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     val gemini = config.provider == AiProvider.GEMINI
     val endpoint = when (config.provider) {
       AiProvider.GEMINI -> "https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent"
-      AiProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
-      AiProvider.COMPATIBLE -> config.endpoint.trim()
+      else -> config.provider.endpoint(config.endpoint)
     }
     val url = endpoint.toHttpUrl()
     require(url.isHttps || (allowLocalTests && url.host in setOf("localhost", "127.0.0.1"))) { "La URL debe usar HTTPS." }
@@ -80,13 +79,13 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
       .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
       .put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("maxOutputTokens", 4096))
     else JSONObject().put("model", config.model).put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
-      .put("max_completion_tokens", 4096)
+      .put(if (config.provider in setOf(AiProvider.OPENAI, AiProvider.GROQ, AiProvider.COMPATIBLE)) "max_completion_tokens" else "max_tokens", 4096)
     val builder = Request.Builder().url(url).post(payload.toString().toRequestBody("application/json".toMediaType()))
     if (gemini) builder.header("x-goog-api-key", config.apiKey) else builder.header("Authorization", "Bearer ${config.apiKey}")
     execute(builder.build(), onStatus).use { response ->
       if (!response.isSuccessful) throw AiHttpFailure(response.code, when (response.code) {
         401, 403 -> "La API rechazó la clave o el acceso al modelo. Revisa tu configuración."
-        429 -> "Cuota o límite de consultas alcanzado. No se cambiará a otro proveedor."
+        429 -> "Cuota o límite de consultas alcanzado. Cambia de conexión y reintenta."
         400, 404 -> "Modelo o formato no compatible. Revisa el modelo y la URL."
         else -> "La API no está disponible (HTTP ${response.code}). Inténtalo más tarde."
       })

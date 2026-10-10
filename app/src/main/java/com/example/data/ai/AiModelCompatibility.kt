@@ -17,6 +17,13 @@ object AiModelCompatibility {
           row.optInt("outputTokenLimit", 4096) >= 4096
       }
       AiProvider.OPENAI -> openAiText.matches(id) || id == "chat-latest"
+      AiProvider.GROQ -> id.startsWith("llama-") || id.startsWith("qwen") || id.startsWith("openai/gpt-oss-")
+      AiProvider.DEEPSEEK -> id.startsWith("deepseek-")
+      AiProvider.MISTRAL -> row.optJSONObject("capabilities")?.optBoolean("completion_chat", false) == true
+      AiProvider.OPENROUTER -> {
+        val output = row.optJSONObject("architecture")?.optJSONArray("output_modalities") ?: return false
+        (0 until output.length()).any { output.optString(it) == "text" }
+      }
       AiProvider.COMPATIBLE -> {
         // /models alone does not establish Chat Completions support. Require explicit metadata.
         val endpoints = row.optJSONArray("supported_endpoints") ?: return false

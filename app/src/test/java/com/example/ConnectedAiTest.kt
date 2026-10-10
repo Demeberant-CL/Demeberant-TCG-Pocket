@@ -99,4 +99,54 @@ class ConnectedAiTest {
       store.clear(); assertNull(store.load())
     } finally { store.clear() }
   }
+  @Test fun presetRoutingUsesIndependentKeysAndProviderTokenFields() = runBlocking {
+    val requests = mutableListOf<Request>()
+    val client = OkHttpClient.Builder().addInterceptor { chain ->
+      requests.add(chain.request())
+      Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+        .body("""{"choices":[{"finish_reason":"stop","message":{"content":"ok"}}]}""".toResponseBody("application/json".toMediaType())).build()
+    }.build()
+    val hosts = mapOf(AiProvider.GROQ to "api.groq.com", AiProvider.OPENROUTER to "openrouter.ai",
+      AiProvider.MISTRAL to "api.mistral.ai", AiProvider.DEEPSEEK to "api.deepseek.com")
+    for ((provider, host) in hosts) {
+      assertEquals("ok", ConnectedAiRepository(client).request(AiConnection(provider, "text-model", "key-${provider.name}", "https://wrong.example/chat/completions"), "cards"))
+      val sent = requests.last()
+      assertEquals(host, sent.url.host)
+      assertEquals("Bearer key-${provider.name}", sent.header("Authorization"))
+      assertNull(sent.url.query)
+      val buffer = okio.Buffer(); sent.body!!.writeTo(buffer)
+      val body = JSONObject(buffer.readUtf8())
+      assertEquals(4096, body.getInt(if (provider == AiProvider.GROQ) "max_completion_tokens" else "max_tokens"))
+      assertEquals(1, body.getJSONArray("messages").length())
+    }
+    assertEquals(4, requests.size)
+  }
+  @Test fun providerModelCataloguesUseTheirRealCapabilityMetadata() = runBlocking {
+    val paths = mutableListOf<String>()
+    val client = OkHttpClient.Builder().addInterceptor { chain ->
+      paths.add(chain.request().url.toString())
+      Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+        .body("""{"data":[{"id":"llama-3.3-70b-versatile"},{"id":"deepseek-chat"},{"id":"mistral-small-latest","capabilities":{"completion_chat":true}},{"id":"vendor/text:free","architecture":{"output_modalities":["text"]}},{"id":"embedding-model"}]}""".toResponseBody("application/json".toMediaType())).build()
+    }.build()
+    val expected = mapOf(AiProvider.GROQ to "llama-3.3-70b-versatile", AiProvider.DEEPSEEK to "deepseek-chat",
+      AiProvider.MISTRAL to "mistral-small-latest", AiProvider.OPENROUTER to "vendor/text:free")
+    for ((provider, id) in expected) {
+      assertEquals(listOf(id), ConnectedAiRepository(client).models(AiConnection(provider, apiKey="key")))
+      assertEquals(provider.chatEndpoint.removeSuffix("/chat/completions") + "/models", paths.last())
+    }
+  }
+  @Test fun newProfilesSurviveSwitchingAndDoNotLoseLegacyProfiles() {
+    val store = AiConnectionStore(RuntimeEnvironment.getApplication()) { SecretKeySpec(ByteArray(32) { 9 }, "AES") }
+    store.clear()
+    try {
+      val entries = AiProvider.entries.map { AiConnection(it, "text-model", "private-${it.name}", "https://example.com/v1/chat/completions", id=it.name) }
+      entries.forEach(store::save)
+      entries.reversed().forEach { c ->
+        store.select(c.id)
+        assertEquals(c, store.load())
+        assertEquals(entries.toSet(), store.loadProfiles().entries.toSet())
+      }
+    } finally { store.clear() }
+  }
+
 }

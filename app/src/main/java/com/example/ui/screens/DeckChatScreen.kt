@@ -57,6 +57,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
         Text(current.name, style = MaterialTheme.typography.titleMedium)
         Text("${current.totalCardCount}/20 · " + current.energyTypes.joinToString().ifBlank { "Energías por elegir" }, style = MaterialTheme.typography.bodySmall)
         Text(if (connection.apiKey.isBlank()) "Configura tu conexión para conversar" else "${connection.label} · ${connection.model}", style = MaterialTheme.typography.bodySmall)
+        QuickAiSwitch(model)
         OutlinedButton(enabled = ready && !busy, onClick = onConnections, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
       } } }
       if (creating && messages.isEmpty()) item {

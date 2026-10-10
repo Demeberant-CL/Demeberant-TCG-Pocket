@@ -35,6 +35,7 @@ private fun AdvancedStatus(model: AdvancedViewModel) {
   message?.let { Text(it) }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier, initialConfigure: Boolean = false, configurationOnly: Boolean = false) {
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
@@ -69,6 +70,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
+      QuickAiSwitch(model)
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
@@ -162,10 +164,11 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
             }
           }
           OutlinedButton(enabled = !busy, onClick = {
-            profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
-            apiKey = ""; model.availableModels.value = emptyList()
+            profileId = java.util.UUID.randomUUID().toString(); profileName = provider.label
+            modelName = provider.defaultModel; url = ""; apiKey = ""; model.availableModels.value = emptyList()
           }, shape = MaterialTheme.shapes.medium) { Text("Añadir proveedor") }
           OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
+          FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           com.example.data.ai.AiProvider.entries.forEach { value ->
             FilterChip(selected = provider == value, enabled = !busy, onClick = {
               if (provider != value) {
@@ -173,6 +176,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
                 profileId = java.util.UUID.randomUUID().toString(); profileName = value.label; model.availableModels.value = emptyList()
               }
             }, label = { Text(value.label) })
+          }
           }
           OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
             visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
@@ -183,10 +187,11 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }
           Text(if (provider == com.example.data.ai.AiProvider.GEMINI)
             "Gemini tiene cuotas gratuitas según modelo y cuenta. Si activaste facturación, puede cobrar. En el nivel gratuito Google puede usar el contenido para mejorar sus productos."
-            else "Esta API puede tener coste. ChatGPT Plus no incluye crédito API. Revisa los límites en tu cuenta del proveedor.")
+            else if (provider == com.example.data.ai.AiProvider.OPENAI) "ChatGPT Plus no incluye crédito API. Revisa los límites y costes de tu cuenta."
+            else "La disponibilidad, cuota y coste dependen del modelo y de tu cuenta. Revisa tu proveedor antes de consultar.")
           Text("La clave se cifra en este teléfono y no se incluye en diagnósticos ni respaldos. No uses una clave compartida para todos los usuarios.")
-          if (provider != com.example.data.ai.AiProvider.COMPATIBLE) TextButton(onClick = {
-            val link = if (provider == com.example.data.ai.AiProvider.GEMINI) "https://aistudio.google.com/apikey" else "https://platform.openai.com/api-keys"
+          if (provider.keysUrl.isNotBlank()) TextButton(onClick = {
+            val link = provider.keysUrl
             try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))) }
             catch (_: Exception) { model.message.value = "Abre la página de claves del proveedor en tu navegador." }
           }) { Text("Obtener mi clave API") }
