@@ -16,9 +16,16 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 // Each provider has an independent credential; changing provider never reuses a key.
-enum class AiProvider(val label: String, val defaultModel: String) {
-  GEMINI("Gemini", "gemini-3.8-flash"), OPENAI("OpenAI (ChatGPT)", "gpt-5-mini"),
-  COMPATIBLE("Otra API compatible con OpenAI", "")
+enum class AiProvider(val label: String, val defaultModel: String,
+  val chatEndpoint: String = "", val keysUrl: String = "") {
+  GEMINI("Gemini", "gemini-3.8-flash", keysUrl = "https://aistudio.google.com/apikey"),
+  OPENAI("OpenAI (ChatGPT)", "gpt-5-mini", "https://api.openai.com/v1/chat/completions", "https://platform.openai.com/api-keys"),
+  GROQ("Groq", "", "https://api.groq.com/openai/v1/chat/completions", "https://console.groq.com/keys"),
+  OPENROUTER("OpenRouter", "", "https://openrouter.ai/api/v1/chat/completions", "https://openrouter.ai/settings/keys"),
+  MISTRAL("Mistral", "", "https://api.mistral.ai/v1/chat/completions", "https://console.mistral.ai/api-keys"),
+  DEEPSEEK("DeepSeek", "", "https://api.deepseek.com/chat/completions", "https://platform.deepseek.com/api_keys"),
+  COMPATIBLE("Otra API compatible con OpenAI", "");
+  fun endpoint(custom: String): String = if (this == COMPATIBLE) custom.trim() else chatEndpoint
 }
 data class AiConnection(val provider: AiProvider = AiProvider.GEMINI, val model: String = provider.defaultModel,
   val apiKey: String = "", val endpoint: String = "", val id: String = UUID.randomUUID().toString(),

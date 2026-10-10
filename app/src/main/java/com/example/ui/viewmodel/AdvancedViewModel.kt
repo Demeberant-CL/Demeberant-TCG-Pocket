@@ -85,6 +85,9 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     require(connectionReady.value) { "Espera a que se carguen las conexiones guardadas." }
     val next = withContext(Dispatchers.IO) { connectionStore.select(id) }
     profiles.value = next; connection.value = next.active!!; proposal.value = null; availableModels.value = emptyList()
+    deckChatSuggestion.value = null
+    if (pendingChat != null) deckChatStatus.value = "Conexión: ${next.active!!.label}. Puedes reintentar la consulta pendiente."
+    message.value = "Conexión activa: ${next.active!!.label}."
   }
   fun discoverModels(value: AiConnection) = task("AI_MODELS") {
     availableModels.value = emptyList()

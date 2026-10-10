@@ -40,6 +40,12 @@ class DexVisualTest {
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2)),listOf("Rayo"))))
     }
     compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
+    val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
+    compose.waitUntil(20_000) { connectionsModel.connectionReady.value && !connectionsModel.busy.value }
+    compose.runOnIdle { connectionsModel.saveConnection(com.example.data.ai.AiConnection(apiKey="fixture-only", id="fixture-gemini", label="Gemini prueba")) }
+    compose.waitUntil(10_000) { connectionsModel.profiles.value.entries.any { it.id == "fixture-gemini" } && !connectionsModel.busy.value }
+    compose.runOnIdle { connectionsModel.saveConnection(com.example.data.ai.AiConnection(com.example.data.ai.AiProvider.GROQ, "llama-3.3-70b-versatile", "fixture-only", id="fixture-groq", label="Groq prueba")) }
+    compose.waitUntil(10_000) { connectionsModel.profiles.value.entries.any { it.id == "fixture-groq" } && !connectionsModel.busy.value }
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
@@ -153,6 +159,18 @@ class DexVisualTest {
         capture("mazos-editor-con-cartas")
         compose.onNodeWithText("Hablar con IA").performClick()
         compose.waitForIdle()
+        compose.onNodeWithTag("deck_chat_input").performTextInput("Conserva esta pregunta")
+        compose.onNodeWithTag("deck_chat_list").performScrollToNode(hasTestTag("quick_ai_switch"))
+        compose.onNodeWithTag("quick_ai_switch").performClick()
+        compose.onNodeWithTag("ai_profile_fixture-gemini").performClick()
+        compose.waitUntil(10_000) { connectionsModel.connection.value.id == "fixture-gemini" && !connectionsModel.busy.value }
+        compose.onNodeWithTag("deck_chat_input").assertTextContains("Conserva esta pregunta")
+        compose.onNodeWithTag("quick_ai_switch").performClick()
+        compose.onNodeWithTag("ai_profile_fixture-groq").performClick()
+        compose.waitUntil(10_000) { connectionsModel.connection.value.id == "fixture-groq" && !connectionsModel.busy.value }
+        compose.onNodeWithTag("deck_chat_input").assertTextContains("Conserva esta pregunta")
+        capture("ia-cambio-rapido")
+        compose.onNodeWithTag("deck_chat_input").performTextClearance()
         val base = main.generatedDeck.value!!
         val proposed = DeckAutomation.build(main.inventoryList.value, "Fuego").copy(name = base.name)
         check(proposed.totalCardCount == 20 && proposed.validationWarnings.isEmpty())
