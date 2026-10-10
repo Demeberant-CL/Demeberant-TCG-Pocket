@@ -5,6 +5,10 @@ import com.example.data.util.ErrorLogManager
 
 class PocketApplication : Application(), coil.ImageLoaderFactory {
   override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
+    .diskCache {
+      coil.disk.DiskCache.Builder().directory(cacheDir.resolve("card-images"))
+        .maxSizeBytes(256L * 1024 * 1024).build()
+    }
     .okHttpClient(com.example.data.network.PocketHttp.imageClient).build()
 
   override fun onCreate() {

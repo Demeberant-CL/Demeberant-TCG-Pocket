@@ -90,9 +90,10 @@ object LocalDeckPlanner {
     }.distinct().take(24)
     val roleMap = owned.associate { it.card.id to roles(data[it.card.id]) }
     val drawValue = owned.associate { item ->
-      val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty()).trim()
-      val direct = Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$").matchEntire(text)
-      item.card.id to (direct?.groupValues?.get(2)?.toDoubleOrNull()
+      val direct = data[item.card.id]?.text.orEmpty().lines().map { RoleClassifier.normalize(it).trim() }
+        .mapNotNull { Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$")
+          .matchEntire(it)?.groupValues?.get(2)?.toDoubleOrNull() }.maxOrNull()
+      item.card.id to (direct
         ?: if (CardRole.DRAW in roleMap[item.card.id].orEmpty()) 0.5 else 0.0)
     }
     val named = owned.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
@@ -228,8 +229,15 @@ object LocalDeckPlanner {
           if (rows.none { CardRole.DRAW in roleMap[it.card.id].orEmpty() }) add("Sin robo de cartas identificado.")
           if (rows.none { CardRole.SEARCH in roleMap[it.card.id].orEmpty() }) add("Sin búsqueda identificada.")
         }
+        val consistency = if (rows.sumOf { it.count } == 20) {
+          val copies = lineage.map { key -> rows.filter { name(it.card.rulesName) == key }.sumOf { it.count } }
+          val chance = DeckConsistency.allPieces(20, copies, 8)
+          "Núcleo completo entre 8 cartas al azar: ${String.format(Locale.ROOT, "%.1f", chance * 100)} %. " +
+            "Sin búsqueda, robo extra ni básico inicial garantizado; no estima turnos ni victorias."
+        } else "Completa las 20 cartas para calcular consistencia."
         val reasons = listOf("Núcleo: ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}",
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
+          consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.")
         val strategy = (reasons + cautions).joinToString("\n")
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",

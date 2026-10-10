@@ -80,8 +80,11 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
           plan.cautions.forEach { Text(it, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant) }
           TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Ocultar cartas" else "Ver cartas") }
-          if (expanded) plan.deck.cards.forEach { entry -> Text("${entry.count}× ${entry.card.name} · ${entry.card.id}",
-            style = MaterialTheme.typography.bodySmall) }
+          if (expanded) {
+            plan.reasons.drop(2).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+            plan.deck.cards.forEach { entry -> Text("${entry.count}× ${entry.card.name} · ${entry.card.id}",
+              style = MaterialTheme.typography.bodySmall) }
+          }
           Button(onClick = {
             if (main.hasUnsavedDeckChanges()) pending = plan else main.openLocalDeckPlan(plan, onOpen)
           }, modifier = Modifier.fillMaxWidth()) { Text("Abrir en editor") }

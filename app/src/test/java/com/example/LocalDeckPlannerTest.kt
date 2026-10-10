@@ -69,7 +69,7 @@ class LocalDeckPlannerTest {
     val basic=card(1);val research=card(2,"Research","Entrenador");val ball=card(3,"Ball","Entrenador")
     val reset=card(4,"Reset","Entrenador")
     val pool=listOf(owned(basic),owned(research),owned(ball),owned(reset))+(5..18).map { owned(card(it,type="Entrenador")) }
-    val facts=mapOf(basic.id to attack(listOf("Water")),research.id to CombatData(text="Roba 2 cartas."),
+    val facts=mapOf(basic.id to attack(listOf("Water")),research.id to CombatData(text="Roba 2 cartas.\nDraw 2 cards."),
       ball.id to CombatData(text="Pon 1 Pokémon Básico aleatorio de tu baraja en tu mano."),
       reset.id to CombatData(text="Devuelve tu mano a la baraja y roba tantas cartas como antes."))
     assertTrue(CardRole.SEARCH in RoleClassifier.classify(facts.getValue(ball.id).text))
