@@ -146,7 +146,7 @@ class MainActivity : ComponentActivity() {
               onEditor = { deckEditorRequest++; navigateTo(2) },
               onMeta = { metaReturnTab = 0; navigateTo(5) })
             1 -> CollectionScreen(viewModel, screenModifier)
-            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
+            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }

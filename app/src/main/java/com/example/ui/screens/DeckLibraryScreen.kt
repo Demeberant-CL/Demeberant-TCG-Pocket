@@ -20,7 +20,7 @@ import com.example.data.util.DeckCodec
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onEdit: () -> Unit) {
+fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onEdit: () -> Unit, onCreate: () -> Unit = onEdit) {
   val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(viewModel, onEdit)
   val draft by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val decks by viewModel.savedDecks.collectAsStateWithLifecycle()
@@ -34,9 +34,8 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-          Text(if (draft == null || draft?.cards?.isEmpty() == true) "+ Nuevo mazo" else "Continuar borrador")
-        }
+        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("+ Nuevo mazo") }
+        if (draft?.cards?.isNotEmpty() == true) OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar borrador · ${draft?.totalCardCount}/20") }
         OutlinedTextField(search, { search = it }, modifier = Modifier.fillMaxWidth(),
           label = { Text("Buscar mazo") }, singleLine = true)
       }

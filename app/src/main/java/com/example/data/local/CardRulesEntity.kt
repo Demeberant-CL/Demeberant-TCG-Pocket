@@ -17,6 +17,8 @@ interface CardRulesDao {
   @Query("SELECT * FROM card_rules WHERE cardId = :id AND language = :language")
   suspend fun get(id: String, language: String): CardRulesEntity?
   @Query("SELECT * FROM card_rules WHERE language = :language")
+  fun observeAll(language: String): Flow<List<CardRulesEntity>>
+  @Query("SELECT * FROM card_rules WHERE language = :language")
   suspend fun all(language: String): List<CardRulesEntity>
   @Query("""SELECT * FROM card_rules WHERE language = :language
     AND (:minHp IS NULL OR hp >= :minHp) AND (:maxHp IS NULL OR hp <= :maxHp)

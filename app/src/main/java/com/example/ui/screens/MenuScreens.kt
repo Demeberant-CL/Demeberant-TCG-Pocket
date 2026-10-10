@@ -53,7 +53,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
+fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
   var section by rememberSaveable { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
@@ -62,18 +62,25 @@ fun DeckMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAsk
       appliedEditorRequest = editorRequest
     }
   }
-  BackHandler(enabled = section != 0) { section = 0 }
+  BackHandler(enabled = section != 0) { section = if (section in listOf(4, 5)) 3 else 0 }
   Column(modifier.fillMaxSize()) {
-    if (section == 1) {
+    if (section == 1 || section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
-    } else {
+    } else if (section == 0 || section == 2) {
       MenuChoices(listOf("Mis mazos", "Plantillas A1"), if (section == 0) 0 else 1) {
         section = if (it == 0) 0 else 2
       }
     }
     when (section) {
-      0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 })
-      1 -> ManualDeckScreen(viewModel, Modifier.weight(1f), onAskAi)
+      0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
+      1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onAskAi)
+      3 -> CreateDeckScreen(viewModel, onManual = { section = 1 }, onAi = { section = 4 }, onContinue = { section = 1 }, modifier = Modifier.weight(1f))
+      4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
+        { section = 5 }, Modifier.weight(1f), creating = true)
+      5 -> Column(Modifier.weight(1f)) {
+        TextButton(onClick = { section = 4 }) { Text("← Crear con IA") }
+        AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true)
+      }
       else -> DeckBuilderScreen(viewModel, Modifier.weight(1f), onOpenSavedDeck = { section = 1 })
     }
   }

@@ -339,6 +339,21 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun applyDeckChatSuggestion(suggestion: com.example.domain.DeckChatSuggestion,
+    onApplied: () -> Unit = {}, onRejected: (String) -> Unit = {}) = viewModelScope.launch {
+    try {
+      initialization.await()
+      val owned = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
+      val proposed = suggestion.proposal.deck
+      com.example.domain.DeckChat.requireApplicable(suggestion, _generatedDeck.value, owned)
+      _automaticEnergies.value = false
+      _generatedDeck.value = proposed
+      reportMessage("Cambios aplicados al borrador. Guarda el mazo para conservarlos.")
+      onApplied()
+    } catch (e: CancellationException) { throw e }
+    catch (_: Exception) { onRejected("No se aplicaron los cambios. El mazo o la colección cambió; consulta de nuevo.") }
+  }
+
   fun openTournamentDeck(deck: GeneratedDeck) {
     require(deck.totalCardCount == 20 && deck.cards.sumOf { it.count } == 20)
     require(deck.cards.all { it.count in 1..2 } && deck.energyTypes.size in 1..3)

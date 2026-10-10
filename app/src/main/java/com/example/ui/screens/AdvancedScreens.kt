@@ -36,7 +36,7 @@ private fun AdvancedStatus(model: AdvancedViewModel) {
 }
 
 @Composable
-fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier) {
+fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: () -> Unit, modifier: Modifier = Modifier, initialConfigure: Boolean = false) {
   val deck by main.generatedDeck.collectAsStateWithLifecycle()
   val proposal by model.proposal.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
@@ -50,7 +50,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var apiKey by remember { mutableStateOf(connection.apiKey) }
   var modelName by remember { mutableStateOf(connection.model) }
   var url by remember { mutableStateOf(connection.endpoint) }
-  var configure by remember { mutableStateOf(false) }
+  var configure by remember { mutableStateOf(initialConfigure) }
   var goal by rememberSaveable { mutableStateOf(model.goal) }
   var candidateType by rememberSaveable { mutableStateOf(model.candidateType) }
   var actionName by rememberSaveable { mutableStateOf(if (deck?.archetype == "Limitless") AiDeckAction.COMPLETE.name else AiDeckAction.CREATE.name) }

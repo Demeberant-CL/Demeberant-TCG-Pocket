@@ -1,6 +1,10 @@
 package com.example
 
 import android.graphics.Bitmap
+import androidx.lifecycle.ViewModelProvider
+import com.example.ui.viewmodel.TcgViewModel
+import com.example.ui.viewmodel.AdvancedViewModel
+import com.example.domain.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -80,7 +84,48 @@ class DexVisualTest {
       if (index == 2) {
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
+        capture("mazos-crear")
+        compose.onNodeWithText("Empezar").performClick()
+        compose.waitForIdle()
         capture("mazos-editor")
+        compose.onNodeWithText("Añadir cartas").performClick()
+        compose.onNodeWithText("Filtrar · 0").performClick()
+        compose.onNodeWithText("Objeto").performClick()
+        capture("mazos-filtros")
+        compose.onNode(hasText("Ver ", substring = true) and hasText(" cartas", substring = true)).performClick()
+        compose.onNodeWithText("Buscar nombre o código").performTextInput("Potion")
+        capture("mazos-anadir")
+        val main = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+        val advanced = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
+        val basic = catalog.first { it.category == "pokemon" && it.stage == "basic" && it.type == "Fuego" }
+        compose.runOnIdle { main.editDeckQuantity(basic.id, 2) }
+        compose.onNodeWithText("Mi mazo (2)").performClick()
+        capture("mazos-editor-con-cartas")
+        compose.onNodeWithText("Hablar con IA").performClick()
+        compose.waitForIdle()
+        val base = main.generatedDeck.value!!
+        val proposed = DeckAutomation.build(main.inventoryList.value, "Fuego").copy(name = base.name)
+        check(proposed.totalCardCount == 20 && proposed.validationWarnings.isEmpty())
+        compose.runOnIdle {
+          advanced.deckChatMessages.value = listOf(DeckChatMessage(true, "Completa el mazo con mis cartas."),
+            DeckChatMessage(false, "Esta propuesta de prueba conserva el tipo Fuego. Revisa las cartas y cantidades antes de aplicarla."))
+          advanced.deckChatSuggestion.value = DeckChatSuggestion(base, AiProposal(proposed, emptyList()))
+        }
+        compose.waitForIdle()
+        capture("mazos-chat")
+        compose.onNodeWithText("Ver cambios").performScrollTo().performClick()
+        capture("mazos-revisar")
+        check(main.generatedDeck.value == base) { "Preview must not change the draft" }
+        compose.onNodeWithText("Aplicar cambios").performClick()
+        compose.waitUntil(20_000) { main.generatedDeck.value?.totalCardCount == 20 }
+        compose.onNodeWithText("Guardar mazo · 20/20").assertIsDisplayed()
+        // Re-enter the hub to capture the AI creation form without making a billable API request.
+        compose.onNodeWithText("← Mis mazos").performClick()
+        compose.onNodeWithText("+ Nuevo mazo").performClick()
+        compose.onNodeWithText("Crear con IA").performClick()
+        compose.onNodeWithText("Crear nuevo").performClick()
+        compose.waitForIdle()
+        capture("mazos-crear-ia")
       }
     }
   }

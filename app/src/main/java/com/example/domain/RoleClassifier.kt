@@ -4,7 +4,7 @@ import java.text.Normalizer
 import java.util.Locale
 
 enum class CardRole(val key: String, val label: String) {
-  DRAW("draw", "Robar cartas"), HEAL("heal", "Curar"), ENERGY("energy", "Acelerar energía"),
+  DRAW("draw", "Robar cartas"), SEARCH("search", "Buscar cartas"), HEAL("heal", "Curar"), ENERGY("energy", "Acelerar energía"),
   MILL("mill", "Milling"), SWITCH("switch", "Mover Pokémon")
 }
 object RoleClassifier {
@@ -15,6 +15,8 @@ object RoleClassifier {
     val value = normalize(text)
     return buildSet {
       if (Regex("\\b(draw|roba|robar|robe)\\b").containsMatchIn(value)) add(CardRole.DRAW)
+      if ((value.contains("search") || value.contains("busca") || value.contains("buscar")) &&
+          (value.contains("deck") || value.contains("baraja") || value.contains("mazo"))) add(CardRole.SEARCH)
       if (Regex("\\b(heal|cura|curar|curate|soigne|heals)\\b").containsMatchIn(value)) add(CardRole.HEAL)
       if ((value.contains("attach") || value.contains("une") || value.contains("unir") || value.contains("unida")) &&
           (value.contains("energy") || value.contains("energia"))) add(CardRole.ENERGY)

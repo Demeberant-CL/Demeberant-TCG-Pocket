@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.listSaver
+import com.example.domain.DeckCardFilter
+import com.example.ui.viewmodel.AdvancedViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,14 +32,24 @@ import com.example.ui.viewmodel.TcgViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
+fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}) {
   val deck by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   val message by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
   val generating by viewModel.isGeneratingDeck.collectAsStateWithLifecycle()
   val automatic by viewModel.automaticEnergies.collectAsStateWithLifecycle()
-  var query by rememberSaveable { mutableStateOf("") }
-  var onlyOwned by rememberSaveable { mutableStateOf(true) }
+  var filter by rememberSaveable(stateSaver = listSaver<DeckCardFilter, Any>(
+    save = { listOf(it.query, it.category, it.stage, it.element, it.expansion, it.rarity, it.onlyEx, it.availability, it.effect, it.sort) },
+    restore = { DeckCardFilter(it[0] as String, it[1] as String, it[2] as String, it[3] as String,
+      it[4] as String, it[5] as String, it[6] as Boolean, it[7] as String, it[8] as String, it[9] as String) }
+  )) { mutableStateOf(DeckCardFilter()) }
+  var showFilters by rememberSaveable { mutableStateOf(false) }
+  var chatPage by rememberSaveable { mutableIntStateOf(0) }
+  var chatAction by rememberSaveable { mutableStateOf("chat") }
+  var visibleLimit by rememberSaveable { mutableIntStateOf(80) }
+  val rulesList by advanced.deckRules.collectAsStateWithLifecycle()
+  val aiBusy by advanced.busy.collectAsStateWithLifecycle()
+  val rules = remember(rulesList) { rulesList.associateBy { it.cardId } }
   var adding by rememberSaveable { mutableStateOf(false) }
   var tab by rememberSaveable { mutableIntStateOf(0) }
   var showActions by remember { mutableStateOf(false) }
@@ -47,8 +61,26 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
   val current = deck ?: return
   val owned = remember(inventory) { inventory.associate { it.card.id to it.ownedCount } }
   val counts = remember(current.cards) { current.cards.associate { it.card.id to it.count } }
-  val candidates = remember(inventory, onlyOwned, query) { inventory.filter { (!onlyOwned || it.ownedCount > 0) &&
-    (query.isBlank() || it.card.name.contains(query, true) || it.card.id.contains(query, true)) }.take(60) }
+  val candidates = remember(inventory, filter, counts, rules) { filter.select(inventory, counts, rules) }
+  val expansions = remember(inventory) { inventory.map { it.card.id.substringBeforeLast('-') }.distinct().sorted() }
+  LaunchedEffect(filter) { visibleLimit = 80 }
+  if (chatPage == 1) {
+    DeckChatScreen(viewModel, advanced, { chatPage = 0 }, { chatPage = 2 }, modifier, initialAction = chatAction)
+    return
+  }
+  if (chatPage == 2) {
+    BackHandler { chatPage = 1 }
+    Column(modifier.fillMaxSize()) {
+      TextButton(onClick = { chatPage = 1 }) { Text("← Chat del mazo") }
+      AIAssistantScreen(viewModel, advanced, { chatPage = 0 }, Modifier.weight(1f), initialConfigure = true)
+    }
+    return
+  }
+  BackHandler(enabled = showFilters || adding) { if (showFilters) showFilters = false else adding = false }
+  if (showFilters) {
+    DeckCardFiltersScreen(filter, expansions, candidates.size, { filter = it }, { showFilters = false }, modifier)
+    return
+  }
   Column(modifier.fillMaxSize()) {
     Surface(tonalElevation = 2.dp) {
       Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -68,7 +100,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
               DropdownMenuItem(text = { Text("Nuevo vacío") }, enabled = !generating,
                 onClick = { showActions = false; confirmNew = true })
               DropdownMenuItem(text = { Text("Consultar mi IA") }, enabled = !generating,
-                onClick = { showActions = false; onAskAi() })
+                onClick = { showActions = false; chatAction = "chat"; chatPage = 1 })
             }
           }
         }
@@ -95,17 +127,33 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
             FilterChip(selected = adding, onClick = { adding = true }, label = { Text("Añadir cartas") })
           }
           if (adding) {
-            OutlinedTextField(query, { query = it }, label = { Text("Buscar nombre o código") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Text("Solo mis cartas", Modifier.weight(1f)); Switch(onlyOwned, { onlyOwned = it })
+            OutlinedTextField(filter.query, { filter = filter.copy(query = it) }, label = { Text("Buscar nombre o código") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedButton(onClick = { showFilters = true }, shape = MaterialTheme.shapes.medium) { Text("Filtrar · ${filter.activeCount}") }
+              OutlinedButton(onClick = { adding = false }, shape = MaterialTheme.shapes.medium) { Text("Listo · ${current.totalCardCount}/20") }
             }
-            Text("Hasta 60 coincidencias. Busca para ver otras cartas.", style = MaterialTheme.typography.bodySmall)
-            if (candidates.isEmpty()) Text("No hay coincidencias. Importa tu CSV o desactiva Solo mis cartas.")
+            DeckChoice("Disponibilidad", filter.availability, listOf("all" to "Todas", "owned" to "Mis cartas", "sufficient" to "Puedo añadir otra copia", "missing" to "No las tengo")) { filter = filter.copy(availability = it) }
+            DeckChoice("Ordenar", filter.sort, listOf("code" to "Código", "name" to "Nombre", "copies" to "Copias", "rarity" to "Rareza")) { filter = filter.copy(sort = it) }
+            Text("${candidates.size} resultados", style = MaterialTheme.typography.bodySmall)
+            if (filter.effect.isNotBlank()) {
+              Text("Los efectos solo filtran cartas con datos cargados.", style = MaterialTheme.typography.bodySmall)
+              TextButton(enabled = !aiBusy, onClick = { advanced.indexCards(filter.copy(effect = "").select(inventory, counts, rules).map { it.card.id }, "es") }) { Text("Cargar efectos de hasta 25 cartas") }
+              val status by advanced.message.collectAsStateWithLifecycle()
+              status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            }
+            if (candidates.isEmpty()) Text("No hay coincidencias. Revisa los filtros o carga los efectos que faltan.")
           } else if (current.cards.isEmpty()) {
             Text("Prepara tu primera baraja", style = MaterialTheme.typography.titleMedium)
             Button(onClick = { create = true }, enabled = !generating, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con mis cartas") }
-            OutlinedButton(onClick = onAskAi, enabled = !generating, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con mi IA") }
+            OutlinedButton(onClick = { chatAction = "create"; chatPage = 1 }, enabled = !generating, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con mi IA") }
             TextButton(onClick = { adding = true }) { Text("Elegir cartas") }
+          }
+          if (!adding && current.cards.isNotEmpty()) {
+            OutlinedButton(onClick = { chatAction = "chat"; chatPage = 1 }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Hablar con IA") }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              TextButton(onClick = { chatAction = "improve"; chatPage = 1 }) { Text("Mejorar con IA") }
+              TextButton(onClick = { chatAction = "complete"; chatPage = 1 }) { Text("Completar faltantes") }
+            }
           }
         }
         if (!adding) items(current.cards, key = { it.card.id }) { entry ->
@@ -131,7 +179,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
               }
             }
           }
-        } else items(candidates, key = { it.card.id }) { item ->
+        } else items(candidates.take(visibleLimit), key = { it.card.id }) { item ->
           val count = counts[item.card.id] ?: 0
           Card(Modifier.fillMaxWidth()) {
             Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -140,12 +188,20 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
                 Text(item.card.name, style = MaterialTheme.typography.titleSmall)
                 Text("${item.ownedCount} disponibles · $count en mazo", style = MaterialTheme.typography.bodySmall)
               }
-              IconButton(enabled = !generating && count < 2 && current.totalCardCount < 20 && (!onlyOwned || count < item.ownedCount),
+              IconButton(enabled = !generating && count > 0, onClick = { viewModel.editDeckQuantity(item.card.id, count - 1) }) {
+                Icon(Icons.Filled.Remove, "Quitar ${item.card.name}")
+              }
+              Text("$count")
+              IconButton(enabled = !generating && count < 2 && current.totalCardCount < 20 &&
+                (filter.availability !in listOf("owned", "sufficient") || count < item.ownedCount),
                 onClick = { viewModel.editDeckQuantity(item.card.id, count+1) }) {
                 Icon(Icons.Filled.Add, "Añadir ${item.card.name}")
               }
             }
           }
+        }
+        if (adding && candidates.size > visibleLimit) item {
+          OutlinedButton(onClick = { visibleLimit += 80 }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Mostrar más cartas") }
         }
       } else if (tab == 1) {
         item {
