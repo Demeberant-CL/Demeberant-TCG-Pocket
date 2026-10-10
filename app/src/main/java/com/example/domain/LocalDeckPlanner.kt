@@ -90,9 +90,10 @@ object LocalDeckPlanner {
     }.distinct().take(24)
     val roleMap = owned.associate { it.card.id to roles(data[it.card.id]) }
     val drawValue = owned.associate { item ->
-      val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty()).trim()
-      val direct = Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$").matchEntire(text)
-      item.card.id to (direct?.groupValues?.get(2)?.toDoubleOrNull()
+      val direct = data[item.card.id]?.text.orEmpty().lines().map { RoleClassifier.normalize(it).trim() }
+        .mapNotNull { Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$")
+          .matchEntire(it)?.groupValues?.get(2)?.toDoubleOrNull() }.maxOrNull()
+      item.card.id to (direct
         ?: if (CardRole.DRAW in roleMap[item.card.id].orEmpty()) 0.5 else 0.0)
     }
     val named = owned.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
