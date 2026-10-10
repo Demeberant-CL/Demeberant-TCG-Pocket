@@ -220,7 +220,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
                   color = MaterialTheme.colorScheme.surface) {
                   Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                       Text(labels[n], style = MaterialTheme.typography.titleSmall)
                       Text(descriptions[n], style = MaterialTheme.typography.bodySmall,
