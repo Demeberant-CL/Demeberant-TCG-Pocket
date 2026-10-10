@@ -103,9 +103,11 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
             }
             if (energies.isNotEmpty()) Text(energies.joinToString(" · "),
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            Text(if (canOpen) "›" else "Lista no disponible en el catálogo actual",
+            if (!canOpen) Text("Lista no disponible en el catálogo actual",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
+          if (canOpen) Text("›", style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
       }
     } }

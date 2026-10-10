@@ -210,7 +210,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   if (showSettings) SettingsScreen(prefs.themeMode, main::setThemeMode, { showSettings = false })
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
   val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Cuenta, apariencia y sincronización")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Apariencia y sincronización")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
     Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings)
   Column(modifier.fillMaxSize()) {

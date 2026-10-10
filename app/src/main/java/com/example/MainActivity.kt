@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
             }
           }
         ) { innerPadding ->
-          val screenModifier = Modifier.padding(innerPadding).statusBarsPadding()
+          val screenModifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
           screenStates.SaveableStateProvider(selectedTabIndex) {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
