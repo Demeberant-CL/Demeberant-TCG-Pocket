@@ -10,7 +10,10 @@ import androidx.compose.ui.unit.dp
 import com.example.data.util.CollectionInsights
 
 @Composable
-fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier, deckOnly: Boolean = false, packsOnly: Boolean = false) {
+fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier, deckOnly: Boolean = false, packsOnly: Boolean = false, deck: com.example.data.repository.GeneratedDeck? = null) {
+  var targetId by rememberSaveable { mutableStateOf("") }
+  var chooseTarget by remember { mutableStateOf(false) }
+  val actualTargets = deck?.cards?.find { it.card.id == targetId }?.count
   var rate by rememberSaveable { mutableStateOf("") }
   var attempts by rememberSaveable { mutableFloatStateOf(10f) }
   var targets by rememberSaveable { mutableFloatStateOf(2f) }
@@ -34,9 +37,20 @@ fun ProbabilityCalculatorScreen(modifier: Modifier = Modifier, deckOnly: Boolean
       HorizontalDivider()
       Text("Robar una carta objetivo", style = MaterialTheme.typography.titleLarge)
       Text("Mazo de 20 cartas; robo aleatorio sin reemplazo.")
-      Text("${targets.toInt()} copias objetivo"); Slider(targets, { targets = it }, valueRange = 0f..20f, steps = 19)
+      if (deck != null) {
+        Text(deck.name + " · " + deck.totalCardCount + "/20")
+        Box {
+          OutlinedButton(onClick = { chooseTarget = true }) { Text(deck.cards.find { it.card.id == targetId }?.card?.name ?: "Elegir carta del mazo") }
+          DropdownMenu(expanded = chooseTarget, onDismissRequest = { chooseTarget = false }) {
+            deck.cards.forEach { entry -> DropdownMenuItem(text = { Text("${entry.card.name} · ${entry.count} copias") }, onClick = { targetId = entry.card.id; chooseTarget = false }) }
+          }
+        }
+      }
+      if (actualTargets == null) {
+        Text("${targets.toInt()} copias objetivo"); Slider(targets, { targets = it }, valueRange = 0f..20f, steps = 19)
+      } else Text("$actualTargets copias objetivo")
       Text("${draws.toInt()} cartas robadas"); Slider(draws, { draws = it }, valueRange = 0f..20f, steps = 19)
-      Text("Al menos una: ${"%.2f".format(CollectionInsights.drawChance(20, targets.toInt(), draws.toInt()) * 100)} %")
+      Text("Al menos una: ${"%.2f".format(CollectionInsights.drawChance(20, actualTargets ?: targets.toInt(), draws.toInt()) * 100)} %")
       Text("No simula la garantía de Pokémon básico en la mano inicial ni habilidades, búsqueda o efectos del juego.")
     }
   }

@@ -204,7 +204,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         deckChatStatus.value = null
         deckChatMessages.value = (history + DeckChatMessage(false, answer.text)).takeLast(20)
         deckChatSuggestion.value = answer.proposal?.let { DeckChatSuggestion(deck, it) }
-        if (candidates.size < pool.size) deckChatStatus.value = "La consulta usó ${candidates.size} cartas para ajustarse al límite del proveedor. Acota por energía si necesitas otras."
+        deckChatStatus.value = "Consulta: ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con datos de efectos · ${pool.size - candidates.size} fuera del contexto. Acota por energía si necesitas otras."
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         if (deckChatBase == deck && deckChatSession == session) {

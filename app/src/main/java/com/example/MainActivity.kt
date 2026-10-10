@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
-              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { navigateTo(3) }, Modifier.weight(1f))
+              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, Modifier.weight(1f))
             }
             else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier,
               initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; navigateTo(5) })

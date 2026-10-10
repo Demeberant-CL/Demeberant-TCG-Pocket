@@ -35,6 +35,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
     "improve" -> "Mejora la consistencia de este mazo y explica los cambios."
     else -> ""
   }) }
+  LaunchedEffect(messages.lastOrNull()) { if (messages.lastOrNull()?.user == false) input = "" }
   var energy by rememberSaveable { mutableStateOf(current.energyTypes.firstOrNull() ?: "") }
   var style by rememberSaveable { mutableStateOf("Equilibrado") }
   var reviewing by rememberSaveable { mutableStateOf(false) }

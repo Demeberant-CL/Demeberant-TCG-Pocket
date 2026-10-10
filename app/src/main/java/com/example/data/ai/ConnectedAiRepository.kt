@@ -49,7 +49,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     val builder = Request.Builder().url(url)
     if (config.provider == AiProvider.GEMINI) builder.header("x-goog-api-key", config.apiKey)
     else builder.header("Authorization", "Bearer ${config.apiKey}")
-    execute(builder.build(), onStatus).use { response ->
+    client.newCall(builder.build()).await().use { response ->
       require(response.isSuccessful) { "La API no permite listar modelos (HTTP ${response.code}). Puedes introducir el modelo manualmente." }
       val body = response.body ?: error("La API no devolvió modelos.")
       val json = JSONObject(body.byteStream().use { it.readBytesBounded(1000000).toString(Charsets.UTF_8) })

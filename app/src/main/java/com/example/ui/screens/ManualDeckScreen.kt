@@ -69,7 +69,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     Column(modifier.fillMaxSize()) {
       TextButton(onClick = { chatPage = 0 }) { Text("← Editor del mazo") }
       if (chatPage == 3) SandboxScreen(viewModel, advanced, Modifier.weight(1f))
-      else ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = true)
+      else ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = true, deck = current)
     }
     return
   }
