@@ -62,7 +62,8 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
       appliedEditorRequest = editorRequest
     }
   }
-  BackHandler(enabled = section != 0) { section = if (section in listOf(4, 5)) 3 else 0 }
+  BackHandler(enabled = section != 0) { section = when (section) { 2, 4 -> 3; 5 -> 4; else -> 0 } }
+  LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
@@ -119,7 +120,6 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
       verticalArrangement = Arrangement.spacedBy(12.dp)) {
       item {
         Text(title, style = MaterialTheme.typography.titleLarge)
-        HelpButton("canjes")
         Text("Organiza tus propuestas. Comprueba en el juego si cada carta se puede canjear.",
           color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
@@ -194,13 +194,14 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   var showSettings by remember { mutableStateOf(false) }
   var calculation by rememberSaveable { mutableIntStateOf(0) }
   val prefs by main.userPreferences.collectAsStateWithLifecycle()
+  LaunchedEffect(section, showSettings) { com.example.data.util.AppDiagnostics.screen(if (showSettings) "SETTINGS" else if (section < 0) "MORE_MENU" else "MORE_$section") }
   if (showSettings) {
     CollectionScreen(main, modifier, settingsOnly = true, onSettingsBack = { showSettings = false },
       onAiConnections = { section = 9; showSettings = false }, advanced = advanced)
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA")
+  val labels = listOf("Tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA")
   val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
     Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings)

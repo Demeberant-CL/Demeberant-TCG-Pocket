@@ -69,9 +69,8 @@ fun DeckQrExportButton(deck: GeneratedDeck) {
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         result?.let { image ->
           Image(image.bitmap.asImageBitmap(), "Código QR del mazo", Modifier.fillMaxWidth().aspectRatio(1f))
-          Text("Guarda el PNG y usa la opción de escanear código al crear un mazo en el juego. Si el escáner solo ofrece cámara, muestra el QR en otra pantalla.")
-          Text("Comparte las cartas y energías del mazo, no tu colección. Las variantes de arte pueden cambiar según las cartas disponibles en la cuenta receptora.")
-          Text("El juego ha aceptado algunos códigos y rechazado otros. Este QR necesita comprobarse en el juego; el mensaje de rechazo no identifica la causa.")
+          Text("Solo cartas y energías · las variantes de arte pueden cambiar")
+          Text("La aceptación del QR depende del juego.")
           Text(if (alternate) "QR alternativo · mismas cartas y energías" else "QR principal")
           TextButton(enabled = !busy, onClick = {
             val snapshot = deck.copy(cards = deck.cards.toList(), energyTypes = deck.energyTypes.toList())
@@ -82,11 +81,10 @@ fun DeckQrExportButton(deck: GeneratedDeck) {
                 val image = withContext(Dispatchers.Default) { DeckQrImages.create(context, snapshot, next) }
                 result = image; alternate = next; error = null
               } catch (e: CancellationException) { throw e }
-              catch (e: Exception) { error = "No se pudo preparar la alternativa." }
+              catch (e: Exception) { ErrorLogManager.event("QR_EXPORT", "Alternate QR failed", e); error = "No se pudo preparar la alternativa." }
               finally { busy = false }
             }
           }) { Text(if (alternate) "Volver al QR principal" else "Probar QR alternativo") }
-          com.example.ui.screens.HelpButton("qr")
           OutlinedButton(onClick = { save.launch(if (alternate) "mazo-tcg-pocket-qr-alternativo.png" else "mazo-tcg-pocket-qr.png") }, shape = MaterialTheme.shapes.medium) { Text("Guardar PNG") }
           TextButton(onClick = {
             scope.launch {

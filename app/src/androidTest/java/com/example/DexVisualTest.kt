@@ -68,6 +68,14 @@ class DexVisualTest {
         compose.onNodeWithText("Cerrar").performClick()
       }
       if (index == 4) {
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Tutoriales"))
+        compose.onNodeWithText("Tutoriales").performClick()
+        capture("tutoriales")
+        compose.onNodeWithText("Crear y editar un mazo").performScrollTo().performClick()
+        compose.onNodeWithText("Paso 1").assertIsDisplayed()
+        capture("tutorial-mazos")
+        compose.onNodeWithText("← Tutoriales").performClick()
+        compose.onNodeWithText("← Más herramientas").performClick()
         compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Ajustes"))
         compose.onNodeWithText("Ajustes").performClick()
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
@@ -93,6 +101,7 @@ class DexVisualTest {
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
         compose.waitForIdle()
         capture("mazos-editor")
+        compose.onNodeWithText("Guía").assertDoesNotExist()
         compose.onNodeWithText("Añadir cartas").performClick()
         compose.onNodeWithText("Filtrar · 0").performClick()
         compose.onNodeWithText("Objeto").performClick()

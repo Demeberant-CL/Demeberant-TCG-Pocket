@@ -90,7 +90,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     availableModels.value = emptyList()
     try { availableModels.value = connectedAssistant.models(value) }
     catch (e: CancellationException) { throw e }
-    catch (_: Exception) { message.value = "No se pudieron listar modelos. Revisa la clave y URL; puedes introducir el modelo manualmente."; return@task }
+    catch (e: Exception) { ErrorLogManager.event("AI_MODELS", "category=${com.example.data.ai.AiFailure.category(e)}", e); message.value = "No se pudieron listar modelos. Revisa la clave y URL; puedes introducir el modelo manualmente."; return@task }
     message.value = "${availableModels.value.size} modelos filtrados para texto. Listar no comprueba cuota ni generación. Guarda el modelo elegido; una consulta puede consumir cuota."
   }
   fun askConnected(action: AiDeckAction, target: GeneratedDeck?) = task("AI_CONNECTED") {
@@ -114,19 +114,12 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         it.startsWith("Modelo o") || it.startsWith("Hay demasiadas") || it.startsWith("Necesitas al menos") ||
         it.startsWith("La respuesta quedó") || it.startsWith("Introduce tu") || it.startsWith("Revisa el identificador") }
       message.value = safe ?: "No se pudo obtener un mazo válido. Revisa conexión, cartas disponibles y modelo. No se guardó ninguna propuesta."
-      val category = when {
-        e is java.io.IOException -> "NETWORK"
-        e.message?.startsWith("Cuota") == true -> "QUOTA"
-        e.message?.startsWith("La API rechazó") == true -> "AUTH"
-        e.message?.startsWith("Modelo o") == true -> "MODEL"
-        e.message?.startsWith("La respuesta quedó") == true -> "INCOMPLETE"
-        else -> "INVALID_DECK"
-      }
-      ErrorLogManager.event("AI_CONNECTED", "category=$category")
+      val category = com.example.data.ai.AiFailure.category(e)
+      ErrorLogManager.event("AI_CONNECTED", "category=$category status=${(e as? com.example.data.ai.AiHttpFailure)?.status ?: 0}", e)
     }
   }
   val deckRules = db.cardRulesDao().observeAll("es")
-    .catch { e -> if (e is CancellationException) throw e; emit(emptyList()) }
+    .catch { e -> if (e is CancellationException) throw e; ErrorLogManager.event("RULES_READ", "Rules observation failed", e); emit(emptyList()) }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
   val deckChatMessages = MutableStateFlow<List<DeckChatMessage>>(emptyList())
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
@@ -165,6 +158,9 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val history = deckChatMessages.value
     val session = deckChatSession
     task("DECK_CHAT") {
+      var stage = "PREPARE"
+      val requestId = java.util.UUID.randomUUID().toString().take(8)
+      ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=PREPARE provider=${connection.value.provider.name}")
       try {
         require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
         val inventory = repository.inventoryFlow.first()
@@ -190,16 +186,20 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
           candidates.add(candidate); size += cost
         }
         deckChatStatus.value = "Consultando ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
+        stage = "REQUEST"
+        ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=REQUEST")
         val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action)) { status ->
           if (deckChatSession == session) deckChatStatus.value = status
         }
         val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
+        stage = "VALIDATE"
         val answer = withContext(Dispatchers.Default) { DeckChat.parse(result, candidates.map { it.copy(owned = current[it.card.id] ?: 0) }) }
         if (action == "complete" && answer.proposal != null) {
           val counts = answer.proposal.deck.cards.associate { it.card.id to it.count }
           require(deck.cards.all { (counts[it.card.id] ?: 0) >= minOf(it.count, current[it.card.id] ?: 0) })
         }
         if (deckChatBase != deck || deckChatSession != session) return@task
+        ErrorLogManager.event("AI_SUCCESS", "id=$requestId stage=VALIDATE")
         pendingChat = null; deckChatRetryAvailable.value = false
         deckChatStatus.value = null
         deckChatMessages.value = (history + DeckChatMessage(false, answer.text)).takeLast(20)
@@ -212,7 +212,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
             it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
           deckChatStatus.value = safe ?: "No se obtuvo una respuesta válida. Revisa tu conexión y vuelve a intentarlo. Tu mazo se conserva."
         }
-        ErrorLogManager.event("DECK_CHAT", "Request failed; private content omitted")
+        ErrorLogManager.event("DECK_CHAT", "id=$requestId stage=$stage category=${com.example.data.ai.AiFailure.category(e, stage)} status=${(e as? com.example.data.ai.AiHttpFailure)?.status ?: 0}", e)
       }
     }
   }

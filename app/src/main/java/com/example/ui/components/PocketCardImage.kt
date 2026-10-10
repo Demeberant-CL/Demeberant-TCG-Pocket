@@ -30,6 +30,7 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
     val compact = maxWidth < 100.dp || maxHeight < 120.dp
     val retryImage: () -> Unit = {
       ImageAvailability.session.reset(allCandidates)
+      com.example.data.network.PocketHttp.missingResources.reset(allCandidates)
       candidates = allCandidates; index = 0; failed = false; loading = true; retry++
     }
     if (failed) Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {

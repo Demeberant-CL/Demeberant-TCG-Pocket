@@ -84,7 +84,7 @@ class ConnectedAiRepository(private val client: OkHttpClient = OkHttpClient.Buil
     val builder = Request.Builder().url(url).post(payload.toString().toRequestBody("application/json".toMediaType()))
     if (gemini) builder.header("x-goog-api-key", config.apiKey) else builder.header("Authorization", "Bearer ${config.apiKey}")
     execute(builder.build(), onStatus).use { response ->
-      if (!response.isSuccessful) error(when (response.code) {
+      if (!response.isSuccessful) throw AiHttpFailure(response.code, when (response.code) {
         401, 403 -> "La API rechazó la clave o el acceso al modelo. Revisa tu configuración."
         429 -> "Cuota o límite de consultas alcanzado. No se cambiará a otro proveedor."
         400, 404 -> "Modelo o formato no compatible. Revisa el modelo y la URL."

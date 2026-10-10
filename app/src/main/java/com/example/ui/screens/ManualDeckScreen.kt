@@ -235,7 +235,6 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
           else Text("Exportar al juego requiere 20 cartas y energías seleccionadas.", style = MaterialTheme.typography.bodySmall)
           OutlinedButton(onClick = { chatPage = 4 }) { Text("Probabilidad de robo") }
           OutlinedButton(enabled = current.totalCardCount == 20, onClick = { chatPage = 3 }) { Text("Tapete de práctica") }
-          HelpButton("mazos")
         }
       }
       if (current.validationWarnings.isNotEmpty()) item {

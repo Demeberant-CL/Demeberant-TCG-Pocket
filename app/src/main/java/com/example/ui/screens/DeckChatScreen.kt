@@ -41,6 +41,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   var reviewing by rememberSaveable { mutableStateOf(false) }
   val listState = rememberLazyListState()
   LaunchedEffect(current) { model.startDeckChat(current); reviewing = false }
+  LaunchedEffect(Unit) { com.example.data.util.AppDiagnostics.screen("DECK_CHAT") }
   LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(2 + messages.lastIndex) }
   BackHandler { if (reviewing) reviewing = false else onBack() }
   if (reviewing && suggestion != null) {
@@ -60,7 +61,6 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
       } } }
       if (creating && messages.isEmpty()) item {
         Text("Describe el mazo que quieres", style = MaterialTheme.typography.titleMedium)
-        Text("La IA usará tus cartas y las copias disponibles. La propuesta se revisa antes de aplicarla.")
         DeckChoice("Energía", energy, listOf("" to "Todas") + DeckCodec.energyNames.map { it to it }) { energy = it }
         DeckChoice("Estilo", style, listOf("Equilibrado", "Agresivo", "Control").map { it to it }) { style = it }
       }

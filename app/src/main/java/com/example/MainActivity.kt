@@ -66,6 +66,11 @@ class MainActivity : ComponentActivity() {
       ) {
         var navigation by rememberSaveable { mutableStateOf(listOf(0)) }
         val selectedTabIndex = navigation.last()
+        LaunchedEffect(selectedTabIndex) {
+          com.example.data.util.AppDiagnostics.screen(when (selectedTabIndex) {
+            0 -> "HOME"; 1 -> "COLLECTION"; 2 -> "DECKS"; 3 -> "AI_CONNECTIONS"; 4 -> "MORE"; else -> "META"
+          })
+        }
         val screenStates = rememberSaveableStateHolder()
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         fun navigateTo(destination: Int) {

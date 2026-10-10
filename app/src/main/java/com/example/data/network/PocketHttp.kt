@@ -14,7 +14,10 @@ class DiagnosticInterceptor(private val sink: (String, String, Throwable?) -> Un
     val request = chain.request()
     val id = UUID.randomUUID().toString().take(8)
     val started = System.nanoTime()
-    val route = "${request.method} ${request.url.host}${request.url.encodedPath}"
+    val source = when (request.url.host) {
+      "assets.tcgdex.net" -> "IMAGES"; "api.tcgdex.net" -> "CARD_DATA"; else -> "OTHER"
+    }
+    val route = "source=$source ${request.method} ${request.url.host}${request.url.encodedPath}"
     sink("HTTP_START", "$id $route bytes=${request.body?.contentLength() ?: 0}", null)
     try {
       val response = chain.proceed(request)
@@ -28,10 +31,12 @@ class DiagnosticInterceptor(private val sink: (String, String, Throwable?) -> Un
 }
 
 object PocketHttp {
+  val missingResources = MissingResourceInterceptor()
   val client: OkHttpClient = OkHttpClient.Builder()
     .connectTimeout(10, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS)
     .callTimeout(100, TimeUnit.SECONDS).retryOnConnectionFailure(false)
     .followRedirects(false).followSslRedirects(false)
+    .addInterceptor(missingResources)
     .addInterceptor(DiagnosticInterceptor()).build()
   // Image GETs can recover a reset connection without retrying AI requests.
   val imageClient: OkHttpClient = client.newBuilder().retryOnConnectionFailure(true)
