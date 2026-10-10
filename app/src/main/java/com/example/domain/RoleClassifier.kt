@@ -15,8 +15,10 @@ object RoleClassifier {
     val value = normalize(text)
     return buildSet {
       if (Regex("\\b(draw|roba|robar|robe)\\b").containsMatchIn(value)) add(CardRole.DRAW)
-      if ((value.contains("search") || value.contains("busca") || value.contains("buscar")) &&
-          (value.contains("deck") || value.contains("baraja") || value.contains("mazo"))) add(CardRole.SEARCH)
+      val deckToHand = Regex("\\b(put|pon|anade|add)\\b").containsMatchIn(value) &&
+        Regex("(deck|baraja|mazo).{0,100}(hand|mano)").containsMatchIn(value)
+      if (deckToHand || ((value.contains("search") || value.contains("busca") || value.contains("buscar")) &&
+          (value.contains("deck") || value.contains("baraja") || value.contains("mazo")))) add(CardRole.SEARCH)
       if (Regex("\\b(heal|cura|curar|curate|soigne|heals)\\b").containsMatchIn(value)) add(CardRole.HEAL)
       if ((value.contains("attach") || value.contains("une") || value.contains("unir") || value.contains("unida")) &&
           (value.contains("energy") || value.contains("energia"))) add(CardRole.ENERGY)

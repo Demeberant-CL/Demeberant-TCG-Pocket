@@ -89,6 +89,12 @@ object LocalDeckPlanner {
       } }
     }.distinct().take(24)
     val roleMap = owned.associate { it.card.id to roles(data[it.card.id]) }
+    val drawValue = owned.associate { item ->
+      val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty()).trim()
+      val direct = Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$").matchEntire(text)
+      item.card.id to (direct?.groupValues?.get(2)?.toDoubleOrNull()
+        ?: if (CardRole.DRAW in roleMap[item.card.id].orEmpty()) 0.5 else 0.0)
+    }
     val named = owned.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
       .map { name(it.card.rulesName) to RoleClassifier.normalize(it.card.rulesName) }.distinct()
     val namedTargets = owned.filter { trainer(it.card) }.associate { item ->
@@ -154,7 +160,7 @@ object LocalDeckPlanner {
           val bc = pokemon.filter { basic(it.card) }.sumOf { it.count }
           val families = pokemon.filter { basic(it.card) }.map { name(it.card.rulesName) }.distinct().size
           val rs = rows.flatMap { e -> List(e.count) { roleMap[e.card.id].orEmpty() } }
-          val draws = rs.count { CardRole.DRAW in it }
+          val draws = rows.sumOf { drawValue[it.card.id]!! * it.count }
           val searches = rs.count { CardRole.SEARCH in it }
           val accelerators = rs.count { CardRole.ENERGY in it }
           val healing = rs.count { CardRole.HEAL in it }
@@ -163,7 +169,7 @@ object LocalDeckPlanner {
           val tcTarget = when(options.style) { DeckStyle.FAST -> 12; DeckStyle.RESILIENT -> 10; else -> 11 }
           var value = rows.sumOf { it.count } * 4.0 + attacker * 2.0 +
             pokemon.sumOf { rating.getValue(it.card.id) * it.count } * 0.35
-          value += minOf(draws, 4) * 4.5 + minOf(searches, 3) * 4.0 + minOf(accelerators, 2) * if (averageCost >= 3) 5.0 else 2.0
+          value += minOf(draws, 6.0) * 4.5 + minOf(searches, 3) * 4.0 + minOf(accelerators, 2) * if (averageCost >= 3) 5.0 else 2.0
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0

@@ -64,6 +64,19 @@ class LocalDeckPlannerTest {
     assertTrue(p.cautions.any { "1/20" in it })
     assertTrue(runCatching { LocalDeckPlanner.recommend(listOf(owned(card(2,stage="unknown")))) }.isFailure)
   }
+
+  @Test fun guaranteedDrawAndBasicSearchBeatConditionalHandReset() {
+    val basic=card(1);val research=card(2,"Research","Entrenador");val ball=card(3,"Ball","Entrenador")
+    val reset=card(4,"Reset","Entrenador")
+    val pool=listOf(owned(basic),owned(research),owned(ball),owned(reset))+(5..18).map { owned(card(it,type="Entrenador")) }
+    val facts=mapOf(basic.id to attack(listOf("Water")),research.id to CombatData(text="Roba 2 cartas."),
+      ball.id to CombatData(text="Pon 1 Pokémon Básico aleatorio de tu baraja en tu mano."),
+      reset.id to CombatData(text="Devuelve tu mano a la baraja y roba tantas cartas como antes."))
+    assertTrue(CardRole.SEARCH in RoleClassifier.classify(facts.getValue(ball.id).text))
+    val p=LocalDeckPlanner.recommend(pool,facts,PlannerOptions(type="Agua",anchorId=basic.id)).first()
+    assertEquals(2,p.deck.cards.first { it.card.id==research.id }.count)
+    assertEquals(2,p.deck.cards.first { it.card.id==ball.id }.count)
+  }
   @Test fun shuffledInputIsDeterministicAndSearchIsBounded() {
     val pool=(1..200).map { owned(card(it)) }
     val p=LocalDeckPlanner.recommend(pool,options=PlannerOptions(type="Agua"))
