@@ -85,25 +85,6 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
 }
 
 @Composable
-fun AnalysisMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, onOpenDeck: (String) -> Unit,
-  onOpenAiDeck: () -> Unit,
-  modifier: Modifier = Modifier, initialSection: Int = 0) {
-  var section by rememberSaveable(initialSection) { mutableIntStateOf(initialSection) }
-  Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Plantillas", "Sobres", "Calculadora", "IA", "Sandbox", "Efectos"), section) { section = it }
-    val contentModifier = Modifier.weight(1f)
-    when (section) {
-      0 -> MetaDeckAnalyzerScreen(viewModel, onOpenDeck, contentModifier)
-      1 -> PackRecommenderScreen(viewModel, contentModifier)
-      2 -> ProbabilityCalculatorScreen(contentModifier)
-      3 -> AIAssistantScreen(viewModel, advanced, onOpenAiDeck, contentModifier)
-      4 -> SandboxScreen(viewModel, advanced, contentModifier)
-      else -> EffectFiltersScreen(viewModel, advanced, contentModifier)
-    }
-  }
-}
-
-@Composable
 fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
   var section by rememberSaveable { mutableIntStateOf(0) }

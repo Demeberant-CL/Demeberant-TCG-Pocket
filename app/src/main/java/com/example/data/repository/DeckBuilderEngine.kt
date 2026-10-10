@@ -86,14 +86,14 @@ object DeckBuilderEngine {
       !onlyFromInventory || (canonicalOwned[it.id] ?: 0) > 0
     }
     val quantities = linkedMapOf<String, DeckCardEntry>()
-    fun nameCount(name: String) = quantities.values.filter { it.card.name.equals(name, true) }.sumOf { it.count }
+    fun nameCount(name: String) = quantities.values.filter { it.card.rulesName.equals(name, true) }.sumOf { it.count }
     fun total() = quantities.values.sumOf { it.count }
     fun tryAdd(card: PokemonCard, desired: Int) {
       val parent = card.evolvesFrom.takeIf { it.isNotBlank() } ?: evolutionParents[card.rulesName.lowercase()]
       if (parent != null && nameCount(parent) == 0) return
       val previous = quantities[card.id]?.count ?: 0
       val ownedLimit = if (onlyFromInventory) canonicalOwned[card.id] ?: 0 else 2
-      val count = minOf(desired, 2 - nameCount(card.name), ownedLimit - previous, 20 - total())
+      val count = minOf(desired, 2 - nameCount(card.rulesName), ownedLimit - previous, 20 - total())
       if (count > 0) quantities[card.id] = DeckCardEntry(card, previous + count)
     }
     coreKeywords.forEach { name ->
@@ -112,7 +112,7 @@ object DeckBuilderEngine {
     repeat(3) { filler.forEach { tryAdd(it, 2) } }
     val entries = quantities.values.toList()
     val warnings = validate(entries).toMutableList()
-    if (coreKeywords.none { name -> entries.any { it.card.name.equals(name, true) } }) {
+    if (coreKeywords.none { name -> entries.any { it.card.rulesName.equals(name, true) } }) {
       warnings.add("No tienes piezas del arquetipo solicitado.")
     }
     return GeneratedDeck(deckName, archetype, strategy, entries, total(), warnings, listOf(energyType))

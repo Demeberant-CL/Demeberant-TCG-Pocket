@@ -26,6 +26,15 @@ class DeckAutomationTest {
     assertEquals(before, pool)
   }
 
+  @Test fun matchingEvolutionIsNotCrowdedOutByBasicFillersAcrossExpansions() {
+    val basic = card(1, name = "Core")
+    val evolution = card(2, stage = "1", parent = "Core", name = "Evolved").copy(id = "B1-002")
+    val pool = (3..15).map { owned(card(it)) } + owned(basic) + owned(evolution)
+    val result = DeckAutomation.build(pool, "Agua")
+    assertTrue(result.cards.any { it.card.id == "B1-002" })
+    assertEquals(20, result.totalCardCount)
+    assertTrue(result.validationWarnings.isEmpty())
+  }
   @Test fun insufficientInventoryStaysAnExplicitDraftAndUnknownDoesNotBecomeBasic() {
     val draft = DeckAutomation.build(listOf(owned(card(1),1)), "Agua")
     assertEquals(1,draft.totalCardCount)

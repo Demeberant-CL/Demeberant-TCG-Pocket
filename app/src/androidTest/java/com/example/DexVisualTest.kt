@@ -73,6 +73,11 @@ class DexVisualTest {
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
         capture("mas-ajustes")
         compose.onNodeWithText("Listo").performClick()
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Conexiones IA"))
+        compose.onNodeWithText("Conexiones IA").performClick()
+        capture("ia-conexiones")
+        compose.onNodeWithText("Cerrar").performClick()
+        compose.onNodeWithText("← Más herramientas").performClick()
         for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
           compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
           compose.onNodeWithText(label).performClick()

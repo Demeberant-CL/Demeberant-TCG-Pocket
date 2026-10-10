@@ -242,7 +242,7 @@ fun CollectionScreen(
     }
     return
   }
-  if (settingsOnly) {
+  if (settingsOnly) Column(modifier.fillMaxSize().padding(16.dp)) {
     TextButton(onClick = onSettingsBack) { Text("← Más herramientas") }
     TextButton(onClick = { showSettingsDialog = true }) { Text("Abrir Ajustes") }
   }
@@ -472,7 +472,6 @@ fun CollectionScreen(
     )
   }
 
-  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
 
   if (showSettingsDialog) {
     SettingsScreen(
@@ -484,20 +483,20 @@ fun CollectionScreen(
           HelpButton()
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             context.startActivity(android.content.Intent(context, com.example.zoneimport.ZoneImportActivity::class.java))
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Pokémon Zone: resultado / importar JSON") }
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             try { csvPickerLauncher.launch("*/*") } catch (_: Exception) { showPasteDialog = true }
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Importar CSV") }
-          OutlinedButton(onClick = { showSettingsDialog = false; showPasteDialog = true },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; showPasteDialog = true },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Pegar CSV") }
-          OutlinedButton(onClick = { showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Exportar colección CSV") }
           Text("El CSV contiene cantidades y Deseos. El respaldo JSON incluye también mazos y ajustes.", fontSize = 12.sp)
           OutlinedButton(onClick = {
-            showSettingsDialog = false
+            if (!settingsOnly) showSettingsDialog = false
             scope.launch {
               try {
                 pendingBackup = viewModel.generateBackupContent()
@@ -506,13 +505,15 @@ fun CollectionScreen(
               catch (e: Exception) { Toast.makeText(context, "No se pudo preparar el respaldo.", Toast.LENGTH_LONG).show() }
             }
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Guardar respaldo completo") }
-          OutlinedButton(onClick = { showSettingsDialog = false; backupImport.launch("*/*") },
+          OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; backupImport.launch("*/*") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Restaurar respaldo completo") }
           Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
           OutlinedButton(onClick = { showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth()) { Text("Diagnóstico y ayuda") }
 
     }
   }
+
+  if (showDiagnosticReport) DiagnosticReportDialog { showDiagnosticReport = false }
 
   // CSV Paste Modal Dialog
   if (showPasteDialog) {
