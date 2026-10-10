@@ -5,7 +5,7 @@ object DiagnosticSummary {
   const val MAX_CHARS = 6000
   private val header = Regex("^\\[([0-9TZ:.+\\-]{10,40})] \\[([A-Z_]{1,80})]")
   private val statusPattern = Regex("\\bstatus=([0-9]{3})\\b")
-  private val failureTags = setOf("FATAL_CRASH", "SETTINGS_WRITE", "INVENTORY_WRITE", "BACKUP_RESTORE", "DECK_BUILD", "SAVE_DECK", "LOAD_DECK", "DELETE_DECK", "DECK_CHAT", "UI_STALL", "DIAGNOSTIC_HEALTH", "DETAILS", "RULES_WRITE", "RULES_INDEX", "HTTP_FAIL", "ROOM_FAIL", "ROOM_READ", "RULES_READ",
+  private val failureTags = setOf("FATAL_CRASH", "SETTINGS_WRITE", "INVENTORY_WRITE", "BACKUP_RESTORE", "DECK_BUILD", "DECK_PLAN", "DECK_PLAN_OPEN", "SAVE_DECK", "LOAD_DECK", "DELETE_DECK", "DECK_CHAT", "UI_STALL", "DIAGNOSTIC_HEALTH", "DETAILS", "RULES_WRITE", "RULES_INDEX", "HTTP_FAIL", "ROOM_FAIL", "ROOM_READ", "RULES_READ",
     "RULES_FETCH", "QR_EXPORT", "LOG_SAVE", "LOG_EXPORT", "AI_CONNECTED", "AI_ASSIST", "AI_EXTERNAL_IMPORT", "INVENTORY_READ", "DECKS_READ", "AI_OPEN", "META_FETCH", "AI_MODELS")
   private val exception = Regex("^[A-Za-z][A-Za-z0-9_$]{0,79}(Exception|Error)$")
   private val frame = Regex("^  at (com\\.example\\.[A-Za-z0-9_.$]+\\((?:[A-Za-z0-9_.-]{1,100}:[0-9]{1,8}|Unknown Source|Native Method)\\))$")

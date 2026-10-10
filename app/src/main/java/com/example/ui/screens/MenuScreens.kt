@@ -62,18 +62,19 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
       appliedEditorRequest = editorRequest
     }
   }
-  BackHandler(enabled = section != 0) { section = when (section) { 2, 4 -> 3; 5 -> 4; else -> 0 } }
+  BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
   LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
-    } else if (section == 2) {
+    } else if (section == 2 || section == 6) {
       TextButton(onClick = { section = 3 }) { Text("← Crear mazo") }
     }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
       1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onBack = { section = 0 })
-      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, onTemplates = { section = 2 }, modifier = Modifier.weight(1f))
+      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, onTemplates = { section = 2 }, onLocal = { section = 6 }, modifier = Modifier.weight(1f))
+      6 -> LocalDeckPlannerScreen(viewModel, { section = 1 }, Modifier.weight(1f))
       4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
         { section = 5 }, Modifier.weight(1f), creating = true)
       5 -> Column(Modifier.weight(1f)) {

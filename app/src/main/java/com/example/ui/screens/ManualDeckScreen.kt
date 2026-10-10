@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.util.DeckCodec
@@ -122,7 +123,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
         }
       }
     }
-    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp),
+    LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("manual_deck_list"), contentPadding = PaddingValues(16.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp)) {
       message?.let { item {
         Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -256,10 +257,10 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("Cancelar") } })
   if (create) AlertDialog(onDismissRequest = { create = false }, title = { Text("Crear con mis cartas") },
     text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-      Text("Elige un tipo. Se usará tu colección actual, con hasta dos copias por nombre y las preevoluciones conocidas. Reemplaza el borrador abierto, no los mazos guardados.")
+      Text("Preparar una propuesta con tu colección. Reemplaza el borrador abierto.")
       DeckCodec.energyNames.forEach { type -> FilterChip(selected = type == chosenType, onClick = { chosenType = type }, label = { Text(type) }) }
-      Text("Es un punto de partida local, no IA. Si faltan cartas quedará incompleto.")
-    } }, confirmButton = { TextButton(onClick = { viewModel.createWithMyCards(chosenType); adding = false; create = false }) { Text("Preparar borrador") } },
+      Text("Sin conexión ni cuotas. Si faltan cartas quedará incompleto.")
+    } }, confirmButton = { TextButton(onClick = { viewModel.createWithMyCards(chosenType); adding = false; create = false }) { Text("Crear propuesta") } },
     dismissButton = { TextButton(onClick = { create = false }) { Text("Cancelar") } })
 }
 

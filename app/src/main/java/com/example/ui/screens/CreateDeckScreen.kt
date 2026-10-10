@@ -11,7 +11,7 @@ import com.example.ui.components.DexPanel
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit, onContinue: () -> Unit, onTemplates: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit, onContinue: () -> Unit, onTemplates: () -> Unit = {}, onLocal: () -> Unit = {}, modifier: Modifier = Modifier) {
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
   var pending by remember { mutableStateOf<String?>(null) }
   fun start(mode: String) {
@@ -20,6 +20,11 @@ fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit,
   }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
     item { Text("Crear mazo", style = MaterialTheme.typography.headlineSmall) }
+    item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text("Constructor de mazos", style = MaterialTheme.typography.titleLarge)
+      Text("Con tus cartas · Sin conexión ni cuotas", style = MaterialTheme.typography.labelMedium)
+      Button(onClick = onLocal, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Crear propuestas") }
+    } } }
     item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Crear manualmente", style = MaterialTheme.typography.titleLarge)
       Button(onClick = { start("manual") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Empezar") }

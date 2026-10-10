@@ -132,7 +132,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-ui'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-local-planner'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
             large-test.log
 
   delivery:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-ui'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-local-planner'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     steps:

@@ -102,11 +102,28 @@ class DexVisualTest {
       if (index == 2) {
         compose.onNodeWithText("Abrir").assertDoesNotExist()
         compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
         compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
         compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
         capture("mazos-crear")
+        compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        val plannerModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+        compose.waitUntil(45_000) { !plannerModel.isGeneratingDeck.value }
+        check(plannerModel.localDeckPlans.value.isNotEmpty()) { plannerModel.localPlannerMessage.value ?: "No local proposals" }
+        compose.onNodeWithTag("local_planner_list").performScrollToNode(hasText("Abrir en editor"))
+        capture("constructor-local")
+        compose.onAllNodesWithText("Ver cartas").onFirst().performScrollTo().performClick()
+        capture("constructor-cartas")
+        compose.onAllNodesWithText("Abrir en editor").onFirst().performScrollTo().performClick()
+        if (compose.onAllNodesWithText("Reemplazar").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Reemplazar").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("manual_deck_list").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
+        compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
+        compose.onNodeWithText("← Mis mazos").performClick()
+        compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
         if (compose.onAllNodesWithText("Crear nuevo").fetchSemanticsNodes().isNotEmpty()) {
           compose.onNodeWithText("Crear nuevo").performClick()
