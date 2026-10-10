@@ -51,7 +51,7 @@ class DexVisualTest {
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithText("Ajustes de colección").performScrollTo().performClick()
+        compose.onNodeWithText("Ajustes de colección").performClick()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         capture("ajustes-dialogo")
         compose.onNodeWithText("Listo").performClick()
