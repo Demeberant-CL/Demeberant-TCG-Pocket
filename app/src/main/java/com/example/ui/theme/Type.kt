@@ -74,12 +74,12 @@ val Typography = Typography(
   titleSmall = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 14.sp,
-    lineHeight = 20.sp
+    fontSize = 16.sp,
+    lineHeight = 24.sp
   ),
   bodyLarge = TextStyle(
     fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Medium,
+    fontWeight = FontWeight.SemiBold,
     fontSize = 16.sp,
     lineHeight = 22.sp,
     letterSpacing = 0.15.sp
@@ -87,35 +87,35 @@ val Typography = Typography(
   bodyMedium = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 14.sp,
-    lineHeight = 20.sp,
+    fontSize = 16.sp,
+    lineHeight = 24.sp,
     letterSpacing = 0.25.sp
   ),
   bodySmall = TextStyle(
     fontFamily = PocketFontFamily,
-    fontWeight = FontWeight.Medium,
-    fontSize = 12.sp,
-    lineHeight = 16.sp,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 14.sp,
+    lineHeight = 20.sp,
     letterSpacing = 0.4.sp
   ),
   labelLarge = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.Bold,
-    fontSize = 14.sp,
-    lineHeight = 20.sp,
+    fontSize = 16.sp,
+    lineHeight = 24.sp,
     letterSpacing = 0.1.sp
   ),
   labelMedium = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 12.sp,
-    lineHeight = 16.sp,
+    fontSize = 14.sp,
+    lineHeight = 20.sp,
     letterSpacing = 0.5.sp
   ),
   labelSmall = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 11.sp,
+    fontSize = 12.sp,
     lineHeight = 14.sp,
     letterSpacing = 0.5.sp
   )

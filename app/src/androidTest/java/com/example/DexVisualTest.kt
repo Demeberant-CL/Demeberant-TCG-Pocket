@@ -39,7 +39,7 @@ class DexVisualTest {
       db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=2,
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2)),listOf("Rayo"))))
     }
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("TCG Dex").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
@@ -52,11 +52,16 @@ class DexVisualTest {
       compose.waitForIdle()
       capture(name)
       if (index == 1) {
+        compose.onNodeWithText("Lista").performClick()
+        capture("coleccion-lista")
+        compose.onNodeWithText("Cuadrícula").performScrollTo().performClick()
+        capture("coleccion-grande")
+        compose.onNodeWithText("Compacta").performScrollTo().performClick()
         compose.onNodeWithText("Filtrar").performClick()
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithContentDescription("Ajustes").performClick()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         capture("ajustes-dialogo")
         compose.onNodeWithText("Listo").performClick()
@@ -95,10 +100,17 @@ class DexVisualTest {
         }
       }
       if (index == 2) {
+        compose.onNodeWithText("Abrir").assertDoesNotExist()
+        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
+        compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
+        compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
         capture("mazos-crear")
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
+        if (compose.onAllNodesWithText("Crear nuevo").fetchSemanticsNodes().isNotEmpty()) {
+          compose.onNodeWithText("Crear nuevo").performClick()
+        }
         compose.waitForIdle()
         capture("mazos-editor")
         compose.onNodeWithText("Guía").assertDoesNotExist()
