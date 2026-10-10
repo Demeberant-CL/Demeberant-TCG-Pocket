@@ -41,22 +41,27 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val catalogIds = remember(inventory) { inventory.mapTo(hashSetOf()) { it.card.id } }
   val copies = remember(inventory) { inventory.sumOf { it.ownedCount } }
   val progress = if (inventory.isEmpty()) 0f else owned.toFloat() / inventory.size
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
-      OutlinedCard(Modifier.fillMaxWidth()) {
+      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
       Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
-            Text("Tu espacio TCG Dex", style = MaterialTheme.typography.headlineSmall)
+            Text("TCG Dex", style = MaterialTheme.typography.headlineSmall)
             Text("Resumen de tu colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
-        Text(if (inventory.isEmpty()) "Preparando tu colección…" else "$owned / ${inventory.size} cartas · $copies copias",
-          style = MaterialTheme.typography.titleSmall)
-        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-        Text("${decks.size} mazos guardados · ${(progress * 100).toInt()}% del catálogo registrado",
-          style = MaterialTheme.typography.bodySmall)
+        Text("Tu colección", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          listOf(owned.toString() to "cartas", copies.toString() to "copias",
+            "${(progress * 100).toInt()}%" to "catálogo").forEach { (value, label) ->
+            Column { Text(value, style = MaterialTheme.typography.headlineSmall)
+              Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+          }
+        }
+        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp))
+        Text("${decks.size} mazos guardados", style = MaterialTheme.typography.bodySmall)
       }
       }
     }
@@ -83,29 +88,29 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()
       }
       val canOpen = refs != null && refs.all { ref -> ref.first in catalogIds }
-      ElevatedCard(onClick = { openSavedDeck(saved) }, enabled = canOpen,
+      OutlinedCard(onClick = { openSavedDeck(saved) }, enabled = canOpen,
         modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp),
+        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
           verticalAlignment = Alignment.CenterVertically) {
           if (androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f) {
             refs?.firstOrNull()?.let { (id, _) -> DeckThumbnail(id, "Portada de ${saved.name}") }
           }
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(saved.name, style = MaterialTheme.typography.titleMedium)
+            Text(saved.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodyMedium)
             val energies = remember(saved.cardListSerialized) {
               runCatching { DeckCodec.energies(saved.cardListSerialized) }.getOrDefault(emptyList())
             }
             if (energies.isNotEmpty()) Text(energies.joinToString(" · "),
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            Text(if (canOpen) "Abrir mazo" else "Lista no disponible en el catálogo actual",
+            Text(if (canOpen) "›" else "Lista no disponible en el catálogo actual",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
       }
     } }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
-      ElevatedCard(Modifier.fillMaxWidth()) {
+      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text("Continuar edición", style = MaterialTheme.typography.labelLarge)
           Text(deck.name, style = MaterialTheme.typography.titleMedium)
@@ -115,7 +120,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
     } }
     item {
-      ElevatedCard(Modifier.fillMaxWidth()) {
+      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Insights, null, tint = MaterialTheme.colorScheme.primary)

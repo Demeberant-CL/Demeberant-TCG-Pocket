@@ -199,6 +199,6 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
 @Composable
 fun DeckThumbnail(id: String, name: String) {
   com.example.ui.components.PocketCardImage(id = id, name = name,
-    modifier = Modifier.width(64.dp).height(90.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    modifier = Modifier.width(52.dp).height(74.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
     unavailable = { Text(name, modifier = Modifier.padding(4.dp), fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 4) })
 }

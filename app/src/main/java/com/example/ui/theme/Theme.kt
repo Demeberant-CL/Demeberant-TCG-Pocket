@@ -3,6 +3,9 @@ package com.example.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -35,20 +38,24 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-  primary = Color(0xFFFF762D),
+  primary = Color(0xFFFF8A40),
   onPrimary = Color(0xFF211A15),
-  primaryContainer = Color(0xFF65371F),
+  primaryContainer = Color(0xFF493021),
   onPrimaryContainer = Color(0xFFFFDBC8),
-  secondary = Color(0xFFD0C5DE),
-  secondaryContainer = Color(0xFF4B445B),
-  onSecondaryContainer = Color(0xFFE8DFF5),
-  background = Color(0xFF111216),
-  surface = Color(0xFF23262E),
-  onBackground = Color(0xFFF1F0F4),
-  onSurface = Color(0xFFF1F0F4),
-  onSurfaceVariant = Color(0xFFC5C1CC),
-  outline = Color(0xFF939097),
-  outlineVariant = Color(0xFF49474F)
+  secondary = Color(0xFFFFB88A),
+  secondaryContainer = Color(0xFF30353D),
+  onSecondaryContainer = Color(0xFFECEFF3),
+  background = Color(0xFF141619),
+  surface = Color(0xFF20242A),
+  surfaceVariant = Color(0xFF272D35),
+  surfaceContainer = Color(0xFF20242A),
+  surfaceContainerLow = Color(0xFF1B1F25),
+  surfaceContainerHigh = Color(0xFF272D35),
+  onBackground = Color(0xFFECEFF3),
+  onSurface = Color(0xFFECEFF3),
+  onSurfaceVariant = Color(0xFFA8B0BA),
+  outline = Color(0xFF89929F),
+  outlineVariant = Color(0xFF333942)
 )
 
 @Composable
@@ -72,6 +79,8 @@ fun PocketAppTheme(
 
   MaterialTheme(
     colorScheme = colorScheme,
+    shapes = Shapes(extraSmall = RoundedCornerShape(6.dp), small = RoundedCornerShape(8.dp),
+      medium = RoundedCornerShape(10.dp), large = RoundedCornerShape(10.dp), extraLarge = RoundedCornerShape(12.dp)),
     content = content
   )
 }

@@ -97,14 +97,6 @@ class MainActivity : ComponentActivity() {
           Icons.Filled.AutoAwesome, Icons.Filled.Menu)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
-          topBar = {
-            androidx.compose.foundation.layout.Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp)) {
-              androidx.compose.material3.Button(onClick = {
-                navigateTo(0)
-                startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java))
-              }) { Text("Sincronizar colección") }
-            }
-          },
           bottomBar = {
             BoxWithConstraints {
             val density = LocalDensity.current
@@ -118,7 +110,7 @@ class MainActivity : ComponentActivity() {
               navigationScroll.animateScrollTo(target.coerceAtLeast(0))
             }
             NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
-              .width(itemWidth * labels.size).heightIn(min = (80f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
+              .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
               .testTag("main_bottom_nav")) {
               labels.forEachIndexed { index, label ->
                 NavigationBarItem(
@@ -133,9 +125,9 @@ class MainActivity : ComponentActivity() {
                   icon = { Icon(icons[index], contentDescription = label) },
                   label = { Text(label, fontSize = 12.sp, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                     unselectedIconColor = PocketTextSecondary,
                     unselectedTextColor = PocketTextSecondary
                   ),
@@ -146,7 +138,7 @@ class MainActivity : ComponentActivity() {
             }
           }
         ) { innerPadding ->
-          val screenModifier = Modifier.padding(innerPadding)
+          val screenModifier = Modifier.padding(innerPadding).statusBarsPadding()
           screenStates.SaveableStateProvider(selectedTabIndex) {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Alignment
@@ -204,25 +205,28 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   }
   BackHandler(enabled = section >= 0) { section = -1 }
   var showDiagnostic by remember { mutableStateOf(false) }
+  var showSettings by remember { mutableStateOf(false) }
+  val prefs by main.userPreferences.collectAsStateWithLifecycle()
+  if (showSettings) SettingsScreen(prefs.themeMode, main::setThemeMode, { showSettings = false })
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP")
+  val labels = listOf("Ayuda y tutoriales", "Sobres", "Canjes", "Simulador", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Prueba tu mazo", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Cuenta, apariencia y sincronización")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
       listOf("Colección y juego" to listOf(1, 2, 3, 4, 5),
-        "Información" to listOf(6, 0), "Mi app" to listOf(7)).forEach { (group, indices) ->
+        "Información" to listOf(6, 0), "Mi app" to listOf(8, 7)).forEach { (group, indices) ->
         item(key = group) {
-          OutlinedCard(Modifier.fillMaxWidth()) {
+          com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
             Column {
               Text(group, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(horizontal = 16.dp, vertical = 10.dp), style = MaterialTheme.typography.titleSmall)
               indices.forEachIndexed { index, n ->
-                Surface(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else section = n },
+                Surface(onClick = { if (n == 6) onMeta() else if (n == 7) showDiagnostic = true else if (n == 8) showSettings = true else section = n },
                   color = MaterialTheme.colorScheme.surface) {
-                  Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                  Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(icons[n], null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

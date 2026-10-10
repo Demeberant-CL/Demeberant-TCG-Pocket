@@ -53,6 +53,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -247,7 +248,7 @@ fun CollectionScreen(
         .padding(vertical = 8.dp)
         .testTag("collection_stats_card"),
       shape = RoundedCornerShape(10.dp),
-      colors = CardDefaults.cardColors(containerColor = PocketBackground)
+      colors = CardDefaults.cardColors(containerColor = PocketSurface)
     ) {
       Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -262,8 +263,8 @@ fun CollectionScreen(
               Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
             }
           }
-          IconButton(onClick = { showSettingsDialog = true }) {
-            Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = PocketTextSecondary)
+          IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
+            Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección", tint = PocketBluePrimary)
           }
         }
         LinearProgressIndicator(progress = { completionPercent },
@@ -271,6 +272,8 @@ fun CollectionScreen(
           color = PocketBluePrimary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh)
       }
     }
+
+    TextButton(onClick = { showSettingsDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Ajustes de colección") }
 
     // CSV Import Success / Info Toast Banner
     csvMessage?.let { msg ->
@@ -307,7 +310,7 @@ fun CollectionScreen(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 14.dp, vertical = 4.dp)
-        .shadow(2.dp, RoundedCornerShape(14.dp), clip = false)
+
         .testTag("search_card_input"),
       placeholder = { Text("Buscar Pokémon o código…", style = MaterialTheme.typography.bodyMedium, color = PocketTextSecondary) },
       leadingIcon = {
@@ -321,7 +324,7 @@ fun CollectionScreen(
         }
       },
       singleLine = true,
-      shape = RoundedCornerShape(14.dp),
+      shape = RoundedCornerShape(10.dp),
       colors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = PocketBluePrimary,
         unfocusedBorderColor = PocketBorder,
@@ -338,7 +341,8 @@ fun CollectionScreen(
         "$name · ${fullInventory.count { filter.matches(it) }}" to filter
       } }
     val stackControls = LocalDensity.current.fontScale >= 1.3f || LocalConfiguration.current.screenWidthDp < 340
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)
+      .border(1.dp, PocketBorder, RoundedCornerShape(10.dp)).background(PocketSurface, RoundedCornerShape(10.dp)).padding(10.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       if (stackControls) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.fillMaxWidth())

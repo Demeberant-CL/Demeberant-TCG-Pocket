@@ -30,7 +30,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
   var search by rememberSaveable { mutableStateOf("") }
   val visibleDecks = remember(decks, search) { decks.filter { it.name.contains(search.trim(), ignoreCase = true) } }
   var pendingDelete by remember { mutableStateOf<SavedDeckEntity?>(null) }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
@@ -49,14 +49,14 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       val total = refs?.sumOf { it.second } ?: saved.totalCards
       val available = refs?.sumOf { (id, count) -> minOf(count, owned[id] ?: 0) }
       var showMenu by remember(saved.id) { mutableStateOf(false) }
-      ElevatedCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+      OutlinedCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
           // Keep the text column usable on narrow phones and with enlarged system text.
           if (LocalDensity.current.fontScale < 1.3f) {
             refs?.firstOrNull()?.let { (id, _) -> DeckThumbnail(id, cards[id]?.name ?: "Portada del mazo") }
           }
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(saved.name, style = MaterialTheme.typography.titleMedium)
+            Text(saved.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
               Text(if (refs == null) "$total/20 · Lista por revisar"
                 else if (total == 20) "20/20 · Lista completa" else "$total/20 · Borrador",

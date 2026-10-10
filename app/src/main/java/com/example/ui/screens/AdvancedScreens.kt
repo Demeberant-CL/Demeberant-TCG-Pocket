@@ -69,22 +69,20 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-          Text(if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,
-            style = MaterialTheme.typography.titleSmall)
-          if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }) {
-            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Conexiones")
+      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          Column(Modifier.weight(1f)) {
+            if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label, style = MaterialTheme.typography.titleSmall)
+            if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
+              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
+          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }) { Text("Conexiones") }
         }
       }
     }
-    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("¿Qué quieres hacer?", style = MaterialTheme.typography.titleMedium)
       AiDeckAction.entries.forEach { choice ->
@@ -137,7 +135,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       }
       items(result.deck.cards, key = { it.card.id }) { entry ->
         Card(Modifier.fillMaxWidth()) {
-          Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             DeckThumbnail(entry.card.id, entry.card.name)
             Column { Text("${entry.count} × ${entry.card.name}"); Text(entry.card.id, style = MaterialTheme.typography.bodySmall) }
           }
@@ -231,7 +229,7 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
   val state by model.board.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   var restart by remember { mutableStateOf(false) }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("Tapete de práctica", style = MaterialTheme.typography.titleLarge)
       HelpButton("sandbox")
@@ -312,7 +310,7 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
   val candidates = inventory.filter { query.isBlank() || it.card.name.contains(query, true) || it.card.id.contains(query, true) }
   val visible = matches.filter { query.isBlank() || it.cardId.contains(query, true) ||
     inventory.find { card -> card.card.id == it.cardId }?.card?.name?.contains(query, true) == true }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("Filtros por efectos", style = MaterialTheme.typography.titleLarge)
       HelpButton("analisis")
