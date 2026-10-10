@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.util.DeckCodec
@@ -122,7 +123,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
         }
       }
     }
-    LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp),
+    LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("manual_deck_list"), contentPadding = PaddingValues(16.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp)) {
       message?.let { item {
         Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {

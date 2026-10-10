@@ -102,7 +102,8 @@ class DexVisualTest {
       if (index == 2) {
         compose.onNodeWithText("Abrir").assertDoesNotExist()
         compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
-        compose.onNodeWithText("Añadir cartas").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
+        compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
         compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.waitForIdle()
@@ -118,7 +119,9 @@ class DexVisualTest {
         capture("constructor-cartas")
         compose.onAllNodesWithText("Abrir en editor").onFirst().performScrollTo().performClick()
         if (compose.onAllNodesWithText("Reemplazar").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Reemplazar").performClick()
-        compose.onNodeWithText("Añadir cartas").performScrollTo().assertIsDisplayed()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("manual_deck_list").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
+        compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
         compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
