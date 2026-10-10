@@ -62,14 +62,14 @@ val Typography = Typography(
   titleLarge = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.Bold,
-    fontSize = 16.sp,
-    lineHeight = 22.sp
+    fontSize = 20.sp,
+    lineHeight = 26.sp
   ),
   titleMedium = TextStyle(
     fontFamily = PocketFontFamily,
     fontWeight = FontWeight.SemiBold,
-    fontSize = 14.sp,
-    lineHeight = 20.sp
+    fontSize = 16.sp,
+    lineHeight = 22.sp
   ),
   titleSmall = TextStyle(
     fontFamily = PocketFontFamily,
