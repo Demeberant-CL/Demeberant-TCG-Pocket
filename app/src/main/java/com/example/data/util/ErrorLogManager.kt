@@ -42,8 +42,18 @@ object ErrorLogManager {
     }
   }
 
-  private fun safeTrace(error: Throwable): String =
-    error.javaClass.simpleName + "\n" + error.stackTrace.take(40).joinToString("\n") { "  at $it" }
+  internal fun safeTrace(error: Throwable): String = buildString {
+    val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Throwable, Boolean>())
+    var cause: Throwable? = error
+    repeat(5) {
+      val value = cause ?: return@repeat
+      if (!seen.add(value)) { cause = null; return@repeat }
+      if (isNotEmpty()) append("Caused by: ")
+      appendLine(value.javaClass.simpleName)
+      value.stackTrace.take(40).forEach { appendLine("  at $it") }
+      cause = value.cause
+    }
+  }
   fun event(tag: String, message: String, error: Throwable? = null) {
     val safe = redact(message) + if (error == null) "" else "\n" + safeTrace(error)
     try { writer.execute { write(tag, safe) } }

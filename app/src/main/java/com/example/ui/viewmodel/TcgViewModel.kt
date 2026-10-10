@@ -284,7 +284,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         _generatedDeck.value = draft
         reportMessage("Borrador preparado con tus cartas. Revisa y pulsa Guardar mazo.")
       } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { reportMessage(e.message ?: "No se pudo crear el borrador.") }
+      catch (e: Exception) { ErrorLogManager.event("DECK_BUILD", "Local builder failed", e); reportMessage(e.message ?: "No se pudo crear el borrador.") }
       finally { _isGeneratingDeck.value = false }
     }
   }
@@ -294,7 +294,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       try { initialization.await(); repository.setQuantity(id, quantity); reportMessage("Cantidad guardada.") }
       catch (e: CancellationException) { throw e }
-      catch (e: Exception) { reportMessage("No se pudo guardar: ${e.localizedMessage}") }
+      catch (e: Exception) { ErrorLogManager.event("INVENTORY_WRITE", "Quantity write failed", e); reportMessage("No se pudo guardar: ${e.localizedMessage}") }
     }
   }
 
@@ -312,11 +312,11 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         repository.restoreSnapshot(value.cards, value.decks)
         try { preferencesRepository.restore(value.preferences, value.hasAvatarPreference) }
         catch (e: CancellationException) { throw e }
-        catch (e: Exception) { reportMessage("Colección y mazos restaurados; no se pudieron restaurar los ajustes."); return@launch }
+        catch (e: Exception) { ErrorLogManager.event("SETTINGS_WRITE", "Backup preferences failed", e); reportMessage("Colección y mazos restaurados; no se pudieron restaurar los ajustes."); return@launch }
         reportMessage("Respaldo restaurado sin borrar las cartas ausentes.")
         runGeminiMetaAnalysis()
       } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { reportMessage("No se pudo restaurar: ${e.localizedMessage}") }
+      catch (e: Exception) { ErrorLogManager.event("BACKUP_RESTORE", "Backup restore failed", e); reportMessage("No se pudo restaurar: ${e.localizedMessage}") }
     }
   }
 

@@ -23,20 +23,20 @@ fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier
   val tokens = codes.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }
   val invalid = tokens.filter { token -> runCatching { CardCatalog.getCardById(CardId.normalize(token)) }.getOrNull() == null }
   val targets = tokens.mapNotNull { runCatching { CardId.normalize(it) }.getOrNull() }.toSet()
+  val searchResults = remember(inventory, query) { if (query.isBlank()) emptyList() else inventory.filter { it.card.name.contains(query, true) || it.card.id.contains(query, true) }.take(20) }
   val coverage = remember(inventory, targets) { CollectionInsights.coverage(inventory, targets).filter { it.score > 0 } }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Sobres para completar tu colección", style = MaterialTheme.typography.titleLarge)
-      Text("Comparación de todas las expansiones con datos de sobre. Prioriza cartas que faltan, Deseos y tus objetivos. Las promociones se excluyen.")
       OutlinedTextField(query, { query = it }, label = { Text("Buscar carta objetivo") }, modifier = Modifier.fillMaxWidth())
       TextButton(onClick = { showCodes = !showCodes }) { Text("Introducir códigos manualmente") }
       if (showCodes) OutlinedTextField(codes, { codes = it }, label = { Text("Objetivos por código (opcional)") },
         placeholder = { Text("A1-036, A2-001") }, isError = invalid.isNotEmpty(), modifier = Modifier.fillMaxWidth())
       if (invalid.isNotEmpty()) Text("Códigos no disponibles: ${invalid.joinToString()}", color = MaterialTheme.colorScheme.error)
-      Text("Puntuación: 1 por faltante, 3 adicionales por Deseo y 5 adicionales por objetivo. Mide cobertura; no probabilidades de apertura.")
+      Text("Orden por cobertura · no es probabilidad de apertura")
       if (coverage.isEmpty()) Text("No hay cartas faltantes con datos de sobre.")
     }
-    if (query.isNotBlank()) items(inventory.filter { it.card.name.contains(query, true) || it.card.id.contains(query, true) }.take(20), key = { "target-${it.card.id}" }) { item ->
+    if (query.isNotBlank()) items(searchResults, key = { "target-${it.card.id}" }) { item ->
       OutlinedCard(onClick = {
         val next = targets.toMutableSet()
         if (!next.add(item.card.id)) next.remove(item.card.id)

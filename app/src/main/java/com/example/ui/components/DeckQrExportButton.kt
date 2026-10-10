@@ -86,7 +86,6 @@ fun DeckQrExportButton(deck: GeneratedDeck) {
               finally { busy = false }
             }
           }) { Text(if (alternate) "Volver al QR principal" else "Probar QR alternativo") }
-          com.example.ui.screens.HelpButton("qr")
           OutlinedButton(onClick = { save.launch(if (alternate) "mazo-tcg-pocket-qr-alternativo.png" else "mazo-tcg-pocket-qr.png") }, shape = MaterialTheme.shapes.medium) { Text("Guardar PNG") }
           TextButton(onClick = {
             scope.launch {

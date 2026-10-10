@@ -19,15 +19,13 @@ fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit,
     else { main.newManualDeck(); if (mode == "manual") onManual() else onAi() }
   }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    item { Text("Crear mazo", style = MaterialTheme.typography.headlineSmall); Text("Elige cómo empezar", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    item { Text("Crear mazo", style = MaterialTheme.typography.headlineSmall) }
     item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Crear manualmente", style = MaterialTheme.typography.titleLarge)
-      Text("Elige cartas, usa filtros y ajusta cantidades, energías y notas.")
       Button(onClick = { start("manual") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Empezar") }
     } } }
     item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Crear con IA", style = MaterialTheme.typography.titleLarge)
-      Text("Describe tu idea. Revisa una propuesta usando tus cartas y conversa para ajustarla.")
       OutlinedButton(onClick = { start("ai") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con IA") }
     } } }
     item { OutlinedButton(onClick = onTemplates, modifier = Modifier.fillMaxWidth()) { Text("Empezar con una plantilla") } }

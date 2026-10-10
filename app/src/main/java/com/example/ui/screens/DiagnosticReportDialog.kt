@@ -52,10 +52,9 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
       finally { saving = false }
     }
   }
-  AlertDialog(onDismissRequest = onDismiss, title = { Text("Diagnóstico para copiar") },
+  AlertDialog(onDismissRequest = onDismiss, title = { Text("Diagnóstico") },
     text = {
       Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Copia este resumen y pégalo como mensaje aquí. No necesitas adjuntar un archivo. Añade qué estabas haciendo cuando falló.")
         if (report == null && message == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         report?.let { text ->
           SelectionContainer { LazyColumn(Modifier.heightIn(max = 240.dp)) { item { Text(text, style = MaterialTheme.typography.bodySmall) } } }
@@ -69,7 +68,7 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
         }
         HorizontalDivider()
         Text("Registro completo", style = MaterialTheme.typography.titleSmall)
-        Text("El ZIP incluye el registro técnico y el resumen. Úsalo si el chat no acepta el TXT.", style = MaterialTheme.typography.bodySmall)
+        Text("ZIP: resumen y trazas técnicas, sin consultas ni claves.", style = MaterialTheme.typography.bodySmall)
         OutlinedButton(enabled = !saving, onClick = { saveZip.launch("diagnostico-tcg-pocket.zip") }, shape = MaterialTheme.shapes.medium) { Text("Guardar diagnóstico ZIP") }
         OutlinedButton(enabled = !saving, onClick = { ErrorLogManager.exportErrorLogs(context, compressed = true) }, shape = MaterialTheme.shapes.medium) { Text("Compartir diagnóstico ZIP") }
         if (saving) LinearProgressIndicator(Modifier.fillMaxWidth())

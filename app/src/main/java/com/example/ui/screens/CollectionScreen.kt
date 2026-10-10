@@ -480,7 +480,6 @@ fun CollectionScreen(
       onDismiss = { showSettingsDialog = false; if (settingsOnly) onSettingsBack() }
     ) {
           if (onAiConnections != null) OutlinedButton(onClick = onAiConnections, modifier = Modifier.fillMaxWidth()) { Text("Conexiones IA") }
-          HelpButton()
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
             if (!settingsOnly) showSettingsDialog = false
@@ -494,7 +493,6 @@ fun CollectionScreen(
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Pegar CSV") }
           OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; csvExportLauncher.launch("coleccion-pokemon.csv") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Exportar colección CSV") }
-          Text("El CSV contiene cantidades y Deseos. El respaldo JSON incluye también mazos y ajustes.", fontSize = 12.sp)
           OutlinedButton(onClick = {
             if (!settingsOnly) showSettingsDialog = false
             scope.launch {
@@ -507,7 +505,6 @@ fun CollectionScreen(
           }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Guardar respaldo completo") }
           OutlinedButton(onClick = { if (!settingsOnly) showSettingsDialog = false; backupImport.launch("*/*") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Restaurar respaldo completo") }
-          Text("Catálogo comunitario del 01-10-2026. Los PS y ataques se consultan a TCGdex al abrir una carta.", fontSize = 12.sp)
           OutlinedButton(onClick = { showDiagnosticReport = true }, modifier = Modifier.fillMaxWidth()) { Text("Diagnóstico y ayuda") }
 
     }

@@ -204,7 +204,6 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           if (profileId == connection.id && profiles.entries.any { it.id == profileId })
             TextButton(enabled = !busy, onClick = { confirmDelete = true }) { Text("Eliminar esta conexión") }
           AdvancedStatus(model)
-          HelpButton("ia")
 
         }
       }
@@ -233,9 +232,7 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("Tapete de práctica", style = MaterialTheme.typography.titleLarge)
-      HelpButton("sandbox")
-      Text("Abre un mazo de 20 cartas en Mazos y úsalo aquí. Tablero manual de un jugador; no ejecuta ataques, evoluciones ni reglas automáticamente.")
-      Text("La mano inicial garantiza un básico por intercambio de una carta si hace falta. Es una aproximación, no el algoritmo interno del juego.")
+      Text("Tablero manual · mazo de 20 cartas")
       Button(enabled = !busy && deck?.totalCardCount == 20, onClick = { if (state == null) model.startSandbox(deck, "es") else restart = true }, shape = MaterialTheme.shapes.medium) {
         Text(if (state == null) "Iniciar con el mazo abierto" else "Nueva práctica")
       }
@@ -308,13 +305,13 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
   LaunchedEffect("es", keyword, role, minHp, maxHp, element) {
     model.updateFilter(RulesFilter("es", minHp.toIntOrNull(), maxHp.toIntOrNull(), element, role, keyword))
   }
-  val candidates = inventory.filter { query.isBlank() || it.card.name.contains(query, true) || it.card.id.contains(query, true) }
-  val visible = matches.filter { query.isBlank() || it.cardId.contains(query, true) ||
-    inventory.find { card -> card.card.id == it.cardId }?.card?.name?.contains(query, true) == true }
+  val byId = remember(inventory) { inventory.associateBy { it.card.id } }
+  val candidates = remember(inventory, query) { inventory.filter { query.isBlank() || it.card.name.contains(query, true) || it.card.id.contains(query, true) } }
+  val visible = remember(matches, query, byId) { matches.filter { query.isBlank() || it.cardId.contains(query, true) ||
+    byId[it.cardId]?.card?.name?.contains(query, true) == true } }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Text("Filtros por efectos", style = MaterialTheme.typography.titleLarge)
-      HelpButton("analisis")
       Text("Busca entre los efectos descargados. Las categorías se estiman a partir del texto y pueden contener errores.")
       OutlinedTextField(query, { query = it }, label = { Text("Nombre o código de carta") }, modifier = Modifier.fillMaxWidth())
       OutlinedTextField(keyword, { keyword = it }, label = { Text("Texto del ataque o habilidad") }, modifier = Modifier.fillMaxWidth())
@@ -330,13 +327,12 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
       }
       OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }, shape = MaterialTheme.shapes.medium) { Text("Cargar datos de esta búsqueda") }
       TextButton(onClick = { query = ""; keyword = ""; role = ""; minHp = ""; maxHp = ""; element = "" }) { Text("Limpiar filtros") }
-      Text("También se descargan sus datos al abrir una carta. Puedes cancelar la carga cuando quieras.")
       AdvancedStatus(model)
       Text("${visible.size} cartas con datos")
       if (visible.isEmpty()) Text("No hay resultados. Carga los datos o limpia los filtros.")
     }
     items(visible, key = { it.cardId }) { rules ->
-      val name = inventory.find { it.card.id == rules.cardId }?.card?.name ?: rules.cardId
+      val name = byId[rules.cardId]?.card?.name ?: rules.cardId
       Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
           Text("$name · ${rules.cardId}")
