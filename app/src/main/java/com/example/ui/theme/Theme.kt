@@ -38,6 +38,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
+  surfaceTint = Color.Transparent,
   primary = Color(0xFFFF8A40),
   onPrimary = Color(0xFF211A15),
   primaryContainer = Color(0xFF493021),

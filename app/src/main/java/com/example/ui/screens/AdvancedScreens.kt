@@ -77,7 +77,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
             if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
-          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }) { Text("Conexiones") }
+          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
         }
       }
     }
@@ -121,7 +121,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         }
       }
       Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && action.canUse(deck?.totalCardCount),
-        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth()) { Text("${action.label} con IA") }
+        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("${action.label} con IA") }
 
       AdvancedStatus(model)
     }
@@ -130,7 +130,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         Text(result.deck.name, style = MaterialTheme.typography.titleLarge)
         Text("20 cartas · Energías: ${result.deck.energyTypes.joinToString()}")
         Text(result.deck.strategy)
-        Button(enabled = !busy, onClick = { confirmOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Usar este mazo") }
+        Button(enabled = !busy, onClick = { confirmOpen = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Usar este mazo") }
         Text("Se abrirá como borrador para que lo revises y guardes.")
       }
       items(result.deck.cards, key = { it.card.id }) { entry ->
@@ -163,7 +163,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           OutlinedButton(enabled = !busy, onClick = {
             profileId = java.util.UUID.randomUUID().toString(); profileName = "Nueva conexión"
             apiKey = ""; model.availableModels.value = emptyList()
-          }) { Text("Añadir proveedor") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Añadir proveedor") }
           OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
           com.example.data.ai.AiProvider.entries.forEach { value ->
             FilterChip(selected = provider == value, enabled = !busy, onClick = {
@@ -192,10 +192,10 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           Button(enabled = !busy && apiKey.isNotBlank() && modelName.isNotBlank() &&
             (provider != com.example.data.ai.AiProvider.COMPATIBLE || url.isNotBlank()), onClick = {
               model.saveConnection(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName.ifBlank { provider.label }))
-          }) { Text("Guardar conexión") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Guardar conexión") }
           OutlinedButton(enabled = !busy && apiKey.isNotBlank(), onClick = {
             model.discoverModels(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName))
-          }) { Text("Buscar modelos compatibles") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Buscar modelos compatibles") }
           Text("La lista filtra compatibilidad de texto, no garantiza cuota o acceso. Si tu API no declara capacidades, usa el identificador manual indicado por el proveedor.", style = MaterialTheme.typography.bodySmall)
           LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(models) { name -> FilterChip(selected = name == modelName, onClick = { modelName = name }, label = { Text(name) }) }
@@ -235,7 +235,7 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
       HelpButton("sandbox")
       Text("Abre un mazo de 20 cartas en Mazos y úsalo aquí. Tablero manual de un jugador; no ejecuta ataques, evoluciones ni reglas automáticamente.")
       Text("La mano inicial garantiza un básico por intercambio de una carta si hace falta. Es una aproximación, no el algoritmo interno del juego.")
-      Button(enabled = !busy && deck?.totalCardCount == 20, onClick = { if (state == null) model.startSandbox(deck, "es") else restart = true }) {
+      Button(enabled = !busy && deck?.totalCardCount == 20, onClick = { if (state == null) model.startSandbox(deck, "es") else restart = true }, shape = MaterialTheme.shapes.medium) {
         Text(if (state == null) "Iniciar con el mazo abierto" else "Nueva práctica")
       }
       AdvancedStatus(model)
@@ -244,8 +244,8 @@ fun SandboxScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifi
       item {
         Text("Turno ${board.turn} · Mazo ${board.drawPile.size} · Mano ${board.hand.size} · Descartes ${board.discard.size}")
         AdaptiveActionRow { actionModifier ->
-          OutlinedButton(modifier = actionModifier, enabled = board.drawPile.isNotEmpty(), onClick = { model.updateBoard(SandboxEngine::draw) }) { Text("Robar") }
-          OutlinedButton(modifier = actionModifier, onClick = { model.updateBoard(SandboxEngine::nextTurn) }) { Text("Siguiente turno") }
+          OutlinedButton(modifier = actionModifier, enabled = board.drawPile.isNotEmpty(), onClick = { model.updateBoard(SandboxEngine::draw) }, shape = MaterialTheme.shapes.medium) { Text("Robar") }
+          OutlinedButton(modifier = actionModifier, onClick = { model.updateBoard(SandboxEngine::nextTurn) }, shape = MaterialTheme.shapes.medium) { Text("Siguiente turno") }
         }
         TextButton(onClick = model::undoMove) { Text("Deshacer") }
         Text("Activo", style = MaterialTheme.typography.titleMedium)
@@ -327,7 +327,7 @@ fun EffectFiltersScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: 
         items(CardRole.entries) { value -> FilterChip(selected = role == value.key,
           onClick = { role = if (role == value.key) "" else value.key }, label = { Text(value.label) }) }
       }
-      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }) { Text("Indexar hasta 25 cartas de esta búsqueda") }
+      OutlinedButton(enabled = !busy && candidates.isNotEmpty(), onClick = { model.indexCards(candidates.map { it.card.id }, "es") }, shape = MaterialTheme.shapes.medium) { Text("Indexar hasta 25 cartas de esta búsqueda") }
       TextButton(onClick = { query = ""; keyword = ""; role = ""; minHp = ""; maxHp = ""; element = "" }) { Text("Limpiar filtros") }
       Text("También se indexa una carta al abrir sus detalles en Colección. No se descarga todo el catálogo automáticamente.")
       AdvancedStatus(model)

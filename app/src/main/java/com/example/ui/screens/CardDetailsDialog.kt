@@ -57,7 +57,7 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
       if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
       error?.let {
         Text(it)
-        OutlinedButton(enabled = !loading, onClick = { loading = true; retry++ }) {
+        OutlinedButton(enabled = !loading, onClick = { loading = true; retry++ }, shape = MaterialTheme.shapes.medium) {
           Text("Reintentar detalles")
         }
       }

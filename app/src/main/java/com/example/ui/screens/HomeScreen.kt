@@ -80,7 +80,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
       if (decks.isEmpty()) {
         Text("Todavía no hay mazos guardados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(onClick = onEditor) { Text("Abrir editor") }
+        OutlinedButton(onClick = onEditor, shape = MaterialTheme.shapes.medium) { Text("Abrir editor") }
       }
     }
     decks.take(3).forEach { saved -> item(key = "recent_${saved.id}") {
@@ -117,7 +117,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
           Text("Continuar edición", style = MaterialTheme.typography.labelLarge)
           Text(deck.name, style = MaterialTheme.typography.titleMedium)
           Text("${deck.totalCardCount}/20 cartas · " + deck.energyTypes.joinToString().ifBlank { "Energías por revisar" }, style = MaterialTheme.typography.bodySmall)
-          Button(onClick = onEditor) { Text("Continuar editando") }
+          Button(onClick = onEditor, shape = MaterialTheme.shapes.medium) { Text("Continuar editando") }
         }
       }
     } }
@@ -135,7 +135,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
             Text("Limitless · $date\n${data.tournaments} torneos · ${data.players} listas", style = MaterialTheme.typography.bodySmall)
             Text("Muestra guardada. Consulta la fecha antes de usarla.", style = MaterialTheme.typography.bodySmall)
           } ?: Text("Consulta resultados públicos y mazos de ejemplo.", style = MaterialTheme.typography.bodySmall)
-          OutlinedButton(onClick = onMeta) { Text("Ver meta y actualizar") }
+          OutlinedButton(onClick = onMeta, shape = MaterialTheme.shapes.medium) { Text("Ver meta y actualizar") }
         }
       }
     }

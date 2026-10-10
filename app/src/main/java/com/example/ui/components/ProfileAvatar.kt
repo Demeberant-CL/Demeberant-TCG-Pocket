@@ -55,6 +55,6 @@ fun AvatarPickerDialog(current: String, onSave: (String) -> Unit, onClose: () ->
         }
       }
     }
-  }, confirmButton = { Button(onClick = { onSave(selected) }) { Text("Usar avatar") } },
+  }, confirmButton = { Button(onClick = { onSave(selected) }, shape = MaterialTheme.shapes.medium) { Text("Usar avatar") } },
     dismissButton = { TextButton(onClick = onClose) { Text("Cancelar") } })
 }

@@ -33,7 +33,7 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
         Switch(checked = autoRefresh, onCheckedChange = model::setAutoMetaRefresh)
       }
       Text("Opcional: descarga si la muestra tiene más de 6 horas. Ante un fallo conserva la copia y espera al menos 15 minutos antes de otro intento automático.", style = MaterialTheme.typography.bodySmall)
-      Button(onClick = model::refreshMeta, enabled = !busy) { Text("Actualizar meta") }
+      Button(onClick = model::refreshMeta, enabled = !busy, shape = MaterialTheme.shapes.medium) { Text("Actualizar meta") }
       if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); TextButton(onClick = model::cancel) { Text("Cancelar") } }
       message?.let { Text(it) }
       snapshot?.let { Text("Limitless · ${runCatching { java.time.Instant.parse(it.updated).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) }.getOrDefault(it.updated)}\n${it.tournaments} torneos · ${it.players} listas válidas · últimos 30 días (hasta 12 torneos)") }
@@ -55,7 +55,7 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
           if (decisive > 0) " · ${"%.1f".format(d.wins * 100.0 / decisive)}% sin empates" else "")
         Text("Lista de ejemplo · Energías: ${d.energies.joinToString()} · $missing copias faltantes")
         if (unknown.isNotEmpty()) Text("${unknown.size} IDs fuera del catálogo: actualiza el catálogo antes de adaptar este mazo.")
-        OutlinedButton(onClick = { selected = d }, enabled = unknown.isEmpty()) { Text("Adaptar a mi colección") }
+        OutlinedButton(onClick = { selected = d }, enabled = unknown.isEmpty(), shape = MaterialTheme.shapes.medium) { Text("Adaptar a mi colección") }
       } }
     }
   }

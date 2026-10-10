@@ -153,10 +153,10 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
           (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
             .setPrimaryClip(ClipData.newPlainText(title, text))
           copied = true
-        }) { Text(if (copied) "Lista copiada" else "Copiar lista") }
+        }, shape = MaterialTheme.shapes.medium) { Text(if (copied) "Lista copiada" else "Copiar lista") }
       }
       if (section == 0) item {
-        OutlinedButton(onClick = { peerPicker.launch("*/*") }) { Text("Comparar otro CSV") }
+        OutlinedButton(onClick = { peerPicker.launch("*/*") }, shape = MaterialTheme.shapes.medium) { Text("Comparar otro CSV") }
         comparisonError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         peer?.let { other ->
           Text("Comparación de ${other.size} registros. El CSV ajeno no se guarda en tu colección.")

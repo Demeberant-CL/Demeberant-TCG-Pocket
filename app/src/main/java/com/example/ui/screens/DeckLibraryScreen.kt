@@ -34,7 +34,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mis mazos (${decks.size})", style = MaterialTheme.typography.titleLarge)
-        Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
           Text(if (draft == null || draft?.cards?.isEmpty() == true) "+ Nuevo mazo" else "Continuar borrador")
         }
         OutlinedTextField(search, { search = it }, modifier = Modifier.fillMaxWidth(),
@@ -70,7 +70,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
             if (refs == null) Text("No se pudo interpretar la lista guardada. El mazo se conserva.", style = MaterialTheme.typography.bodySmall)
             Row(verticalAlignment = Alignment.CenterVertically) {
               OutlinedButton(enabled = refs != null && refs.all { cards.containsKey(it.first) },
-                onClick = { openSavedDeck(saved) }) { Text("Abrir") }
+                onClick = { openSavedDeck(saved) }, shape = MaterialTheme.shapes.medium) { Text("Abrir") }
               Spacer(Modifier.weight(1f))
               Box {
                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }

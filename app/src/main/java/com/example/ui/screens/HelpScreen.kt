@@ -47,7 +47,7 @@ fun HelpDialog(initial: String? = null, onClose: () -> Unit) {
         val topic = selected?.let { PocketHelp.topics[it] }
         if (topic == null) {
           PocketHelp.topics.forEach { (key, value) -> item(key) {
-            OutlinedButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth()) { Text(value.title) }
+            OutlinedButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text(value.title) }
           } }
         } else {
           topic.steps.forEachIndexed { index, step -> item { Text("${index + 1}. $step") } }
@@ -66,7 +66,7 @@ fun HelpScreen(modifier: Modifier = Modifier) {
     item { Text("Ayuda y tutoriales", style = MaterialTheme.typography.headlineSmall)
       OutlinedTextField(query, { query = it }, label = { Text("Buscar ayuda") }, modifier = Modifier.fillMaxWidth()) }
     PocketHelp.topics.filter { (_, v) -> (v.title + v.steps.joinToString()).contains(query, ignoreCase = true) }.forEach { (key, topic) ->
-      item(key) { OutlinedButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth()) { Text(topic.title) } }
+      item(key) { OutlinedButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text(topic.title) } }
     }
   }
   selected?.let { HelpDialog(it) { selected = null } }

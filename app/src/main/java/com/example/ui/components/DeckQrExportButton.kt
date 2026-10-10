@@ -61,7 +61,7 @@ fun DeckQrExportButton(deck: GeneratedDeck) {
       }
       finally { busy = false }
     }
-  }) { Text("Exportar QR para el juego") }
+  }, shape = MaterialTheme.shapes.medium) { Text("Exportar QR para el juego") }
   if (shown) AlertDialog(onDismissRequest = { if (!busy) shown = false }, title = { Text("QR de mazo · Pokémon TCG Pocket") },
     text = {
       Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
@@ -87,7 +87,7 @@ fun DeckQrExportButton(deck: GeneratedDeck) {
             }
           }) { Text(if (alternate) "Volver al QR principal" else "Probar QR alternativo") }
           com.example.ui.screens.HelpButton("qr")
-          OutlinedButton(onClick = { save.launch(if (alternate) "mazo-tcg-pocket-qr-alternativo.png" else "mazo-tcg-pocket-qr.png") }) { Text("Guardar PNG") }
+          OutlinedButton(onClick = { save.launch(if (alternate) "mazo-tcg-pocket-qr-alternativo.png" else "mazo-tcg-pocket-qr.png") }, shape = MaterialTheme.shapes.medium) { Text("Guardar PNG") }
           TextButton(onClick = {
             scope.launch {
               try {

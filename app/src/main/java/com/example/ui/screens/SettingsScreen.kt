@@ -42,7 +42,7 @@ fun SettingsScreen(
               Button(onClick = {
                 onDismiss()
                 context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java))
-              }, modifier = Modifier.fillMaxWidth()) { Text("Sincronizar colección") }
+              }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Sincronizar colección") }
             }
           }
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {

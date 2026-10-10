@@ -37,6 +37,7 @@ class DexVisualTest {
     }
     compose.waitUntil(20_000) { compose.onAllNodesWithText("TCG Dex").fetchSemanticsNodes().isNotEmpty() }
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
+    Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
     compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
@@ -84,6 +85,8 @@ class DexVisualTest {
     }
   }
   private fun capture(name: String) {
+    compose.waitForIdle()
+    Thread.sleep(1200) // Semantics can settle before the Android surface renders its final frame.
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val dir = File(instrumentation.targetContext.getExternalFilesDir(null),"design-preview").apply { mkdirs() }
     val image = instrumentation.uiAutomation.takeScreenshot()

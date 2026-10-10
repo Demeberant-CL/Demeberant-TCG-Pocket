@@ -545,7 +545,7 @@ fun DeckBuilderScreen(
             }
           },
           colors = ButtonDefaults.buttonColors(containerColor = PocketBluePrimary)
-        ) {
+        , shape = MaterialTheme.shapes.medium) {
           Text("Guardar Mazo")
         }
       },

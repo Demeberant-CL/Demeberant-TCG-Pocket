@@ -103,8 +103,8 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
             if (candidates.isEmpty()) Text("No hay coincidencias. Importa tu CSV o desactiva Solo mis cartas.")
           } else if (current.cards.isEmpty()) {
             Text("Prepara tu primera baraja", style = MaterialTheme.typography.titleMedium)
-            Button(onClick = { create = true }, enabled = !generating, modifier = Modifier.fillMaxWidth()) { Text("Crear con mis cartas") }
-            OutlinedButton(onClick = onAskAi, enabled = !generating, modifier = Modifier.fillMaxWidth()) { Text("Crear con mi IA") }
+            Button(onClick = { create = true }, enabled = !generating, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con mis cartas") }
+            OutlinedButton(onClick = onAskAi, enabled = !generating, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con mi IA") }
             TextButton(onClick = { adding = true }) { Text("Elegir cartas") }
           }
         }
@@ -157,14 +157,14 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
           FilterChip(selected = name in current.energyTypes, enabled = !generating,
             onClick = { viewModel.toggleDeckEnergy(name) }, label = { Text(name) })
         }
-        if (!automatic) item { OutlinedButton(onClick = viewModel::useAutomaticEnergies, enabled = !generating) { Text("Sugerir por tipo") } }
+        if (!automatic) item { OutlinedButton(onClick = viewModel::useAutomaticEnergies, enabled = !generating, shape = MaterialTheme.shapes.medium) { Text("Sugerir por tipo") } }
       } else {
         item {
           OutlinedTextField(current.name, viewModel::editDeckName, label = { Text("Nombre del mazo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
           OutlinedTextField(current.strategy, viewModel::editDeckStrategy, label = { Text("Notas de estrategia") }, modifier = Modifier.fillMaxWidth())
           OutlinedButton(enabled = current.cards.isNotEmpty(), onClick = {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, current.toExportText()) }, "Compartir mazo"))
-          }) { Text("Compartir lista") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Compartir lista") }
           if (current.totalCardCount == 20 && current.energyTypes.isNotEmpty()) com.example.ui.components.DeckQrExportButton(current)
           else Text("Exportar al juego requiere 20 cartas y energías seleccionadas.", style = MaterialTheme.typography.bodySmall)
           HelpButton("mazos")
@@ -178,7 +178,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onA
     Surface(tonalElevation = 3.dp) {
       Button(onClick = { viewModel.saveCurrentDeck(allowDraft = true) },
         enabled = current.cards.isNotEmpty() && current.name.isNotBlank() && !generating,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = MaterialTheme.shapes.medium) {
         Text(if (current.totalCardCount == 20) "Guardar mazo · 20/20" else "Guardar borrador · ${current.totalCardCount}/20")
       }
     }

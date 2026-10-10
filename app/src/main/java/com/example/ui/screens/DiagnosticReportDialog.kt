@@ -64,14 +64,14 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
               type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
             }, "Compartir resumen como texto")) }
             catch (_: Exception) { message = "No se pudo compartir. Usa Copiar resumen." }
-          }) { Text("Compartir texto sin archivo") }
-          OutlinedButton(enabled = !saving, onClick = { save.launch("resumen-diagnostico-tcg-pocket.txt") }) { Text("Guardar resumen TXT") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Compartir texto sin archivo") }
+          OutlinedButton(enabled = !saving, onClick = { save.launch("resumen-diagnostico-tcg-pocket.txt") }, shape = MaterialTheme.shapes.medium) { Text("Guardar resumen TXT") }
         }
         HorizontalDivider()
         Text("Registro completo", style = MaterialTheme.typography.titleSmall)
         Text("El ZIP incluye el registro técnico y el resumen. Úsalo si el chat no acepta el TXT.", style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(enabled = !saving, onClick = { saveZip.launch("diagnostico-tcg-pocket.zip") }) { Text("Guardar diagnóstico ZIP") }
-        OutlinedButton(enabled = !saving, onClick = { ErrorLogManager.exportErrorLogs(context, compressed = true) }) { Text("Compartir diagnóstico ZIP") }
+        OutlinedButton(enabled = !saving, onClick = { saveZip.launch("diagnostico-tcg-pocket.zip") }, shape = MaterialTheme.shapes.medium) { Text("Guardar diagnóstico ZIP") }
+        OutlinedButton(enabled = !saving, onClick = { ErrorLogManager.exportErrorLogs(context, compressed = true) }, shape = MaterialTheme.shapes.medium) { Text("Compartir diagnóstico ZIP") }
         if (saving) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it) }
       }
