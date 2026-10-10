@@ -60,9 +60,9 @@ private val DarkColorScheme = darkColorScheme(
   surfaceBright = Color(0xFF30353D),
   onBackground = Color(0xFFECEFF3),
   onSurface = Color(0xFFECEFF3),
-  onSurfaceVariant = Color(0xFFA8B0BA),
+  onSurfaceVariant = Color(0xFFC1C8D1),
   outline = Color(0xFF89929F),
-  outlineVariant = Color(0xFF333942)
+  outlineVariant = Color(0xFF505967)
 )
 
 @Composable
@@ -86,6 +86,7 @@ fun PocketAppTheme(
 
   MaterialTheme(
     colorScheme = colorScheme,
+    typography = Typography,
     shapes = Shapes(extraSmall = RoundedCornerShape(6.dp), small = RoundedCornerShape(8.dp),
       medium = RoundedCornerShape(10.dp), large = RoundedCornerShape(10.dp), extraLarge = RoundedCornerShape(12.dp)),
     content = content

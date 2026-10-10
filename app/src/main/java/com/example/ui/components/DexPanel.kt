@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 fun DexPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
   OutlinedCard(modifier, shape = MaterialTheme.shapes.large,
     colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-    HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp)
+    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 3.dp)
     content()
   }
 }
