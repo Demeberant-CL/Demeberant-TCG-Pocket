@@ -122,7 +122,7 @@ class DexVisualTest {
         // Re-enter the hub to capture the AI creation form without making a billable API request.
         compose.onNodeWithText("← Mis mazos").performClick()
         compose.onNodeWithText("+ Nuevo mazo").performClick()
-        compose.onNodeWithText("Crear con IA").performClick()
+        compose.onNode(hasText("Crear con IA") and hasClickAction()).performClick()
         compose.onNodeWithText("Crear nuevo").performClick()
         compose.waitForIdle()
         capture("mazos-crear-ia")
