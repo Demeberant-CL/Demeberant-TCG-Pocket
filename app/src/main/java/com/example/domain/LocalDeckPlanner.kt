@@ -37,9 +37,12 @@ object LocalDeckPlanner {
       if (CardRole.ENERGY in roles(data)) {
         val pairs = listOf("Agua" to "water", "Fuego" to "fire", "Planta" to "grass", "Rayo" to "lightning",
           "Psíquico" to "psychic", "Lucha" to "fighting", "Oscuridad" to "darkness", "Metal" to "metal")
+        val symbols = mapOf("g" to "Planta", "r" to "Fuego", "w" to "Agua", "l" to "Rayo",
+          "p" to "Psíquico", "f" to "Lucha", "d" to "Oscuridad", "m" to "Metal")
         val target = pairs.filter { (spanish, english) ->
           text.contains("$english energy") || Regex("energias? (de tipo )?" + RoleClassifier.normalize(spanish)).containsMatchIn(text)
-        }.map { it.first }
+        }.map { it.first } + Regex("energias?\\s+\\{([grwlpfdm])\\}").findAll(text)
+          .mapNotNull { symbols[it.groupValues[1]] }.toList()
         if (target.isNotEmpty() && target.none { it in palette }) return false
       }
       return true

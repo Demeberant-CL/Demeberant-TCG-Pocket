@@ -51,7 +51,7 @@ class LocalDeckPlannerTest {
     val dead=card(4,"Fire support","Entrenador")
     val pool=listOf(owned(basic),owned(draw),owned(search),owned(dead))+(5..18).map { owned(card(it,type="Entrenador")) }
     val data=mapOf(basic.id to attack(listOf("Water")),draw.id to CombatData(text="Draw 2 cards."),
-      search.id to CombatData(text="Search your deck for a Basic Pokémon."),dead.id to CombatData(text="Attach Fire Energy to your Fire Pokémon."))
+      search.id to CombatData(text="Search your deck for a Basic Pokémon."),dead.id to CombatData(text="Une 1 Energía {R} a tu Pokémon {R}."))
     val p=LocalDeckPlanner.recommend(pool,data,PlannerOptions(type="Agua",anchorId=basic.id)).first()
     assertTrue(p.deck.cards.any { it.card.id==draw.id });assertTrue(p.deck.cards.any { it.card.id==search.id })
     assertFalse(p.deck.cards.any { it.card.id==dead.id })
