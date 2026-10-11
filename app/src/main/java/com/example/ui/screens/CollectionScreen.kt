@@ -359,8 +359,6 @@ fun CollectionScreen(
         if (it != 1) largeCards = it == 0
       }, Modifier.fillMaxWidth())
     }
-    Text("${filteredCards.size} resultados", modifier = Modifier.padding(vertical = 4.dp),
-      style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
     }
     }
 

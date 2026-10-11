@@ -159,6 +159,7 @@ object LocalDeckPlanner {
         if (!entries.values.any { basic(it.card) }) {
           pool.firstOrNull { basic(it.card) }?.let { addName(name(it.card.rulesName), 1) } ?: continue
         }
+        val consistencyCache = mutableMapOf<List<Int>, Double>()
         fun score(rows: Collection<DeckCardEntry>): Double {
           val pokemon = rows.filter { !trainer(it.card) }
           val tc = rows.filter { trainer(it.card) }.sumOf { it.count }
@@ -188,7 +189,7 @@ object LocalDeckPlanner {
           if (accelerators == 0) value -= (expensive - 2).coerceAtLeast(0) * 2.5
           if (rows.sumOf { it.count } == 20) {
             val coreQuantities = lineage.map { key -> rows.filter { name(it.card.rulesName) == key }.sumOf { it.count } }
-            value += DeckConsistency.allPieces(20, coreQuantities, 8) * 20.0
+            value += consistencyCache.getOrPut(coreQuantities) { DeckConsistency.allPieces(20, coreQuantities, 8) } * 20.0
           }
           val supporters = rows.filter { it.card.category.equals("supporter", true) }.sumOf { it.count }
           value -= (supporters - 7).coerceAtLeast(0) * 2.0
