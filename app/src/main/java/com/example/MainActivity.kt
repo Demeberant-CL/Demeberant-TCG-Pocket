@@ -152,14 +152,15 @@ class MainActivity : ComponentActivity() {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
-              onEditor = { deckEditorRequest++; navigateTo(2) },
+              onEditor = { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) },
+              onCreate = { deckEditorRequest = -kotlin.math.abs(deckEditorRequest) - 1; navigateTo(2) },
               onMeta = { metaReturnTab = 0; navigateTo(5) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
-              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, Modifier.weight(1f))
+              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, Modifier.weight(1f))
             }
             else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier,
               initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; navigateTo(5) })

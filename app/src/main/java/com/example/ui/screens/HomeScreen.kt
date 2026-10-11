@@ -32,7 +32,7 @@ import java.time.format.FormatStyle
 
 @Composable
 fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier,
-  onDecks: () -> Unit, onEditor: () -> Unit, onMeta: () -> Unit) {
+  onDecks: () -> Unit, onEditor: () -> Unit, onCreate: () -> Unit, onMeta: () -> Unit) {
   val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val decks by main.savedDecks.collectAsStateWithLifecycle()
@@ -69,7 +69,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
             }
           }
         }
-        Button(onClick = onEditor, modifier = Modifier.fillMaxWidth()) { Text("Crear mazo") }
+        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Crear mazo") }
       }
     }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
