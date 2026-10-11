@@ -131,8 +131,8 @@ fun CollectionScreen(
   advanced: com.example.ui.viewmodel.AdvancedViewModel? = null
 ) {
   val visualStyle = com.example.ui.theme.LocalVisualStyle.current
-  var listView by rememberSaveable(visualStyle) { mutableStateOf(visualStyle == com.example.data.preferences.VisualStyle.DECISIONS) }
-  var largeCards by rememberSaveable(visualStyle) { mutableStateOf(visualStyle == com.example.data.preferences.VisualStyle.ALBUM) }
+  var listView by rememberSaveable(visualStyle) { mutableStateOf(visualStyle in listOf(com.example.data.preferences.VisualStyle.DECISIONS, com.example.data.preferences.VisualStyle.EDITORIAL)) }
+  var largeCards by rememberSaveable(visualStyle) { mutableStateOf(visualStyle in listOf(com.example.data.preferences.VisualStyle.ALBUM, com.example.data.preferences.VisualStyle.GALLERY)) }
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
@@ -247,7 +247,7 @@ fun CollectionScreen(
     return
   }
   if (settingsOnly) Column(modifier.fillMaxSize().padding(16.dp)) {
-    TextButton(onClick = onSettingsBack) { Text("← Más herramientas") }
+    TextButton(onClick = onSettingsBack) { Text("← Ajustes") }
     TextButton(onClick = { showSettingsDialog = true }) { Text("Abrir Ajustes") }
   }
   if (!settingsOnly) LazyVerticalGrid(
@@ -264,8 +264,13 @@ fun CollectionScreen(
     // CABECERA Y PROGRESO DE COLECCIÓN
     // -------------------------------------------------------------
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      if (visualStyle == com.example.data.preferences.VisualStyle.EDITORIAL) {
+        HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
+        Text("01 / CATÁLOGO", style = MaterialTheme.typography.labelLarge)
+      }
+      if (visualStyle == com.example.data.preferences.VisualStyle.ALBUM) Text("ÁLBUM · ${expansionFilter ?: "TODAS LAS EXPANSIONES"}", style = MaterialTheme.typography.labelLarge)
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("Colección", Modifier.weight(1f), style = if (visualStyle == com.example.data.preferences.VisualStyle.EDITORIAL) MaterialTheme.typography.displayMedium else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
           Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección")
         }
@@ -387,7 +392,7 @@ fun CollectionScreen(
             Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
               verticalAlignment = Alignment.CenterVertically) {
               com.example.ui.components.PocketCardImage(item.card.id, item.card.name,
-                modifier = Modifier.size(width = 48.dp, height = 68.dp))
+                modifier = Modifier.size(width = if (visualStyle == com.example.data.preferences.VisualStyle.EDITORIAL) 80.dp else 48.dp, height = if (visualStyle == com.example.data.preferences.VisualStyle.EDITORIAL) 112.dp else 68.dp))
               Column(Modifier.weight(1f)) {
                 Text(item.card.name, style = MaterialTheme.typography.titleMedium)
                 Text("${item.card.id} · ${item.card.type}", style = MaterialTheme.typography.bodySmall)

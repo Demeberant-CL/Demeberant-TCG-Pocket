@@ -66,7 +66,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().testTag("saved_deck_${saved.id}")) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) 10.dp else 14.dp)) {
-          val stacked = visual in listOf(com.example.data.preferences.VisualStyle.EDITORIAL, com.example.data.preferences.VisualStyle.ALBUM) || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
+          val stacked = visual in listOf(com.example.data.preferences.VisualStyle.EDITORIAL, com.example.data.preferences.VisualStyle.ALBUM, com.example.data.preferences.VisualStyle.GALLERY) || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
           Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
               Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -81,7 +81,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
               }
               if (!stacked) Box(Modifier.padding(top = 20.dp)) { DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) }
             }
-            if (stacked) DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS))
+            if (stacked) DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS), gallery = visual == com.example.data.preferences.VisualStyle.GALLERY)
             if (available != null) Text(if (available < total) "Faltan ${total - available} copias · $available/$total disponibles" else "Todas las copias disponibles",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -105,11 +105,11 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
 }
 
 @Composable
-private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>, compact: Boolean = false) {
+private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>, compact: Boolean = false, gallery: Boolean = false) {
   Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
     covers.forEach { entry ->
       com.example.ui.components.PocketCardImage(entry.card.id, entry.card.name,
-        modifier = Modifier.width(if (compact) 44.dp else 76.dp).height(if (compact) 62.dp else 108.dp).clip(MaterialTheme.shapes.small))
+        modifier = Modifier.width(if (compact) 44.dp else if (gallery) 108.dp else 76.dp).height(if (compact) 62.dp else if (gallery) 152.dp else 108.dp).clip(MaterialTheme.shapes.small))
     }
   }
 }
