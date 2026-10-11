@@ -72,7 +72,7 @@ class DexVisualTest {
     compose.waitUntil(10_000) { catalog.first().id in homeModel.userPreferences.value.trade.blocked }
     capture("intercambios-proteccion")
     compose.onNodeWithTag("nav_item_0").performClick()
-    for (style in listOf(com.example.data.preferences.VisualStyle.DECISIONS, com.example.data.preferences.VisualStyle.ALBUM)) {
+    for (style in com.example.data.preferences.VisualStyle.entries) {
       compose.runOnIdle { homeModel.setVisualStyle(style) }
       compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == style }
       compose.onNodeWithTag("home_list").performScrollToIndex(0)
@@ -93,7 +93,7 @@ class DexVisualTest {
       compose.waitForIdle()
       capture(name)
       if (index == 1) {
-        compose.onNodeWithContentDescription("Ajustes").assertDoesNotExist()
+        compose.onAllNodesWithContentDescription("Ajustes").assertCountEquals(1)
         compose.onNodeWithText("Vista").performClick()
         compose.onNodeWithText("Lista").performClick()
         capture("coleccion-lista")
@@ -120,9 +120,10 @@ class DexVisualTest {
         compose.onNodeWithText("Paso 1").assertIsDisplayed()
         capture("tutorial-mazos")
         compose.onNodeWithText("← Tutoriales").performClick()
-        compose.onNodeWithText("← Más herramientas").performClick()
-        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Ajustes"))
-        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithText("← Herramientas del juego").performClick()
+        compose.onNodeWithTag("nav_item_6").performClick()
+        capture("ajustes-menu")
+        compose.onNodeWithText("Apariencia y datos").performClick()
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
         capture("mas-ajustes")
         compose.onNodeWithText("Listo").performClick()
@@ -130,13 +131,14 @@ class DexVisualTest {
         compose.onNodeWithText("Conexiones IA").performClick()
         capture("ia-conexiones")
         compose.onNodeWithText("Cerrar").performClick()
-        compose.onNodeWithText("← Más herramientas").performClick()
+        compose.onNodeWithText("← Ajustes").performClick()
+        compose.onNodeWithTag("nav_item_4").performClick()
         for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
           compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
           compose.onNodeWithText(label).performClick()
           compose.waitForIdle()
           capture(file)
-          compose.onNodeWithText("← Más herramientas").performClick()
+          compose.onNodeWithText("← Herramientas del juego").performClick()
         }
       }
       if (index == 2) {

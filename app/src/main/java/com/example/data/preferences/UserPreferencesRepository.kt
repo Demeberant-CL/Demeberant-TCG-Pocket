@@ -32,11 +32,11 @@ object ProfileAvatars {
 }
 
 enum class VisualStyle(val storedValue: String, val label: String, val description: String) {
-  GALLERY("gallery", "Galería", "Portadas grandes, paneles suaves y espacio para las cartas"),
-  EDITORIAL("editorial", "Editorial", "Títulos destacados, líneas rectas y portadas apiladas"),
-  COMPACT("compact", "Compacto", "Filas breves y más información en cada pantalla"),
-  DECISIONS("decisions", "Centro de decisiones", "Objetivos, intercambios y acciones en primer plano"),
-  ALBUM("album", "Álbum de colección", "Expansiones y faltantes en una portada de álbum");
+  GALLERY("gallery", "Galería", "Vitrina horizontal de cartas y acceso directo a tu colección"),
+  EDITORIAL("editorial", "Editorial", "Portada de revista, títulos grandes y secciones numeradas"),
+  COMPACT("compact", "Compacto", "Panel de filas con accesos rápidos y mínima separación"),
+  DECISIONS("decisions", "Centro de decisiones", "Cuatro acciones en mosaico, objetivos y propuestas de intercambio"),
+  ALBUM("album", "Álbum de colección", "Álbum en dos columnas con portadas y progreso por expansión");
   companion object { fun fromStored(value: String?) = entries.firstOrNull { it.storedValue == value } ?: GALLERY }
 }
 data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first(), val visualStyle: VisualStyle = VisualStyle.GALLERY, val trade: com.example.data.util.TradeSettings = com.example.data.util.TradeSettings())

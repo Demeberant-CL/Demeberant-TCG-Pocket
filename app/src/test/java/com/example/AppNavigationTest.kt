@@ -18,7 +18,8 @@ class AppNavigationTest {
     assertEquals(history, AppNavigation.open(history, 4))
     assertEquals(listOf(0, 1, 2), AppNavigation.open(history, 2))
     assertEquals(listOf(0), AppNavigation.open(history, 0))
-    assertTrue(runCatching { AppNavigation.open(history, 6) }.isFailure)
+    assertEquals(listOf(0, 6), AppNavigation.open(listOf(0), 6))
+    assertTrue(runCatching { AppNavigation.open(history, 7) }.isFailure)
   }
 
   @Test fun metaReturnsToItsOriginAndAcceptedProposalReturnsToExistingEditor() {

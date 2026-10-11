@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.clickable
+import com.example.ui.components.PocketCardImage
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,7 +26,7 @@ import com.example.ui.viewmodel.TcgViewModel
 @Composable
 fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier,
   onDecks: () -> Unit, onEditor: () -> Unit, onCreate: () -> Unit, onMeta: () -> Unit,
-  onTrade: () -> Unit, onCollection: (String?) -> Unit) {
+  onTrade: () -> Unit, onCollection: (String?) -> Unit, onTools: () -> Unit) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val decks by main.savedDecks.collectAsStateWithLifecycle()
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
@@ -51,8 +52,10 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     }
   }.sortedBy { it.second } }
   val target = decks.firstOrNull { it.cardListSerialized == prefs.trade.targetDeck }
-  val album = prefs.visualStyle == VisualStyle.ALBUM
-  LazyColumn(modifier.fillMaxSize().testTag("home_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(if (album) 16.dp else 12.dp)) {
+  val style = prefs.visualStyle
+  val album = style == VisualStyle.ALBUM
+  val showcase = inventory.filter { it.ownedCount > 0 }.take(6)
+  LazyColumn(modifier.fillMaxSize().testTag("home_list"), contentPadding = PaddingValues(if (style == VisualStyle.COMPACT) 12.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (style == VisualStyle.COMPACT) 6.dp else 16.dp)) {
     item {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ProfileAvatar(prefs.avatarId, Modifier.size(36.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
@@ -62,37 +65,108 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         }
         Box {
           TextButton(onClick = { chooseDesign = true }) { Text("Diseño") }
-          DropdownMenu(chooseDesign, onDismissRequest = { chooseDesign = false }) {
-            VisualStyle.entries.forEach { style -> DropdownMenuItem(text = { Text(style.label) }, onClick = { main.setVisualStyle(style); chooseDesign = false }) }
-          }
+
         }
       }
     }
     item {
-      Text(if (album) "Mi álbum" else "Tu próximo paso", style = MaterialTheme.typography.headlineMedium)
-      Text(if (album) "Explora expansiones y elige qué completar." else "Decide qué conseguir con las cartas que ya tienes.", style = MaterialTheme.typography.bodyMedium)
+      when (style) {
+        VisualStyle.GALLERY -> {
+          Text("Tu colección, en primer plano", style = MaterialTheme.typography.displayMedium)
+          Text("Una vitrina con las cartas que ya son tuyas.", style = MaterialTheme.typography.bodyMedium)
+        }
+        VisualStyle.EDITORIAL -> {
+          HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
+          Text("ATLAS / TU PORTADA", Modifier.padding(top = 12.dp), style = MaterialTheme.typography.labelLarge)
+          Text("Coleccionar.\nConstruir.\nIntercambiar.", style = MaterialTheme.typography.displayLarge)
+        }
+        VisualStyle.COMPACT -> {
+          Text("Panel rápido", style = MaterialTheme.typography.titleLarge)
+          Text("$distinct/${inventory.size} cartas · ${decks.size} mazos", style = MaterialTheme.typography.bodySmall)
+        }
+        VisualStyle.DECISIONS -> {
+          Text("¿Qué hacemos hoy?", style = MaterialTheme.typography.displayMedium)
+          Text("Tus objetivos y las acciones para avanzar.", style = MaterialTheme.typography.bodyMedium)
+        }
+        VisualStyle.ALBUM -> {
+          Text("Mi álbum", style = MaterialTheme.typography.displayLarge)
+          Text("$progress% del catálogo en tu colección", style = MaterialTheme.typography.bodyLarge)
+          LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
+        }
+      }
+    }
+    if (style == VisualStyle.GALLERY) item {
+      LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(showcase, key = { it.card.id }) { card ->
+          Column(Modifier.width(142.dp).clickable { onCollection(card.card.id.substringBeforeLast('-')) }) {
+            PocketCardImage(card.card.id, card.card.name, highResolution = true, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
+            Text(card.card.name, style = MaterialTheme.typography.titleSmall)
+            Text("${card.ownedCount} copias", style = MaterialTheme.typography.bodySmall)
+          }
+        }
+      }
+      if (showcase.isEmpty()) OutlinedButton(onClick = { onCollection(null) }) { Text("Explorar cartas") }
+      Button(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Abrir mi colección") }
+    }
+    if (style == VisualStyle.EDITORIAL) item {
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("01 / COLECCIÓN", style = MaterialTheme.typography.labelLarge)
+          Text("$distinct", style = MaterialTheme.typography.displayLarge)
+          Text("cartas diferentes de ${inventory.size}")
+          TextButton(onClick = { onCollection(null) }) { Text("Explorar →") }
+          HorizontalDivider()
+          Text("02 / ESTRATEGIA", style = MaterialTheme.typography.labelLarge)
+          TextButton(onClick = onCreate) { Text("Construir un mazo →") }
+        }
+        showcase.firstOrNull()?.let { card ->
+          PocketCardImage(card.card.id, card.card.name, highResolution = true, modifier = Modifier.weight(1f).aspectRatio(0.716f))
+        }
+      }
+    }
+    if (style == VisualStyle.DECISIONS) item {
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        HomeActionTile("Intercambiar", "${advice.offers.size} cartas para ofrecer", Modifier.weight(1f), onTrade)
+        HomeActionTile("Construir", "${decks.size} mazos guardados", Modifier.weight(1f), onCreate)
+      }
+      Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        HomeActionTile("Completar", "${inventory.size - distinct} cartas faltantes", Modifier.weight(1f)) { onCollection(null) }
+        HomeActionTile("Jugar", "Práctica, sobres y cálculo", Modifier.weight(1f), onTools)
+      }
+    }
+    if (style == VisualStyle.COMPACT) item {
+      Column {
+        HomeQuickRow("Colección", "$distinct cartas · $progress%", { onCollection(null) })
+        HomeQuickRow("Mazos", "${decks.size} guardados", onDecks)
+        HomeQuickRow("Intercambios", "${advice.offers.size} para ofrecer", onTrade)
+        HomeQuickRow("Herramientas del juego", "Práctica, sobres, probabilidades", onTools)
+      }
     }
     if (album) {
       item { Text("Expansiones", style = MaterialTheme.typography.titleMedium) }
-      items(expansions.take(6), key = { "exp_${it.key}" }) { group ->
-        val count = group.value.count { it.ownedCount > 0 }
-        OutlinedCard(onClick = { onCollection(group.key) }, modifier = Modifier.fillMaxWidth()) {
-          Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            group.value.firstOrNull { it.ownedCount == 0 }?.let { DeckThumbnail(it.card.id, "Faltante de ${group.key}") }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-              Text(group.key, style = MaterialTheme.typography.titleLarge)
-              Text("$count/${group.value.size} cartas · ${group.value.size - count} faltantes")
-              LinearProgressIndicator(progress = { count.toFloat() / group.value.size }, modifier = Modifier.fillMaxWidth())
-              Text("Ver faltantes y colección ›", style = MaterialTheme.typography.labelMedium)
+      items(expansions.take(6).chunked(2), key = { "exp_${it.first().key}" }) { pair ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          pair.forEach { group ->
+            val count = group.value.count { it.ownedCount > 0 }
+            Card(onClick = { onCollection(group.key) }, modifier = Modifier.weight(1f)) {
+              Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(group.key, style = MaterialTheme.typography.headlineLarge)
+                val cover = group.value.firstOrNull { it.ownedCount == 0 } ?: group.value.first()
+                PocketCardImage(cover.card.id, cover.card.name, highResolution = true, modifier = Modifier.fillMaxWidth().aspectRatio(0.9f))
+                Text("$count/${group.value.size}", style = MaterialTheme.typography.titleMedium)
+                LinearProgressIndicator(progress = { count.toFloat() / group.value.size }, modifier = Modifier.fillMaxWidth())
+                Text("${group.value.size - count} faltantes", style = MaterialTheme.typography.bodySmall)
+              }
             }
           }
+          if (pair.size == 1) Spacer(Modifier.weight(1f))
         }
       }
       item { TextButton(onClick = { onCollection(null) }) { Text("Ver todas las expansiones") } }
     }
     item {
-      Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (style == VisualStyle.EDITORIAL || style == VisualStyle.COMPACT) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(if (style == VisualStyle.COMPACT) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text("Tu objetivo", style = MaterialTheme.typography.labelLarge)
           Text(target?.name ?: prefs.trade.targetName.takeIf { it.isNotBlank() } ?: (if (prefs.trade.targetDeck.isNotBlank()) "Mazo objetivo guardado" else null) ?: prefs.trade.expansion.takeIf { it.isNotBlank() }?.let { "Completar $it" } ?: "Elige un mazo o una expansión", style = MaterialTheme.typography.titleLarge)
           Text(if (prefs.trade.targetDeck.isNotBlank()) "${advice.deckMissing} copias faltantes · tus mazos están protegidos"
@@ -160,11 +234,79 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
     }
     item {
+      TextButton(onClick = onTools, modifier = Modifier.fillMaxWidth()) { Text("Abrir herramientas del juego") }
       HorizontalDivider()
       TextButton(onClick = onMeta, modifier = Modifier.fillMaxWidth()) { Text("Ver meta y actualizar") }
       Text(snapshot?.let { "Muestra de ${it.tournaments} torneos · ${it.players} listas · actualizada ${it.updated.take(10)}" }
         ?: "Resultados públicos para comparar mazos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }
+  if (chooseDesign) AlertDialog(onDismissRequest = { chooseDesign = false },
+    title = { Text("Elige tu pantalla de inicio") },
+    text = {
+      LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(VisualStyle.entries.toList()) { option ->
+          OutlinedCard(onClick = { main.setVisualStyle(option); chooseDesign = false }, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = style == option, onClick = null)
+                Text(option.label, style = MaterialTheme.typography.titleSmall)
+              }
+              DesignMiniature(option)
+              Text(option.description, style = MaterialTheme.typography.bodySmall)
+            }
+          }
+        }
+      }
+    }, confirmButton = { TextButton(onClick = { chooseDesign = false }) { Text("Cerrar") } })
   if (chooseAvatar) AvatarPickerDialog(prefs.avatarId, onSave = { main.setProfileAvatar(it); chooseAvatar = false }, onClose = { chooseAvatar = false })
+}
+
+@Composable
+private fun HomeActionTile(title: String, detail: String, modifier: Modifier, onClick: () -> Unit) {
+  FilledTonalButton(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.large, contentPadding = PaddingValues(16.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text(title, style = MaterialTheme.typography.titleLarge)
+      Text(detail, style = MaterialTheme.typography.bodySmall)
+    }
+  }
+}
+
+@Composable
+private fun HomeQuickRow(title: String, detail: String, onClick: () -> Unit) {
+  Surface(onClick = onClick) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+      Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+      Text(detail, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+      Text(" ›")
+    }
+  }
+  HorizontalDivider()
+}
+
+@Composable
+private fun DesignMiniature(style: VisualStyle) {
+  @Composable fun Block(modifier: Modifier) {
+    Surface(modifier, color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {}
+  }
+  when (style) {
+    VisualStyle.GALLERY -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(3) { Block(Modifier.weight(1f).height(72.dp)) } }
+    VisualStyle.EDITORIAL -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+      Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("ATLAS", style = MaterialTheme.typography.headlineLarge)
+        HorizontalDivider(thickness = 3.dp)
+        Text("Colección / Estrategia", style = MaterialTheme.typography.labelSmall)
+      }
+      Block(Modifier.width(50.dp).height(72.dp))
+    }
+    VisualStyle.COMPACT -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { repeat(4) { Block(Modifier.fillMaxWidth().height(12.dp)) } }
+    VisualStyle.DECISIONS -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { repeat(2) {
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { repeat(2) { Block(Modifier.weight(1f).height(28.dp)) } }
+    } }
+    VisualStyle.ALBUM -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { repeat(2) {
+      Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Block(Modifier.fillMaxWidth().height(60.dp)); LinearProgressIndicator(progress = { 0.6f }, modifier = Modifier.fillMaxWidth())
+      }
+    } }
+  }
 }
