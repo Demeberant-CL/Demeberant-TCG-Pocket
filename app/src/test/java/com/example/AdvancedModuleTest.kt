@@ -159,6 +159,16 @@ class AdvancedModuleTest {
     assertTrue(runCatching { AiValidator.parse(output.toString(), owned, target) }.isFailure)
   }
 
+  @Test fun missingReplacementCountIsRejectedWithoutGuessingAndExplained() {
+    val output = proposal()
+    output.put("replacements", JSONArray().put(JSONObject().put("removedId", "A1-001")
+      .put("addedId", "A1-002").put("reason", "Ejemplo")))
+    val error = runCatching { AiValidator.parse(output.toString(), candidates()) }.exceptionOrNull()
+    assertTrue(error is IllegalArgumentException)
+    assertTrue(error!!.message.orEmpty().contains("omitió la cantidad"))
+    assertTrue(error.message.orEmpty().contains("se conserva"))
+  }
+
   @Test fun httpInterceptorNeverLogsCredentialsQueriesOrBodies() {
     val server = MockWebServer(); server.start()
     try {

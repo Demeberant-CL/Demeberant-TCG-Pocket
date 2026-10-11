@@ -43,7 +43,7 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
     } else key(retry) {
       AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
-        onSuccess = { loading = false }, onError = { state ->
+        onSuccess = { loading = false; ImageAvailability.session.recordSuccess(candidates[index]) }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {
             ImageAvailability.session.recordMissing(candidates[index])
             if (index < candidates.lastIndex) index++ else { failed = true; loading = false }

@@ -10,21 +10,18 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-enum class ThemeMode(val storedValue: String) {
-  LIGHT("light"), DARK("dark"), SYSTEM("system");
+enum class ThemeMode(val storedValue: String, val label: String, val dark: Boolean?) {
+  LIGHT("light", "Claro terracota", false), DARK("dark", "Oscuro naranja", true),
+  TEAL("teal", "Oscuro turquesa", true), AMOLED("amoled", "Negro AMOLED", true),
+  NIGHT("night", "Azul noche", true), VIOLET("violet", "Violeta", true),
+  FOREST("forest", "Bosque", true), SAND("sand", "Arena", false),
+  SYSTEM("system", "Seguir al sistema", null);
 
-  fun isDark(systemDark: Boolean): Boolean = when (this) {
-    LIGHT -> false
-    DARK -> true
-    SYSTEM -> systemDark
-  }
+  fun isDark(systemDark: Boolean): Boolean = dark ?: systemDark
 
   companion object {
-    fun fromStored(value: String?): ThemeMode = when (value) {
-      "light", "blue" -> LIGHT
-      "dark" -> DARK
-      else -> SYSTEM
-    }
+    fun fromStored(value: String?): ThemeMode = if (value == "blue") LIGHT
+      else entries.firstOrNull { it.storedValue == value } ?: SYSTEM
   }
 }
 

@@ -47,8 +47,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       }
     } catch (e: CancellationException) { throw e }
     catch (e: Exception) {
-      ErrorLogManager.event("META_FETCH", "Tournament refresh failed", e)
+      if (e is com.example.data.meta.NoRecentTournamentResults) ErrorLogManager.event("META_EMPTY", "No complete recent tournament results")
+      else ErrorLogManager.event("META_FETCH", "Tournament refresh failed", e)
       message.value = when (e) {
+        is com.example.data.meta.NoRecentTournamentResults -> "Todavía no hay resultados completos recientes. Se conserva la muestra guardada."
+        is com.example.data.meta.TournamentSourceUnavailable -> "El servicio de torneos no está disponible. Se conserva la muestra guardada; puedes reintentar más tarde."
         is java.io.IOException -> "No se pudo completar la descarga. Revisa la conexión y vuelve a intentarlo. Se conserva el meta guardado."
         else -> "No se obtuvieron resultados completos válidos. Se conserva el meta guardado."
       }

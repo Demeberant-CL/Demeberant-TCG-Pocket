@@ -53,6 +53,8 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
   val rules = remember(rulesList) { rulesList.associateBy { it.cardId } }
   var adding by rememberSaveable { mutableStateOf(false) }
   var tab by rememberSaveable { mutableIntStateOf(0) }
+  var leaving by remember { mutableStateOf(false) }
+  fun leave() { if (viewModel.hasUnsavedDeckChanges()) leaving = true else onBack() }
   var showActions by remember { mutableStateOf(false) }
   var confirmNew by remember { mutableStateOf(false) }
   var create by remember { mutableStateOf(false) }
@@ -65,6 +67,14 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
   val candidates = remember(inventory, filter, counts, rules) { filter.select(inventory, counts, rules) }
   val expansions = remember(inventory) { inventory.map { it.card.id.substringBeforeLast('-') }.distinct().sorted() }
   LaunchedEffect(filter) { visibleLimit = 80 }
+  if (chatPage == 5) {
+    BackHandler { chatPage = 0 }
+    Column(modifier.fillMaxSize()) {
+      TextButton(onClick = { chatPage = 0 }) { Text("← Editor del mazo") }
+      LocalDeckPlannerScreen(viewModel, { chatPage = 0 }, Modifier.weight(1f), reference = current)
+    }
+    return
+  }
   if (chatPage == 3 || chatPage == 4) {
     BackHandler { chatPage = 0 }
     Column(modifier.fillMaxSize()) {
@@ -86,13 +96,14 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
     }
     return
   }
+  BackHandler(enabled = !showFilters && !adding) { leave() }
   BackHandler(enabled = showFilters || adding) { if (showFilters) showFilters = false else adding = false }
   if (showFilters) {
     DeckCardFiltersScreen(filter, expansions, candidates.size, { filter = it }, { showFilters = false }, modifier)
     return
   }
   Column(modifier.fillMaxSize()) {
-    TextButton(onClick = onBack) { Text("← Mis mazos") }
+    TextButton(onClick = { leave() }) { Text("← Mis mazos") }
     Surface(tonalElevation = 2.dp) {
       Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,10 +117,14 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
               Icon(Icons.Filled.MoreVert, "Opciones del mazo")
             }
             DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+              DropdownMenuItem(text = { Text("Proponer mejoras sin IA") }, enabled = !generating,
+                onClick = { showActions = false; chatPage = 5 })
               DropdownMenuItem(text = { Text("Crear con mis cartas") }, enabled = !generating,
                 onClick = { showActions = false; create = true })
               DropdownMenuItem(text = { Text("Nuevo vacío") }, enabled = !generating,
                 onClick = { showActions = false; confirmNew = true })
+              DropdownMenuItem(text = { Text("Probabilidad de robo") }, onClick = { showActions = false; chatPage = 4 })
+              DropdownMenuItem(text = { Text("Tapete de práctica") }, enabled = current.totalCardCount == 20, onClick = { showActions = false; chatPage = 3 })
               DropdownMenuItem(text = { Text("Consultar mi IA") }, enabled = !generating,
                 onClick = { showActions = false; chatAction = "chat"; chatPage = 1 })
             }
@@ -232,10 +247,7 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
           OutlinedButton(enabled = current.cards.isNotEmpty(), onClick = {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, current.toExportText()) }, "Compartir mazo"))
           }, shape = MaterialTheme.shapes.medium) { Text("Compartir lista") }
-          if (current.totalCardCount == 20 && current.energyTypes.isNotEmpty()) com.example.ui.components.DeckQrExportButton(current)
-          else Text("Exportar al juego requiere 20 cartas y energías seleccionadas.", style = MaterialTheme.typography.bodySmall)
-          OutlinedButton(onClick = { chatPage = 4 }) { Text("Probabilidad de robo") }
-          OutlinedButton(enabled = current.totalCardCount == 20, onClick = { chatPage = 3 }) { Text("Tapete de práctica") }
+
         }
       }
       if (current.validationWarnings.isNotEmpty()) item {
@@ -243,14 +255,27 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
         current.validationWarnings.forEach { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
       }
     }
-    Surface(tonalElevation = 3.dp) {
-      Button(onClick = { viewModel.saveCurrentDeck(allowDraft = true) },
-        enabled = current.cards.isNotEmpty() && current.name.isNotBlank() && !generating,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = MaterialTheme.shapes.medium) {
-        Text(if (current.totalCardCount == 20) "Guardar mazo · 20/20" else "Guardar borrador · ${current.totalCardCount}/20")
+    Surface(color = MaterialTheme.colorScheme.background) {
+      Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Button(onClick = { viewModel.saveCurrentDeck(allowDraft = true) },
+          enabled = current.cards.isNotEmpty() && current.name.isNotBlank() && !generating,
+          modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+          Text(if (current.totalCardCount == 20) "Guardar mazo · 20/20" else "Guardar borrador · ${current.totalCardCount}/20")
+        }
+        if (current.totalCardCount == 20 && current.energyTypes.isNotEmpty() && current.validationWarnings.isEmpty()) {
+          com.example.ui.components.DeckQrExportButton(current, Modifier.fillMaxWidth(), onPrepare = { ready ->
+            viewModel.saveCurrentDeck(allowDraft = false, onSaved = ready)
+          })
+        }
       }
     }
   }
+  if (leaving) AlertDialog(onDismissRequest = { leaving = false }, title = { Text("Guardar los cambios") },
+    text = { Text("Puedes guardar el mazo antes de volver a tu biblioteca.") },
+    confirmButton = { TextButton(onClick = { viewModel.saveCurrentDeck(allowDraft = true, onSaved = { leaving = false; onBack() }) },
+      enabled = current.cards.isNotEmpty() && current.name.isNotBlank()) { Text("Guardar y volver") } },
+    dismissButton = { TextButton(onClick = { leaving = false; onBack() }) { Text("Volver sin guardar") } })
+
   if (confirmNew) AlertDialog(onDismissRequest = { confirmNew = false }, title = { Text("Empezar un mazo vacío") },
     text = { Text("Reemplaza el borrador abierto. Los mazos guardados y la colección se conservan.", modifier = Modifier.verticalScroll(rememberScrollState())) },
     confirmButton = { TextButton(onClick = { viewModel.newManualDeck(); adding = true; confirmNew = false }) { Text("Crear vacío") } },
@@ -267,6 +292,6 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
 @Composable
 fun DeckThumbnail(id: String, name: String) {
   com.example.ui.components.PocketCardImage(id = id, name = name,
-    modifier = Modifier.width(52.dp).height(74.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    modifier = Modifier.width(72.dp).height(102.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh),
     unavailable = { Text(name, modifier = Modifier.padding(4.dp), fontSize = 10.sp, textAlign = TextAlign.Center, maxLines = 4) })
 }

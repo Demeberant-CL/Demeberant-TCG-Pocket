@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
       val userPrefs by viewModel.userPreferences.collectAsStateWithLifecycle()
 
       PocketAppTheme(
-        darkTheme = userPrefs.themeMode.isDark(androidx.compose.foundation.isSystemInDarkTheme())
+        themeMode = userPrefs.themeMode
       ) {
         var navigation by rememberSaveable { mutableStateOf(listOf(0)) }
         val selectedTabIndex = navigation.last()
@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
           showExitConfirmation = false
           navigation = com.example.ui.AppNavigation.open(navigation, destination)
         }
+        var deckDetail by rememberSaveable { mutableStateOf(false) }
         var deckEditorRequest by rememberSaveable { mutableIntStateOf(0) }
         var moreSection by rememberSaveable { mutableIntStateOf(-1) }
         var metaReturnTab by rememberSaveable { mutableIntStateOf(0) }
@@ -105,7 +106,7 @@ class MainActivity : ComponentActivity() {
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
-            BoxWithConstraints {
+            if (!(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
             val density = LocalDensity.current
             val textMeasurer = rememberTextMeasurer()
             val widestLabel = labels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelLarge).size.width }
@@ -154,7 +155,7 @@ class MainActivity : ComponentActivity() {
               onEditor = { deckEditorRequest++; navigateTo(2) },
               onMeta = { metaReturnTab = 0; navigateTo(5) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
-            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
+            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }

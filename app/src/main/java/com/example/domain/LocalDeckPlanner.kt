@@ -134,7 +134,7 @@ object LocalDeckPlanner {
         roleMap[it.card.id].orEmpty().sumOf { role -> when(role) {
           CardRole.DRAW, CardRole.SEARCH -> 5; CardRole.ENERGY -> 4; CardRole.SWITCH -> 3; else -> 2
         } }
-      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(100)
+      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(40)
       for (hero in anchors) {
         val lineage = chain(hero.card) ?: continue
         val entries = linkedMapOf<String, DeckCardEntry>()
@@ -192,7 +192,9 @@ object LocalDeckPlanner {
           val next = mutableListOf<LinkedHashMap<String, DeckCardEntry>>()
           trainerPool.forEach { item ->
             val key = name(item.card.rulesName)
-            if (count(key) < 2) {
+            val targets = namedTargets[item.card.id].orEmpty()
+            val matches = targets.isEmpty() || entries.values.any { !trainer(it.card) && name(it.card.rulesName) in targets }
+            if (count(key) < 2 && matches) {
               val copy = LinkedHashMap(entries); addName(key, 1, copy)
               if (copy.values.sumOf { it.count } > total()) next.add(copy)
             }
@@ -235,10 +237,20 @@ object LocalDeckPlanner {
           "Núcleo completo entre 8 cartas al azar: ${String.format(Locale.ROOT, "%.1f", chance * 100)} %. " +
             "Sin búsqueda, robo extra ni básico inicial garantizado; no estima turnos ni victorias."
         } else "Completa las 20 cartas para calcular consistencia."
+        val supportNames = rows.filter { CardRole.DRAW in roleMap[it.card.id].orEmpty() || CardRole.SEARCH in roleMap[it.card.id].orEmpty() }
+          .map { it.card.rulesName }.distinct().take(4)
+        val attack = data[hero.card.id]?.attacks.orEmpty().filter { usable(it, palette) }.minByOrNull { it.cost!!.size }
+        val playPlan = buildList {
+          add("Plan sugerido: empieza con un básico de la línea de ${hero.card.rulesName} y prepara su evolución cuando corresponda.")
+          if (lineage.size > 1) add("Evolución: reúne ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}; cada etapa necesita su carta previa.")
+          if (attack != null) add("Preparación: uno de sus ataques conocidos cuesta ${attack.cost!!.size} energías. Revisa su efecto antes de usarlo.")
+          if (supportNames.isNotEmpty()) add("Soporte identificado: ${supportNames.joinToString()}. Busca el núcleo y amplía tu mano según el texto de cada carta.")
+          add("Prioridad local: ${options.style.label.lowercase(Locale.ROOT)}. Es una orientación heurística, no una simulación de combate.")
+        }
         val reasons = listOf("Núcleo: ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}",
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
           consistency,
-          "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.")
+          "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
         val strategy = (reasons + cautions).joinToString("\n")
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
           strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))

@@ -436,7 +436,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   // Saved Decks Persistence
-  fun saveCurrentDeck(customName: String? = null, allowDraft: Boolean = false) {
+  fun saveCurrentDeck(customName: String? = null, allowDraft: Boolean = false, onSaved: () -> Unit = {}) {
     viewModelScope.launch {
       val deck = _generatedDeck.value ?: return@launch
       if (!allowDraft && deck.validationWarnings.isNotEmpty()) {
@@ -456,7 +456,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         )
         editingDeckId = repository.saveDeck(entity)
         savedDraftSnapshot = deck
-        _csvStatusMessage.value = "¡Mazo '${entity.name}' guardado correctamente en tu base de datos!"
+        _csvStatusMessage.value = "Mazo guardado."
+        onSaved()
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

@@ -53,7 +53,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
+fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0, onDetailChange: (Boolean) -> Unit = {}) {
   var section by rememberSaveable { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
@@ -63,7 +63,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
     }
   }
   BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
-  LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
+  LaunchedEffect(section) { onDetailChange(section != 0); com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }

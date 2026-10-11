@@ -50,16 +50,21 @@ fun SettingsScreen(
               Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.titleMedium)
               Column(Modifier.selectableGroup()) {
                 ThemeMode.entries.forEach { mode ->
-                  val label = stringResource(when (mode) {
-                    ThemeMode.LIGHT -> R.string.theme_light
-                    ThemeMode.DARK -> R.string.theme_dark
-                    ThemeMode.SYSTEM -> R.string.theme_system
-                  })
+                  val label = mode.label
+                  val preview = com.example.ui.theme.pocketColorScheme(mode)
                   Row(Modifier.fillMaxWidth().selectable(selected = themeMode == mode, role = Role.RadioButton,
                     onClick = { onThemeModeChange(mode) }).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = themeMode == mode, onClick = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(label)
+                    Column(Modifier.weight(1f)) {
+                      Text(label, style = MaterialTheme.typography.titleSmall)
+                      Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 6.dp)) {
+                        listOf(preview.background, preview.surface, preview.primary).forEach { color ->
+                          Surface(color = color, shape = MaterialTheme.shapes.small, modifier = Modifier.width(32.dp).height(14.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {}
+                        }
+                      }
+                    }
                   }
                 }
               }

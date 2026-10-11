@@ -40,8 +40,13 @@ object AiValidator {
     val rows = root.getJSONArray("replacements")
     val replacements = (0 until rows.length()).map { i ->
       val row = rows.getJSONObject(i)
-      val count = row.getInt("count")
-      require(count in 1..2 && row.get("count").toString() == count.toString())
+      require(row.has("count") && !row.isNull("count")) {
+        "La IA omitió la cantidad de un reemplazo. Reintenta la consulta; el mazo abierto se conserva."
+      }
+      val count = row.optInt("count", -1)
+      require(count in 1..2 && row.get("count").toString() == count.toString()) {
+        "La IA devolvió una cantidad de reemplazo no válida. No se aplicaron cambios."
+      }
       AiReplacement(CardId.normalize(row.getString("removedId")), CardId.normalize(row.getString("addedId")),
         count, row.getString("reason").take(1000))
     }

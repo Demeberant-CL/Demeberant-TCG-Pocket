@@ -57,6 +57,8 @@ object DeckChat {
       Una propuesta usa SOLO IDs de available, cantidades <= quantity, exactamente 20 cartas, hasta dos por nombre,
       al menos un Pokémon básico y preevoluciones necesarias. No selecciones cartas de categoría o tipo desconocidos.
       Si no puedes construir un mazo válido, explica qué falta y devuelve proposal=null.
+      Dentro de proposal, replacements debe ser SIEMPRE []: los cambios se calculan comparando ambas listas.
+      No omitas count en ninguna carta.
       Describe las razones de los cambios y las limitaciones de los efectos desconocidos. No afirmes que ya aplicaste cambios.
       Mantén el nombre del mazo si no se solicita otro. Energías: entre 1 y 3 distintas de Planta, Fuego, Agua, Rayo, Psíquico, Lucha, Oscuridad o Metal.
       Devuelve SOLO JSON con estructura {"message":"Respuesta conversacional","proposal":null} o

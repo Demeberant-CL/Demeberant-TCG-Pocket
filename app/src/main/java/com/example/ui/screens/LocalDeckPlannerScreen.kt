@@ -19,7 +19,7 @@ import com.example.ui.components.DexPanel
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier, reference: com.example.data.repository.GeneratedDeck? = null) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val plans by main.localDeckPlans.collectAsStateWithLifecycle()
   val busy by main.isGeneratingDeck.collectAsStateWithLifecycle()
@@ -79,6 +79,15 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
           Text(plan.reasons.first(), style = MaterialTheme.typography.bodyMedium)
           plan.cautions.forEach { Text(it, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant) }
+          if (reference != null) {
+            val changes = com.example.domain.DeckChat.changes(reference, plan.deck)
+            Text("Reemplazos propuestos", style = MaterialTheme.typography.titleSmall)
+            val names = inventory.associate { it.card.id to it.card.name }
+            if (changes.first.isEmpty() && changes.second.isEmpty()) Text("La lista coincide con tu mazo.")
+            changes.first.forEach { Text("Quitar ${it.count}× ${names[it.id] ?: it.id}", style = MaterialTheme.typography.bodySmall) }
+            changes.second.forEach { Text("Añadir ${it.count}× ${names[it.id] ?: it.id}", style = MaterialTheme.typography.bodySmall) }
+            Text("La propuesta compara ritmo, soporte y líneas de evolución. Revisa las diferencias antes de abrirla.", style = MaterialTheme.typography.bodySmall)
+          }
           TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Ocultar cartas" else "Ver cartas") }
           if (expanded) {
             plan.reasons.drop(2).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }

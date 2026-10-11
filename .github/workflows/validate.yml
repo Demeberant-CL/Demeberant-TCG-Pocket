@@ -132,7 +132,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-offline-data'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-polished'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
             large-test.log
 
   delivery:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-offline-data'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-polished'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     steps:
@@ -197,7 +197,7 @@ jobs:
         run: |
           version="1.0.$((1000 + GITHUB_RUN_NUMBER))"
           mv delivery/app-debug.apk "delivery/TCG-Dex-$version.apk"
-          printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nNavegación simplificada, Ajustes completos, plantillas en el editor y reintentos de IA. Diseño B gris oscuro y naranja.\nSincronizar colección está en Ajustes y en el acceso rápido de Colección.\nLa colección y los mazos se conservan.\n' "$version" > delivery/LEEME.txt
+          printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nOcho temas, biblioteca visual y QR directo desde el editor. Correcciones de imágenes, respuestas de IA y torneos.\nSincronizar colección está en Ajustes y en el acceso rápido de Colección.\nLa colección y los mazos se conservan.\n' "$version" > delivery/LEEME.txt
           (cd delivery && zip "TCG-Dex-$version.zip" "TCG-Dex-$version.apk" LEEME.txt signing-certificate.txt)
           (cd preview-assets && zip -r "../delivery/TCG-Dex-$version-vista-previa.zip" . -i '*.png')
       - uses: actions/upload-artifact@v4

@@ -14,6 +14,11 @@ class PocketApplication : Application(), coil.ImageLoaderFactory {
   override fun onCreate() {
     super.onCreate()
     ErrorLogManager.init(this)
+    // Restore a bounded, expiring absence cache off the UI thread.
+    java.util.concurrent.Executors.newSingleThreadExecutor().let { worker ->
+      worker.execute { try { runCatching { com.example.data.network.PocketHttp.missingResources.restore(this) }
+        .onFailure { ErrorLogManager.event("IMAGE_CACHE", "Could not restore absence cache", it) } } finally { worker.shutdown() } }
+    }
     @Suppress("DEPRECATION")
     val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "unknown"
     ErrorLogManager.event("APP_START", "version=$version api=${android.os.Build.VERSION.SDK_INT}")
