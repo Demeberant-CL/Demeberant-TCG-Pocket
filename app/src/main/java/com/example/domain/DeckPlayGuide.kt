@@ -29,6 +29,11 @@ object DeckPlayGuide {
       appendLine("OBJETIVO")
       appendLine(attacker?.let { "Prepara a ${it.card.rulesName} como atacante y conserva un Pokémon de reserva. Prioriza ataques que puedas pagar con las energías elegidas." }
         ?: "Elige tu atacante principal antes de jugar; este mazo no tiene Pokémon identificados.")
+      appendLine("\nPOR QUÉ ESTAS CARTAS")
+      attacker?.let { appendLine("${it.card.rulesName}: atacante principal seleccionado por daño y coste conocidos. Sus condiciones pueden limitar el daño real.") }
+      listOf(CardRole.DRAW, CardRole.SEARCH, CardRole.ENERGY, CardRole.HEAL, CardRole.SWITCH).forEach { role ->
+        support(role).takeIf(String::isNotBlank)?.let { appendLine("${role.label}: $it. La función se identifica del texto, no equivale a una sinergia comprobada.") }
+      }
       appendLine("\nINICIO")
       appendLine(if (basics.isEmpty()) "Falta un Pokémon básico: revisa la lista antes de jugar."
         else "Básicos disponibles: ${basics.joinToString { "${it.count}× ${it.card.rulesName}" }}. Elige el activo según su retirada, PS y coste de ataque; prepara el resto en banca.")

@@ -12,6 +12,12 @@ class LocalDeckPlannerTest {
       70,type,"","",rulesName=name,category=if(type=="Entrenador") "item" else "pokemon",stage=stage,evolvesFrom=parent)
   private fun owned(card: PokemonCard, count: Int = 2) = CardWithInventory(card,count,false)
   private fun attack(cost: List<String>, damage: String = "60") = CombatData(100,1,listOf(CombatAttack(cost,damage)))
+  @Test fun descriptiveAttachedEnergyAndOpponentDrawAreNotOurAcceleration() {
+    assertFalse(CardRole.ENERGY in RoleClassifier.classify("This attack does 20 damage for each energy attached to this Pokémon."))
+    assertFalse(CardRole.DRAW in RoleClassifier.classify("Your opponent draws 2 cards."))
+    assertTrue(CardRole.ENERGY in RoleClassifier.classify("Attach a Water Energy to your Pokémon."))
+    assertTrue(CardRole.DRAW in RoleClassifier.classify("Draw 2 cards."))
+  }
   @Test fun lostAttackTurnReducesRankingAgainstOtherwiseIdenticalAttacker() {
     val hero = card(1, "Hero")
     val pool = listOf(owned(hero)) + (2..18).map { owned(card(it, type = "Entrenador")) }

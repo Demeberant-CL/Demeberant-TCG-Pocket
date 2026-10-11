@@ -186,6 +186,10 @@ object LocalDeckPlanner {
           value -= (outsideFamilies.size - 1).coerceAtLeast(0) * 4.0
           val expensive = pokemon.filter { row -> costs[row.card.id].orEmpty().minOrNull()?.let { it >= 3 } == true }.sumOf { it.count }
           if (accelerators == 0) value -= (expensive - 2).coerceAtLeast(0) * 2.5
+          if (rows.sumOf { it.count } == 20) {
+            val coreQuantities = lineage.map { key -> rows.filter { name(it.card.rulesName) == key }.sumOf { it.count } }
+            value += DeckConsistency.allPieces(20, coreQuantities, 8) * 20.0
+          }
           val supporters = rows.filter { it.card.category.equals("supporter", true) }.sumOf { it.count }
           value -= (supporters - 7).coerceAtLeast(0) * 2.0
           value -= rows.filter { trainer(it.card) && data[it.card.id]?.text.isNullOrBlank() }.sumOf { it.count } * 1.5
@@ -232,19 +236,27 @@ object LocalDeckPlanner {
             .thenBy { it.keys.sorted().joinToString() })
           if (best != null) { entries.clear(); entries.putAll(best) }
         }
-        repeat(2) {
+        // Improve all non-core slots, including support Pokémon, rather than trainers alone.
+        // A candidate must preserve the selected evolution core and every other evolution dependency.
+        repeat(4) {
           if (total() == 20) {
-            val originalScore = score(entries.values)
-            var bestScore = originalScore
+            var bestScore = score(entries.values)
             var bestRows: LinkedHashMap<String, DeckCardEntry>? = null
-            entries.values.filter { trainer(it.card) }.forEach { remove ->
-              trainerPool.forEach { add ->
-                if (add.card.id != remove.card.id && count(name(add.card.rulesName)) < 2 &&
+            val replacements = (trainerPool + supportPool).distinctBy { it.card.id }
+            entries.values.filter { name(it.card.rulesName) !in lineage }.forEach { remove ->
+              replacements.forEach { add ->
+                val key = name(add.card.rulesName)
+                if (add.card.id != remove.card.id && count(key) < 2 &&
                   (namedTargets[add.card.id].orEmpty().isEmpty() || entries.values.any { name(it.card.rulesName) in namedTargets[add.card.id].orEmpty() })) {
                   val copy = LinkedHashMap(entries)
                   if (remove.count == 1) copy.remove(remove.card.id) else copy[remove.card.id] = remove.copy(count = remove.count - 1)
-                  addName(name(add.card.rulesName), 1, copy)
-                  if (copy.values.sumOf { it.count } == 20) {
+                  addName(key, 1, copy)
+                  val quantities = copy.values.groupBy { name(it.card.rulesName) }.mapValues { (_, group) -> group.sumOf { it.count } }
+                  val coherent = copy.values.all { row ->
+                    trainer(row.card) || row.card.evolvesFrom.isBlank() ||
+                      (quantities[name(row.card.evolvesFrom)] ?: 0) >= row.count
+                  }
+                  if (copy.values.sumOf { it.count } == 20 && coherent) {
                     val value = score(copy.values)
                     if (value > bestScore + 0.01) { bestScore = value; bestRows = copy }
                   }
