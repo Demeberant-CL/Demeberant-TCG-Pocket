@@ -30,7 +30,7 @@ fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier
   val manualTargets = tokens.mapNotNull { runCatching { CardId.normalize(it) }.getOrNull() }.toSet()
   val targets = if (manualTargets.isEmpty()) automaticTargets else manualTargets
   val searchResults = remember(inventory, query) { if (query.isBlank()) emptyList() else inventory.filter { it.card.name.contains(query, true) || it.card.id.contains(query, true) }.take(20) }
-  val coverage = remember(inventory, targets) { CollectionInsights.coverage(inventory.filter { prefs.trade.expansion.isBlank() || it.card.id.substringBeforeLast('-') == prefs.trade.expansion }, targets).filter { it.score > 0 } }
+  val coverage = remember(inventory, targets, prefs.trade.expansion, manualTargets) { CollectionInsights.coverage(inventory.filter { prefs.trade.expansion.isBlank() || it.card.id.substringBeforeLast('-') == prefs.trade.expansion || it.card.id in targets }.map { if (manualTargets.isEmpty() && it.card.id in automaticTargets) it.copy(ownedCount = 0) else it }, targets).filter { it.score > 0 } }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Plan para conseguir cartas", style = MaterialTheme.typography.titleLarge)
