@@ -52,6 +52,8 @@ class DexVisualTest {
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
     val homeModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+    compose.runOnIdle { homeModel.setTradeSettings(com.example.data.util.TradeSettings()) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.trade == com.example.data.util.TradeSettings() }
     compose.onNodeWithTag("home_list").performScrollToNode(hasText("Elegir objetivo e intercambios"))
     compose.onNodeWithText("Elegir objetivo e intercambios").performClick()
     compose.onNodeWithText("Asesor de intercambios").assertIsDisplayed()
