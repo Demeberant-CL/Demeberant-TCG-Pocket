@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import com.example.data.util.*
 import com.example.ui.viewmodel.TcgViewModel
 import kotlinx.coroutines.*
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
@@ -35,6 +38,7 @@ fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
   var error by remember { mutableStateOf<String?>(null) }
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
+  val listState = rememberLazyListState()
   val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
     if (uri != null) scope.launch {
       try {
@@ -48,7 +52,7 @@ fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
     }
   }
   val advice = remember(inventory, decks, settings, peer) { TradeAdvisor.analyze(inventory, decks, settings, peer) }
-  LazyColumn(modifier.fillMaxSize().testTag("trade_advisor_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  LazyColumn(modifier.fillMaxSize().testTag("trade_advisor_list"), state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Asesor de intercambios", style = MaterialTheme.typography.headlineMedium)
       Text("Elige qué conseguir y qué copias puedes ofrecer sin desarmar tus mazos.", style = MaterialTheme.typography.bodyMedium)
@@ -67,12 +71,14 @@ fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
       Text("Tus mazos conservan sus copias exactas aunque reduzcas la reserva. No se suman reservas entre mazos que comparten cartas.", style = MaterialTheme.typography.bodySmall)
       if (settings.targetDeck.isNotBlank()) Text("${advice.deckMissing} copias faltantes para el mazo objetivo")
     }
-    item {
+    stickyHeader {
+      Surface(color = MaterialTheme.colorScheme.surface) {
       Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Recomendados", "Para ofrecer", "Qué conseguir", "Protección").forEachIndexed { n, label ->
-          FilterChip(selected = tab == n, onClick = { tab = n; query = "" }, label = { Text(label) })
+          FilterChip(selected = tab == n, onClick = { tab = n; query = ""; scope.launch { listState.scrollToItem(0) } }, label = { Text(label) })
         }
       }
+    }
     }
     item {
       OutlinedButton(onClick = { picker.launch("*/*") }) { Text("Comparar colección de un amigo") }

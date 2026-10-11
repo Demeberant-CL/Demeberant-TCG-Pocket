@@ -61,6 +61,8 @@ class DexVisualTest {
     compose.onAllNodesWithText("Propuesta copiada").onFirst().assertExists()
     compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Protección"))
     compose.onNodeWithText("Protección").performClick()
+    compose.waitForIdle()
+    compose.onNodeWithTag("trade_advisor_list").performScrollToIndex(0)
     compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Buscar nombre o código"))
     compose.onNodeWithText("Buscar nombre o código").performTextInput(catalog.first().id)
     compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Bloquear para intercambio"))
