@@ -10,21 +10,18 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-enum class ThemeMode(val storedValue: String) {
-  LIGHT("light"), DARK("dark"), SYSTEM("system");
+enum class ThemeMode(val storedValue: String, val label: String, val dark: Boolean?) {
+  LIGHT("light", "Claro terracota", false), DARK("dark", "Oscuro naranja", true),
+  TEAL("teal", "Oscuro turquesa", true), AMOLED("amoled", "Negro AMOLED", true),
+  NIGHT("night", "Azul noche", true), VIOLET("violet", "Violeta", true),
+  FOREST("forest", "Bosque", true), SAND("sand", "Arena", false),
+  SYSTEM("system", "Seguir al sistema", null);
 
-  fun isDark(systemDark: Boolean): Boolean = when (this) {
-    LIGHT -> false
-    DARK -> true
-    SYSTEM -> systemDark
-  }
+  fun isDark(systemDark: Boolean): Boolean = dark ?: systemDark
 
   companion object {
-    fun fromStored(value: String?): ThemeMode = when (value) {
-      "light", "blue" -> LIGHT
-      "dark" -> DARK
-      else -> SYSTEM
-    }
+    fun fromStored(value: String?): ThemeMode = if (value == "blue") LIGHT
+      else entries.firstOrNull { it.storedValue == value } ?: SYSTEM
   }
 }
 
@@ -34,8 +31,15 @@ object ProfileAvatars {
   fun normalize(id: String?): String = id?.takeIf { it in ids } ?: ids.first()
 }
 
-data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first())
+enum class VisualStyle(val storedValue: String, val label: String, val description: String) {
+  GALLERY("gallery", "Galería", "Portadas grandes, paneles suaves y espacio para las cartas"),
+  EDITORIAL("editorial", "Editorial", "Títulos destacados, líneas rectas y portadas apiladas"),
+  COMPACT("compact", "Compacto", "Filas breves y más información en cada pantalla");
+  companion object { fun fromStored(value: String?) = entries.firstOrNull { it.storedValue == value } ?: GALLERY }
+}
+data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first(), val visualStyle: VisualStyle = VisualStyle.GALLERY)
 
+private val styleKey = stringPreferencesKey("visual_style")
 private val avatarKey = stringPreferencesKey("profile_avatar")
 private val themeKey = stringPreferencesKey("theme_name")
 
@@ -63,11 +67,12 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 class UserPreferencesRepository(private val context: Context) {
   val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.catch { error ->
     if (error is IOException) emit(emptyPreferences()) else throw error
-  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey])) }
+  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey]), VisualStyle.fromStored(it[styleKey])) }
 
   suspend fun restore(value: UserPreferences, restoreAvatar: Boolean = true) {
     context.dataStore.edit {
       it[themeKey] = value.themeMode.storedValue
+      it[styleKey] = value.visualStyle.storedValue
       if (restoreAvatar) it[avatarKey] = ProfileAvatars.normalize(value.avatarId)
     }
   }
@@ -77,6 +82,9 @@ class UserPreferencesRepository(private val context: Context) {
     context.dataStore.edit { it[avatarKey] = id }
   }
 
+  suspend fun setVisualStyle(style: VisualStyle) {
+    context.dataStore.edit { it[styleKey] = style.storedValue }
+  }
   suspend fun setThemeMode(mode: ThemeMode) {
     context.dataStore.edit { it[themeKey] = mode.storedValue }
   }

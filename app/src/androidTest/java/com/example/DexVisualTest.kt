@@ -36,8 +36,10 @@ class DexVisualTest {
       catalog.first { it.name.startsWith(name,true) && it.isEx && it.isFullArt }
     }
     sample.forEach { card ->
-      db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=2,
-        cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2)),listOf("Rayo"))))
+      val partner = catalog.first { it.type == card.type && it.stage == "basic" && it.id != card.id }
+      db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=4,
+        cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2),
+          com.example.data.repository.DeckCardEntry(partner,2)),listOf(card.type))))
     }
     compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
     val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
@@ -49,7 +51,7 @@ class DexVisualTest {
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
-    compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Mazos recientes"))
+    compose.onNodeWithTag("home_list").performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
     capture("inicio-mazos")
@@ -106,12 +108,27 @@ class DexVisualTest {
         }
       }
       if (index == 2) {
+        val themeModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+        for (mode in com.example.data.preferences.ThemeMode.entries.filter { it != com.example.data.preferences.ThemeMode.SYSTEM }) {
+          compose.runOnIdle { themeModel.setThemeMode(mode) }
+          compose.waitUntil(10_000) { themeModel.userPreferences.value.themeMode == mode }
+          capture("tema-${mode.storedValue}")
+        }
+        for (style in com.example.data.preferences.VisualStyle.entries) {
+          compose.runOnIdle { themeModel.setVisualStyle(style) }
+          compose.waitUntil(10_000) { themeModel.userPreferences.value.visualStyle == style }
+          capture("diseno-${style.storedValue}")
+        }
+        compose.runOnIdle { themeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+        compose.waitUntil(10_000) { themeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
+        compose.runOnIdle { themeModel.setThemeMode(com.example.data.preferences.ThemeMode.DARK) }
+        compose.waitUntil(10_000) { themeModel.userPreferences.value.themeMode == com.example.data.preferences.ThemeMode.DARK }
         compose.onNodeWithText("Abrir").assertDoesNotExist()
-        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
+        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performScrollTo().performClick()
         compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
         compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
-        compose.onNodeWithText("← Mis mazos").performClick()
-        compose.onNodeWithText("+ Nuevo mazo").performClick()
+        backToLibrary()
+        compose.onNodeWithText("+ Crear mazo").performClick()
         compose.waitForIdle()
         capture("mazos-crear")
         compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
@@ -128,8 +145,8 @@ class DexVisualTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("manual_deck_list").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
         compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
-        compose.onNodeWithText("← Mis mazos").performClick()
-        compose.onNodeWithText("+ Nuevo mazo").performClick()
+        backToLibrary()
+        compose.onNodeWithText("+ Crear mazo").performClick()
         compose.onNodeWithText("Empezar").performScrollTo().performClick()
         if (compose.onAllNodesWithText("Crear nuevo").fetchSemanticsNodes().isNotEmpty()) {
           compose.onNodeWithText("Crear nuevo").performClick()
@@ -157,6 +174,23 @@ class DexVisualTest {
         compose.runOnIdle { main.editDeckQuantity(basic.id, 2) }
         compose.onNodeWithText("Mi mazo (2)").performClick()
         capture("mazos-editor-con-cartas")
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Leer carta"))
+        compose.onAllNodesWithText("Leer carta").onFirst().performClick()
+        compose.onNodeWithTag("card_reader").assertIsDisplayed()
+        capture("carta-lectura")
+        compose.onNodeWithText("Ampliar imagen · zoom con dos dedos").performScrollTo().performClick()
+        compose.onNodeWithText("Restablecer zoom").assertIsDisplayed()
+        capture("carta-ampliada")
+        compose.onNodeWithText("Volver a la carta").performClick()
+        compose.onNodeWithText("Cerrar carta").performClick()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cómo jugar"))
+        compose.onNodeWithText("Cómo jugar").performClick()
+        compose.onNodeWithText("Actualizar guía con este mazo").performScrollTo().performClick()
+        compose.waitUntil(15_000) { main.generatedDeck.value?.strategy?.contains("SECUENCIA SUGERIDA") == true }
+        capture("mazo-como-jugar")
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cartas"))
+        compose.onNodeWithText("Cartas").performClick()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Hablar con IA"))
         compose.onNodeWithText("Hablar con IA").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("deck_chat_input").performTextInput("Conserva esta pregunta")
@@ -187,15 +221,29 @@ class DexVisualTest {
         compose.onNodeWithText("Aplicar cambios").performClick()
         compose.waitUntil(20_000) { main.generatedDeck.value?.totalCardCount == 20 }
         compose.onNodeWithText("Guardar mazo · 20/20").assertIsDisplayed()
+        compose.onNodeWithTag("deck_to_game").performClick()
+        compose.waitUntil(20_000) { compose.onAllNodesWithTag("deck_qr_image").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("QR del mazo").assertIsDisplayed()
+        capture("mazos-qr")
+        compose.onNodeWithText("Probar QR alternativo").assertDoesNotExist()
+        compose.onNodeWithTag("deck_qr_close").performClick()
         // Re-enter the hub to capture the AI creation form without making a billable API request.
-        compose.onNodeWithText("← Mis mazos").performClick()
-        compose.onNodeWithText("+ Nuevo mazo").performClick()
+        backToLibrary()
+        compose.onNodeWithText("+ Crear mazo").performClick()
         compose.onNode(hasText("Crear con IA") and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText("Crear nuevo").performClick()
         compose.waitForIdle()
         capture("mazos-crear-ia")
+        compose.onNodeWithText("← Crear mazo").performClick()
+        compose.onNodeWithText("← Mis mazos").performClick()
+        compose.onNodeWithTag("nav_item_4").assertExists()
       }
     }
+  }
+  private fun backToLibrary() {
+    compose.onNodeWithText("← Mis mazos").performClick()
+    if (compose.onAllNodesWithText("Volver sin guardar").fetchSemanticsNodes().isNotEmpty())
+      compose.onNodeWithText("Volver sin guardar").performClick()
   }
   private fun capture(name: String) {
     compose.runOnIdle {

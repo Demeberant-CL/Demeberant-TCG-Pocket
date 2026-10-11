@@ -8,7 +8,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Offline, bounded heuristic search. Scores rank candidates; they are never win probabilities. */
-data class CombatAttack(val cost: List<String>?, val damage: String, val effect: String = "")
+data class CombatAttack(val cost: List<String>?, val damage: String, val effect: String = "", val name: String = "")
 data class CombatData(val hp: Int? = null, val retreat: Int? = null,
   val attacks: List<CombatAttack> = emptyList(), val text: String = "")
 enum class DeckStyle(val label: String) { BALANCED("Equilibrado"), FAST("Rápido"), RESILIENT("Resistente") }
@@ -90,9 +90,10 @@ object LocalDeckPlanner {
     }.distinct().take(24)
     val roleMap = owned.associate { it.card.id to roles(data[it.card.id]) }
     val drawValue = owned.associate { item ->
-      val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty()).trim()
-      val direct = Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$").matchEntire(text)
-      item.card.id to (direct?.groupValues?.get(2)?.toDoubleOrNull()
+      val direct = data[item.card.id]?.text.orEmpty().lines().map { RoleClassifier.normalize(it).trim() }
+        .mapNotNull { Regex("^(draw|roba)\\s+([1-4])\\s+(cards?|cartas?)\\.?$")
+          .matchEntire(it)?.groupValues?.get(2)?.toDoubleOrNull() }.maxOrNull()
+      item.card.id to (direct
         ?: if (CardRole.DRAW in roleMap[item.card.id].orEmpty()) 0.5 else 0.0)
     }
     val named = owned.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
@@ -133,7 +134,7 @@ object LocalDeckPlanner {
         roleMap[it.card.id].orEmpty().sumOf { role -> when(role) {
           CardRole.DRAW, CardRole.SEARCH -> 5; CardRole.ENERGY -> 4; CardRole.SWITCH -> 3; else -> 2
         } }
-      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(100)
+      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(40)
       for (hero in anchors) {
         val lineage = chain(hero.card) ?: continue
         val entries = linkedMapOf<String, DeckCardEntry>()
@@ -173,6 +174,9 @@ object LocalDeckPlanner {
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0
+          val supporters = rows.filter { it.card.category.equals("supporter", true) }.sumOf { it.count }
+          value -= (supporters - 7).coerceAtLeast(0) * 2.0
+          value -= rows.filter { trainer(it.card) && data[it.card.id]?.text.isNullOrBlank() }.sumOf { it.count } * 1.5
           val quantities = rows.groupBy { name(it.card.rulesName) }.mapValues { (_, group) -> group.sumOf { it.count } }
           rows.filter { !trainer(it.card) && it.card.evolvesFrom.isNotBlank() }.forEach { child ->
             val parentCount = quantities[name(child.card.evolvesFrom)] ?: 0
@@ -191,7 +195,9 @@ object LocalDeckPlanner {
           val next = mutableListOf<LinkedHashMap<String, DeckCardEntry>>()
           trainerPool.forEach { item ->
             val key = name(item.card.rulesName)
-            if (count(key) < 2) {
+            val targets = namedTargets[item.card.id].orEmpty()
+            val matches = targets.isEmpty() || entries.values.any { !trainer(it.card) && name(it.card.rulesName) in targets }
+            if (count(key) < 2 && matches) {
               val copy = LinkedHashMap(entries); addName(key, 1, copy)
               if (copy.values.sumOf { it.count } > total()) next.add(copy)
             }
@@ -214,6 +220,28 @@ object LocalDeckPlanner {
             .thenBy { it.keys.sorted().joinToString() })
           if (best != null) { entries.clear(); entries.putAll(best) }
         }
+        repeat(2) {
+          if (total() == 20) {
+            val originalScore = score(entries.values)
+            var bestScore = originalScore
+            var bestRows: LinkedHashMap<String, DeckCardEntry>? = null
+            entries.values.filter { trainer(it.card) }.forEach { remove ->
+              trainerPool.forEach { add ->
+                if (add.card.id != remove.card.id && count(name(add.card.rulesName)) < 2 &&
+                  (namedTargets[add.card.id].orEmpty().isEmpty() || entries.values.any { name(it.card.rulesName) in namedTargets[add.card.id].orEmpty() })) {
+                  val copy = LinkedHashMap(entries)
+                  if (remove.count == 1) copy.remove(remove.card.id) else copy[remove.card.id] = remove.copy(count = remove.count - 1)
+                  addName(name(add.card.rulesName), 1, copy)
+                  if (copy.values.sumOf { it.count } == 20) {
+                    val value = score(copy.values)
+                    if (value > bestScore + 0.01) { bestScore = value; bestRows = copy }
+                  }
+                }
+              }
+            }
+            bestRows?.let { entries.clear(); entries.putAll(it) }
+          }
+        }
         val rows = entries.values.toList()
         val warnings = DeckBuilderEngine.validate(rows)
         val basics = rows.filter { basic(it.card) }.sumOf { it.count }
@@ -228,10 +256,28 @@ object LocalDeckPlanner {
           if (rows.none { CardRole.DRAW in roleMap[it.card.id].orEmpty() }) add("Sin robo de cartas identificado.")
           if (rows.none { CardRole.SEARCH in roleMap[it.card.id].orEmpty() }) add("Sin búsqueda identificada.")
         }
+        val consistency = if (rows.sumOf { it.count } == 20) {
+          val copies = lineage.map { key -> rows.filter { name(it.card.rulesName) == key }.sumOf { it.count } }
+          val chance = DeckConsistency.allPieces(20, copies, 8)
+          "Núcleo completo entre 8 cartas al azar: ${String.format(Locale.ROOT, "%.1f", chance * 100)} %. " +
+            "Sin búsqueda, robo extra ni básico inicial garantizado; no estima turnos ni victorias."
+        } else "Completa las 20 cartas para calcular consistencia."
+        val supportNames = rows.filter { CardRole.DRAW in roleMap[it.card.id].orEmpty() || CardRole.SEARCH in roleMap[it.card.id].orEmpty() }
+          .map { it.card.rulesName }.distinct().take(4)
+        val attack = data[hero.card.id]?.attacks.orEmpty().filter { usable(it, palette) }.minByOrNull { it.cost!!.size }
+        val playPlan = buildList {
+          add("Plan sugerido: empieza con un básico de la línea de ${hero.card.rulesName} y prepara su evolución cuando corresponda.")
+          if (lineage.size > 1) add("Evolución: reúne ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}; cada etapa necesita su carta previa.")
+          if (attack != null) add("Preparación: uno de sus ataques conocidos cuesta ${attack.cost!!.size} energías. Revisa su efecto antes de usarlo.")
+          if (supportNames.isNotEmpty()) add("Soporte identificado: ${supportNames.joinToString()}. Busca el núcleo y amplía tu mano según el texto de cada carta.")
+          add("Prioridad local: ${options.style.label.lowercase(Locale.ROOT)}. Es una orientación heurística, no una simulación de combate.")
+        }
         val reasons = listOf("Núcleo: ${lineage.joinToString(" → ") { byName[it]!!.first().card.rulesName }}",
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
-          "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.")
-        val strategy = (reasons + cautions).joinToString("\n")
+          consistency,
+          "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
+        val provisional = GeneratedDeck(hero.card.rulesName, "Constructor local", "", rows, rows.sumOf { it.count }, warnings, palette)
+        val strategy = DeckPlayGuide.generate(provisional, data) + "\n\n" + consistency
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
           strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))
       }
