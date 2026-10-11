@@ -15,19 +15,29 @@ import com.example.data.util.CollectionInsights
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
+fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, onTrade: () -> Unit = {}) {
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
+  val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
+  val automaticTargets = remember(prefs.trade.targetDeck, inventory) {
+    runCatching { com.example.data.util.DeckCodec.references(prefs.trade.targetDeck) }.getOrDefault(emptyList())
+      .filter { (id, n) -> (inventory.firstOrNull { it.card.id == id }?.ownedCount ?: 0) < n }.map { it.first }.toSet()
+  }
   var query by rememberSaveable { mutableStateOf("") }
   var showCodes by rememberSaveable { mutableStateOf(false) }
   var codes by rememberSaveable { mutableStateOf("") }
   val tokens = codes.split(Regex("[,;\\s]+")).filter { it.isNotBlank() }
   val invalid = tokens.filter { token -> runCatching { CardCatalog.getCardById(CardId.normalize(token)) }.getOrNull() == null }
-  val targets = tokens.mapNotNull { runCatching { CardId.normalize(it) }.getOrNull() }.toSet()
+  val manualTargets = tokens.mapNotNull { runCatching { CardId.normalize(it) }.getOrNull() }.toSet()
+  val targets = if (manualTargets.isEmpty()) automaticTargets else manualTargets
   val searchResults = remember(inventory, query) { if (query.isBlank()) emptyList() else inventory.filter { it.card.name.contains(query, true) || it.card.id.contains(query, true) }.take(20) }
-  val coverage = remember(inventory, targets) { CollectionInsights.coverage(inventory, targets).filter { it.score > 0 } }
+  val coverage = remember(inventory, targets) { CollectionInsights.coverage(inventory.filter { prefs.trade.expansion.isBlank() || it.card.id.substringBeforeLast('-') == prefs.trade.expansion }, targets).filter { it.score > 0 } }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
-      Text("Sobres para completar tu colección", style = MaterialTheme.typography.titleLarge)
+      Text("Plan para conseguir cartas", style = MaterialTheme.typography.titleLarge)
+      Text("Compara sobres por cobertura de faltantes y consulta intercambios antes de decidir. No hay tasas verificadas ni costes de puntos incorporados para calcular cuál es más barato.", style = MaterialTheme.typography.bodySmall)
+      if (automaticTargets.isNotEmpty()) Text("${automaticTargets.size} cartas faltantes del mazo objetivo: ${prefs.trade.targetName.ifBlank { "Lista guardada" }}", style = MaterialTheme.typography.bodySmall)
+      if (prefs.trade.expansion.isNotBlank()) Text("Expansión objetivo: ${prefs.trade.expansion}")
+      OutlinedButton(onClick = onTrade) { Text("Revisar intercambios") }
       OutlinedTextField(query, { query = it }, label = { Text("Buscar carta objetivo") }, modifier = Modifier.fillMaxWidth())
       TextButton(onClick = { showCodes = !showCodes }) { Text("Introducir códigos manualmente") }
       if (showCodes) OutlinedTextField(codes, { codes = it }, label = { Text("Objetivos por código (opcional)") },
@@ -38,7 +48,7 @@ fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier
     }
     if (query.isNotBlank()) items(searchResults, key = { "target-${it.card.id}" }) { item ->
       OutlinedCard(onClick = {
-        val next = targets.toMutableSet()
+        val next = manualTargets.toMutableSet()
         if (!next.add(item.card.id)) next.remove(item.card.id)
         codes = next.joinToString(", ")
       }, modifier = Modifier.fillMaxWidth()) {
@@ -48,7 +58,7 @@ fun PackRecommenderScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier
         }
       }
     }
-    if (targets.isNotEmpty()) item {
+    if (manualTargets.isNotEmpty()) item {
       Text("Objetivos: " + targets.joinToString { id -> CardCatalog.getCardById(id)?.name ?: id })
       TextButton(onClick = { codes = "" }) { Text("Limpiar objetivos") }
     }

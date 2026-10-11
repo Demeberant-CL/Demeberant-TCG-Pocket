@@ -241,7 +241,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
       TextButton(onClick = { section = -1 }) { Text("← Más herramientas") }
       when (section) {
         0 -> HelpScreen(Modifier.weight(1f))
-        1 -> PackRecommenderScreen(main, Modifier.weight(1f))
+        1 -> PackRecommenderScreen(main, Modifier.weight(1f), onTrade = { section = 2 })
         2 -> TradeAdvisorScreen(main, Modifier.weight(1f))
         3 -> SandboxScreen(main, advanced, Modifier.weight(1f))
         4 -> Column(Modifier.weight(1f)) {

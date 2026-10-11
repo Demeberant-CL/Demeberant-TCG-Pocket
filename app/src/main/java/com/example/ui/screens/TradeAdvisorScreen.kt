@@ -54,8 +54,8 @@ fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
       Text("Elige qué conseguir y qué copias puedes ofrecer sin desarmar tus mazos.", style = MaterialTheme.typography.bodyMedium)
     }
     item {
-      TradeGoalPicker("Mazo objetivo", decks.firstOrNull { it.cardListSerialized == settings.targetDeck }?.name ?: "Ninguno",
-        listOf("Ninguno" to "") + decks.map { it.name to it.cardListSerialized }) { main.setTradeSettings(settings.copy(targetDeck = it)) }
+      TradeGoalPicker("Mazo objetivo", decks.firstOrNull { it.cardListSerialized == settings.targetDeck }?.name ?: settings.targetName.ifBlank { if (settings.targetDeck.isBlank()) "Ninguno" else "Lista guardada" },
+        listOf("Ninguno" to "") + decks.map { it.name to it.cardListSerialized }) { main.setTradeSettings(settings.copy(targetDeck = it, targetName = decks.firstOrNull { d -> d.cardListSerialized == it }?.name.orEmpty())) }
       TradeGoalPicker("Expansión objetivo", settings.expansion.ifBlank { "Todas" },
         listOf("Todas" to "") + inventory.map { it.card.id.substringBeforeLast('-') }.distinct().sorted().map { it to it }) {
         main.setTradeSettings(settings.copy(expansion = it))

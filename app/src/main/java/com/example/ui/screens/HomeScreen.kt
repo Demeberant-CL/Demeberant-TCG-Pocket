@@ -94,8 +94,8 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text("Tu objetivo", style = MaterialTheme.typography.labelLarge)
-          Text(target?.name ?: prefs.trade.expansion.takeIf { it.isNotBlank() }?.let { "Completar $it" } ?: "Elige un mazo o una expansión", style = MaterialTheme.typography.titleLarge)
-          Text(if (target != null) "${advice.deckMissing} copias faltantes · tus mazos están protegidos"
+          Text(target?.name ?: prefs.trade.targetName.takeIf { it.isNotBlank() } ?: (if (prefs.trade.targetDeck.isNotBlank()) "Mazo objetivo guardado" else null) ?: prefs.trade.expansion.takeIf { it.isNotBlank() }?.let { "Completar $it" } ?: "Elige un mazo o una expansión", style = MaterialTheme.typography.titleLarge)
+          Text(if (prefs.trade.targetDeck.isNotBlank()) "${advice.deckMissing} copias faltantes · tus mazos están protegidos"
             else "${advice.offers.size} cartas con copias disponibles para ofrecer", style = MaterialTheme.typography.bodySmall)
           TextButton(onClick = onTrade) { Text("Elegir objetivo e intercambios") }
         }

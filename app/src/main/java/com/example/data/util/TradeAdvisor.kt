@@ -6,7 +6,7 @@ import com.example.data.repository.CardWithInventory
 import com.example.data.repository.ParsedCsvCard
 
 data class TradeSettings(val reserve: Int = 2, val blocked: Set<String> = emptySet(),
-  val expansion: String = "", val targetDeck: String = "")
+  val expansion: String = "", val targetDeck: String = "", val targetName: String = "")
 data class TradeChoice(val offer: CardWithInventory, val request: CardWithInventory,
   val remaining: Int, val score: Int, val reasons: List<String>, val peerMatched: Boolean)
 data class TradeAdvice(val offers: List<CardWithInventory>, val wanted: List<CardWithInventory>,

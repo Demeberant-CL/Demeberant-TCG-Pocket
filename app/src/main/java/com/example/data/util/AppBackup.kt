@@ -22,7 +22,7 @@ object AppBackup {
       .put("total", deck.totalCards).put("createdAt", deck.createdAt) }))
     .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue).put("avatar", value.preferences.avatarId).put("style", value.preferences.visualStyle.storedValue)
       .put("trade", JSONObject().put("reserve", value.preferences.trade.reserve).put("blocked", JSONArray(value.preferences.trade.blocked.sorted()))
-        .put("expansion", value.preferences.trade.expansion).put("targetDeck", value.preferences.trade.targetDeck))).toString(2)
+        .put("expansion", value.preferences.trade.expansion).put("targetDeck", value.preferences.trade.targetDeck).put("targetName", value.preferences.trade.targetName))).toString(2)
 
   fun decode(text: String): BackupSnapshot {
     require(text.length <= 8_000_000) { "Respaldo demasiado grande." }
@@ -63,7 +63,7 @@ object AppBackup {
     require(expansion.length <= 24) { "Expansión no válida." }
     val target = tradeJson?.optString("targetDeck").orEmpty()
     if (target.isNotBlank()) DeckCodec.references(target)
-    val trade = TradeSettings(reserve, blocked, expansion, target)
+    val trade = TradeSettings(reserve, blocked, expansion, target, tradeJson?.optString("targetName").orEmpty().take(200))
     return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme),
       com.example.data.preferences.ProfileAvatars.normalize(prefs.optString("avatar")), com.example.data.preferences.VisualStyle.fromStored(prefs.optString("style")), trade), prefs.has("avatar"))
   }

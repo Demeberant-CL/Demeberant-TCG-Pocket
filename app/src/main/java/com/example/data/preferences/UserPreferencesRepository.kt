@@ -44,6 +44,7 @@ data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avat
 private val reserveKey = intPreferencesKey("trade_reserve")
 private val blockedKey = stringSetPreferencesKey("trade_blocked")
 private val expansionKey = stringPreferencesKey("trade_expansion")
+private val targetNameKey = stringPreferencesKey("trade_target_name")
 private val targetKey = stringPreferencesKey("trade_target")
 
 private val styleKey = stringPreferencesKey("visual_style")
@@ -74,7 +75,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 class UserPreferencesRepository(private val context: Context) {
   val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.catch { error ->
     if (error is IOException) emit(emptyPreferences()) else throw error
-  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey]), VisualStyle.fromStored(it[styleKey]), com.example.data.util.TradeSettings((it[reserveKey] ?: 2).coerceIn(1, 2), it[blockedKey] ?: emptySet(), it[expansionKey].orEmpty(), it[targetKey].orEmpty())) }
+  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey]), VisualStyle.fromStored(it[styleKey]), com.example.data.util.TradeSettings((it[reserveKey] ?: 2).coerceIn(1, 2), it[blockedKey] ?: emptySet(), it[expansionKey].orEmpty(), it[targetKey].orEmpty(), it[targetNameKey].orEmpty())) }
 
   suspend fun restore(value: UserPreferences, restoreAvatar: Boolean = true) {
     context.dataStore.edit {
@@ -84,6 +85,7 @@ class UserPreferencesRepository(private val context: Context) {
       it[blockedKey] = value.trade.blocked
       it[expansionKey] = value.trade.expansion
       it[targetKey] = value.trade.targetDeck
+      it[targetNameKey] = value.trade.targetName
       if (restoreAvatar) it[avatarKey] = ProfileAvatars.normalize(value.avatarId)
     }
   }
@@ -92,7 +94,7 @@ class UserPreferencesRepository(private val context: Context) {
     require(value.reserve in 1..2)
     context.dataStore.edit {
       it[reserveKey] = value.reserve; it[blockedKey] = value.blocked
-      it[expansionKey] = value.expansion; it[targetKey] = value.targetDeck
+      it[expansionKey] = value.expansion; it[targetKey] = value.targetDeck; it[targetNameKey] = value.targetName
     }
   }
 
