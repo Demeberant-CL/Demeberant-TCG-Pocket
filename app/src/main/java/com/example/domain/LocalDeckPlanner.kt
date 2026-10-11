@@ -106,12 +106,15 @@ object LocalDeckPlanner {
       val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty())
       item.card.id to if (text.isBlank()) emptySet() else named.filter { text.contains(it.second) }.map { it.first }.toSet()
     }
+    val normalizedNames = mutableMapOf<String, String>()
+    fun name(value: String): String = normalizedNames.getOrPut(value) { value.trim().lowercase(Locale.ROOT) }
     val candidates = mutableListOf<DeckPlan>()
     for (palette in palettes) {
       val pool = owned.filter { compatible(it.card, palette, data[it.card.id]) }
       val rating = pool.associate { it.card.id to strength(it.card, data[it.card.id], palette, options.style) }
       val costs = pool.associate { item -> item.card.id to data[item.card.id]?.attacks.orEmpty()
         .filter { usable(it, palette) }.map { it.cost!!.size } }
+      val unknownAttackIds = pool.filter { costs[it.card.id].isNullOrEmpty() }.map { it.card.id }.toSet()
       val byName = pool.groupBy { name(it.card.rulesName) }.mapValues { (_, variants) ->
         variants.sortedWith(compareByDescending<CardWithInventory> { it.card.id == options.anchorId }
           .thenByDescending { rating.getValue(it.card.id) }
@@ -179,7 +182,7 @@ object LocalDeckPlanner {
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0
-          val unknownPokemon = pokemon.filter { data[it.card.id]?.attacks.orEmpty().none { a -> usable(a, palette) } }.sumOf { it.count }
+          val unknownPokemon = pokemon.filter { it.card.id in unknownAttackIds }.sumOf { it.count }
           value -= unknownPokemon * 5.0
           // Keep support around the chosen strategy rather than collecting unrelated attackers.
           val coreNames = lineage.toSet()
@@ -239,11 +242,11 @@ object LocalDeckPlanner {
         }
         // Improve all non-core slots, including support Pokémon, rather than trainers alone.
         // A candidate must preserve the selected evolution core and every other evolution dependency.
-        repeat(4) {
+        for (pass in 0 until 4) {
           if (total() == 20) {
             var bestScore = score(entries.values)
             var bestRows: LinkedHashMap<String, DeckCardEntry>? = null
-            val replacements = (trainerPool + supportPool).distinctBy { it.card.id }
+            val replacements = (trainerPool.take(12) + supportPool.take(12)).distinctBy { it.card.id }
             entries.values.filter { name(it.card.rulesName) !in lineage }.forEach { remove ->
               replacements.forEach { add ->
                 val key = name(add.card.rulesName)
@@ -264,7 +267,8 @@ object LocalDeckPlanner {
                 }
               }
             }
-            bestRows?.let { entries.clear(); entries.putAll(it) }
+            if (bestRows == null) break
+            entries.clear(); entries.putAll(bestRows)
           }
         }
         val rows = entries.values.toList()
