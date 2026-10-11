@@ -28,6 +28,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
   val draft by viewModel.generatedDeck.collectAsStateWithLifecycle()
   val decks by viewModel.savedDecks.collectAsStateWithLifecycle()
   val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
+  val visual = com.example.ui.theme.LocalVisualStyle.current
   val owned = remember(inventory) { inventory.associate { it.card.id to it.ownedCount } }
   val cards = remember(inventory) { inventory.associate { it.card.id to it.card } }
   var search by rememberSaveable { mutableStateOf("") }
@@ -63,12 +64,12 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().testTag("saved_deck_${saved.id}")) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
-          val stacked = LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual == com.example.data.preferences.VisualStyle.COMPACT) 10.dp else 18.dp)) {
+          val stacked = visual == com.example.data.preferences.VisualStyle.EDITORIAL || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
           Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
               Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(saved.name, style = MaterialTheme.typography.headlineMedium, maxLines = 2,
+                Text(saved.name, style = if (visual == com.example.data.preferences.VisualStyle.COMPACT) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineMedium, maxLines = 2,
                   overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text("$total/20 cartas", style = MaterialTheme.typography.bodyMedium)
                 if (energies.isNotEmpty()) com.example.ui.components.EnergyBadges(energies)
@@ -77,9 +78,9 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
               }
-              if (!stacked) Box(Modifier.padding(top = 36.dp)) { DeckCoverPair(covers) }
+              if (!stacked) Box(Modifier.padding(top = 36.dp)) { DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT) }
             }
-            if (stacked) DeckCoverPair(covers)
+            if (stacked) DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT)
             if (available != null) Text(if (available < total) "Faltan ${total - available} copias · $available/$total disponibles" else "Todas las copias disponibles",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -103,11 +104,11 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
 }
 
 @Composable
-private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>) {
+private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>, compact: Boolean = false) {
   Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
     covers.forEach { entry ->
       com.example.ui.components.PocketCardImage(entry.card.id, entry.card.name,
-        modifier = Modifier.width(76.dp).height(108.dp).clip(MaterialTheme.shapes.small))
+        modifier = Modifier.width(if (compact) 44.dp else 76.dp).height(if (compact) 62.dp else 108.dp).clip(MaterialTheme.shapes.small))
     }
   }
 }

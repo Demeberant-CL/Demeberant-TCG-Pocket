@@ -20,7 +20,7 @@ object LocalCombatRepository {
           if (a == null) emptyList() else (0 until a.length()).map { index ->
             val attack = a.getJSONObject(index); val costs = attack.optJSONArray("cost")
             CombatAttack(costs?.let { (0 until it.length()).map(it::getString) },
-              attack.optString("damage"), attack.optString("effect"))
+              attack.optString("damage"), attack.optString("effect"), attack.optString("name"))
           }, c.optString("text"))
       }.toMutableMap()
       context.assets.open("pocket-combat-extra.json").bufferedReader().use { extraReader ->
@@ -33,7 +33,7 @@ object LocalCombatRepository {
             val attack = a.getJSONObject(index)
             val costs = attack.optJSONArray("cost")
             CombatAttack(costs?.let { (0 until it.length()).map(it::getString) },
-              attack.optString("damage"), attack.optString("effect"))
+              attack.optString("damage"), attack.optString("effect"), attack.optString("name"))
           }
           result[id] = CombatData(
             if (c.isNull("hp")) old?.hp else c.getInt("hp"),
@@ -44,6 +44,10 @@ object LocalCombatRepository {
       }
       result.toMap()
     }.also { bundled = it }
+  }
+  suspend fun card(context: Context, id: String, language: String): CombatData? {
+    val rule = AppDatabase.getDatabase(context).cardRulesDao().get(id, language)
+    return rule?.let(::fromRule) ?: load(context)[id]
   }
   suspend fun snapshot(context: Context): Map<String, CombatData> {
     val result = load(context).toMutableMap()

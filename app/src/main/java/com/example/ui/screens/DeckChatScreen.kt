@@ -111,6 +111,8 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
 @Composable
 private fun DeckProposalReview(main: TcgViewModel, model: AdvancedViewModel, suggestion: DeckChatSuggestion,
   onChat: () -> Unit, onApplied: () -> Unit, modifier: Modifier) {
+  var reading by remember { mutableStateOf<com.example.data.model.PokemonCard?>(null) }
+  reading?.let { CardDetailsDialog(com.example.data.repository.CardWithInventory(it, 0, false), "es", { reading = null }, readOnly = true) }
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val current by main.generatedDeck.collectAsStateWithLifecycle()
   val owned = remember(inventory) { inventory.associate { it.card.id to it.ownedCount } }
@@ -129,13 +131,13 @@ private fun DeckProposalReview(main: TcgViewModel, model: AdvancedViewModel, sug
         if (removed.isEmpty()) Text("No se quitan cartas.", style = MaterialTheme.typography.bodySmall) }
       items(removed, key = { "remove-${it.id}" }) { change ->
         val card = suggestion.base.cards.first { it.card.id == change.id }.card
-        DeckChangeRow(card.id, card.name, change.count, "${owned[card.id] ?: 0} en colección")
+        DeckChangeRow(card.id, card.name, change.count, "${owned[card.id] ?: 0} en colección") { reading = card }
       }
       item { Text("Añadir", style = MaterialTheme.typography.titleMedium)
         if (added.isEmpty()) Text("No se añaden cartas.", style = MaterialTheme.typography.bodySmall) }
       items(added, key = { "add-${it.id}" }) { change ->
         val entry = proposed.cards.first { it.card.id == change.id }
-        DeckChangeRow(entry.card.id, entry.card.name, change.count, "Tienes ${owned[entry.card.id] ?: 0} · Se usarán ${entry.count}")
+        DeckChangeRow(entry.card.id, entry.card.name, change.count, "Tienes ${owned[entry.card.id] ?: 0} · Se usarán ${entry.count}") { reading = entry.card }
       }
       item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Motivo y estrategia", style = MaterialTheme.typography.titleMedium)
@@ -158,10 +160,10 @@ private fun DeckProposalReview(main: TcgViewModel, model: AdvancedViewModel, sug
 }
 
 @Composable
-private fun DeckChangeRow(id: String, name: String, count: Int, detail: String) {
+private fun DeckChangeRow(id: String, name: String, count: Int, detail: String, onRead: () -> Unit) {
   DexPanel(Modifier.fillMaxWidth()) { Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
     DeckThumbnail(id, name)
-    Column(Modifier.weight(1f)) { Text("$count × $name", style = MaterialTheme.typography.titleSmall); Text(detail, style = MaterialTheme.typography.bodySmall) }
+    Column(Modifier.weight(1f)) { Text("$count × $name", style = MaterialTheme.typography.titleSmall); Text(detail, style = MaterialTheme.typography.bodySmall); TextButton(onClick = onRead) { Text("Leer carta") } }
   } }
 }

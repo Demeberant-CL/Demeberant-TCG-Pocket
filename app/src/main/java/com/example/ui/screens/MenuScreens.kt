@@ -209,8 +209,8 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
-      listOf("Colección y juego" to listOf(1, 2, 3, 4),
-        "Información" to listOf(6, 0), "Mi app" to listOf(8, 9)).forEach { (group, indices) ->
+      listOf("Mi app" to listOf(8, 9, 7), "Colección" to listOf(1, 2, 5),
+        "Aprender y practicar" to listOf(0, 3, 4), "Competición" to listOf(6)).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
             Column {

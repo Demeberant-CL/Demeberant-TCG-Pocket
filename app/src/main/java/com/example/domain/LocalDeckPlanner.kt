@@ -8,7 +8,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Offline, bounded heuristic search. Scores rank candidates; they are never win probabilities. */
-data class CombatAttack(val cost: List<String>?, val damage: String, val effect: String = "")
+data class CombatAttack(val cost: List<String>?, val damage: String, val effect: String = "", val name: String = "")
 data class CombatData(val hp: Int? = null, val retreat: Int? = null,
   val attacks: List<CombatAttack> = emptyList(), val text: String = "")
 enum class DeckStyle(val label: String) { BALANCED("Equilibrado"), FAST("Rápido"), RESILIENT("Resistente") }
@@ -174,6 +174,9 @@ object LocalDeckPlanner {
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0
+          val supporters = rows.filter { it.card.category.equals("supporter", true) }.sumOf { it.count }
+          value -= (supporters - 7).coerceAtLeast(0) * 2.0
+          value -= rows.filter { trainer(it.card) && data[it.card.id]?.text.isNullOrBlank() }.sumOf { it.count } * 1.5
           val quantities = rows.groupBy { name(it.card.rulesName) }.mapValues { (_, group) -> group.sumOf { it.count } }
           rows.filter { !trainer(it.card) && it.card.evolvesFrom.isNotBlank() }.forEach { child ->
             val parentCount = quantities[name(child.card.evolvesFrom)] ?: 0
@@ -217,6 +220,28 @@ object LocalDeckPlanner {
             .thenBy { it.keys.sorted().joinToString() })
           if (best != null) { entries.clear(); entries.putAll(best) }
         }
+        repeat(2) {
+          if (total() == 20) {
+            val originalScore = score(entries.values)
+            var bestScore = originalScore
+            var bestRows: LinkedHashMap<String, DeckCardEntry>? = null
+            entries.values.filter { trainer(it.card) }.forEach { remove ->
+              trainerPool.forEach { add ->
+                if (add.card.id != remove.card.id && count(name(add.card.rulesName)) < 2 &&
+                  (namedTargets[add.card.id].orEmpty().isEmpty() || entries.values.any { name(it.card.rulesName) in namedTargets[add.card.id].orEmpty() })) {
+                  val copy = LinkedHashMap(entries)
+                  if (remove.count == 1) copy.remove(remove.card.id) else copy[remove.card.id] = remove.copy(count = remove.count - 1)
+                  addName(name(add.card.rulesName), 1, copy)
+                  if (copy.values.sumOf { it.count } == 20) {
+                    val value = score(copy.values)
+                    if (value > bestScore + 0.01) { bestScore = value; bestRows = copy }
+                  }
+                }
+              }
+            }
+            bestRows?.let { entries.clear(); entries.putAll(it) }
+          }
+        }
         val rows = entries.values.toList()
         val warnings = DeckBuilderEngine.validate(rows)
         val basics = rows.filter { basic(it.card) }.sumOf { it.count }
@@ -251,7 +276,8 @@ object LocalDeckPlanner {
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
           consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
-        val strategy = (reasons + cautions).joinToString("\n")
+        val provisional = GeneratedDeck(hero.card.rulesName, "Constructor local", "", rows, rows.sumOf { it.count }, warnings, palette)
+        val strategy = DeckPlayGuide.generate(provisional, data) + "\n\n" + consistency
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
           strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))
       }

@@ -201,6 +201,13 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun setVisualStyle(style: com.example.data.preferences.VisualStyle) {
+    viewModelScope.launch {
+      try { preferencesRepository.setVisualStyle(style) }
+      catch (e: CancellationException) { throw e }
+      catch (_: Exception) { reportMessage("No se pudo guardar el estilo visual.") }
+    }
+  }
   fun setProfileAvatar(id: String) {
     viewModelScope.launch {
       try { preferencesRepository.setAvatar(id) }
@@ -441,6 +448,20 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       listOf("Mazo incompleto: 0/20 cartas."))
   }
   fun editDeckName(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(name = value) }
+  fun generateDeckGuide() {
+    val original = _generatedDeck.value ?: return
+    viewModelScope.launch {
+      try {
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+        val guide = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(original, facts) }
+        if (_generatedDeck.value == original) {
+          _generatedDeck.value = original.copy(strategy = guide)
+          reportMessage("Guía actualizada. Guarda el mazo para conservarla.")
+        } else reportMessage("El mazo cambió. Actualiza la guía de nuevo.")
+      } catch (e: CancellationException) { throw e }
+      catch (_: Exception) { reportMessage("No se pudo preparar la guía local.") }
+    }
+  }
   fun editDeckStrategy(value: String) { _generatedDeck.value = _generatedDeck.value?.copy(strategy = value) }
   fun toggleDeckEnergy(value: String) {
     require(value in DeckCodec.energyNames)
@@ -482,17 +503,23 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       }
       try {
         require(deck.cards.isNotEmpty() && (customName ?: deck.name).isNotBlank()) { "Añade cartas y un nombre." }
+        val strategy = if (deck.strategy.isNotBlank()) deck.strategy else {
+          val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+          withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(deck, facts) }
+        }
+        val savedDeck = deck.copy(strategy = strategy)
         val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes)
         val entity = SavedDeckEntity(
           id = editingDeckId,
           name = customName ?: deck.name,
           archetype = deck.archetype,
-          strategy = deck.strategy,
+          strategy = strategy,
           cardListSerialized = serializedCards,
           totalCards = deck.totalCardCount
         )
         editingDeckId = repository.saveDeck(entity)
-        savedDraftSnapshot = deck
+        if (_generatedDeck.value == deck) _generatedDeck.value = savedDeck
+        savedDraftSnapshot = savedDeck
         draftRevision.value++
         _csvStatusMessage.value = "Mazo guardado."
         onSaved()

@@ -23,6 +23,8 @@ fun SettingsScreen(
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   onDismiss: () -> Unit,
+  visualStyle: com.example.data.preferences.VisualStyle = com.example.data.preferences.VisualStyle.GALLERY,
+  onVisualStyleChange: (com.example.data.preferences.VisualStyle) -> Unit = {},
   content: @Composable ColumnScope.() -> Unit = {}
 ) {
   val context = LocalContext.current
@@ -64,6 +66,28 @@ fun SettingsScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {}
                         }
                       }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          Text("Diseño de la app", style = MaterialTheme.typography.titleLarge)
+          Text("Cambia la distribución, las portadas y las formas. Puedes combinar cada diseño con cualquier tema.", style = MaterialTheme.typography.bodySmall)
+          com.example.data.preferences.VisualStyle.entries.forEach { style ->
+            OutlinedCard(onClick = { onVisualStyleChange(style) }, modifier = Modifier.fillMaxWidth(),
+              border = androidx.compose.foundation.BorderStroke(if (visualStyle == style) 2.dp else 1.dp,
+                if (visualStyle == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+              Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = visualStyle == style, onClick = null)
+                Column(Modifier.weight(1f)) {
+                  Text(style.label, style = MaterialTheme.typography.titleMedium)
+                  Text(style.description, style = MaterialTheme.typography.bodySmall)
+                  Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    repeat(if (style == com.example.data.preferences.VisualStyle.COMPACT) 5 else 3) {
+                      Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(if (style == com.example.data.preferences.VisualStyle.EDITORIAL) 2.dp else 10.dp),
+                        modifier = Modifier.width(if (style == com.example.data.preferences.VisualStyle.COMPACT) 28.dp else 40.dp).height(if (style == com.example.data.preferences.VisualStyle.GALLERY) 52.dp else 24.dp)) {}
                     }
                   }
                 }

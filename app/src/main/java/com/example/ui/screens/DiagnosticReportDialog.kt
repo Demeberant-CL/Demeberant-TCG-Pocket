@@ -27,6 +27,7 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
   val scope = rememberCoroutineScope()
   var report by remember { mutableStateOf<String?>(null) }
   var message by remember { mutableStateOf<String?>(null) }
+  var confirmClear by remember { mutableStateOf(false) }
   var saving by remember { mutableStateOf(false) }
   LaunchedEffect(Unit) {
     try { report = ErrorLogManager.briefReport(context) }
@@ -52,6 +53,23 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
       finally { saving = false }
     }
   }
+  if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false },
+    title = { Text("Comenzar diagnóstico desde cero") },
+    text = { Text("Se borrará el registro anterior. Tu colección, mazos y conexiones se conservan. Guarda el ZIP antes si lo necesitas.") },
+    confirmButton = { TextButton(enabled = !saving, onClick = {
+      confirmClear = false
+      scope.launch {
+        saving = true
+        try {
+          check(ErrorLogManager.clearLogs(context))
+          report = ErrorLogManager.briefReport(context)
+          message = "Diagnóstico limpio. Las próximas acciones iniciarán un registro nuevo."
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { message = "No se pudo limpiar el registro. Inténtalo de nuevo." }
+        finally { saving = false }
+      }
+    }) { Text("Limpiar diagnóstico") } },
+    dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancelar") } })
   AlertDialog(onDismissRequest = onDismiss, title = { Text("Diagnóstico") },
     text = {
       Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -71,6 +89,7 @@ fun DiagnosticReportDialog(onDismiss: () -> Unit) {
         Text("ZIP: resumen y trazas técnicas, sin consultas ni claves.", style = MaterialTheme.typography.bodySmall)
         OutlinedButton(enabled = !saving, onClick = { saveZip.launch("diagnostico-tcg-pocket.zip") }, shape = MaterialTheme.shapes.medium) { Text("Guardar diagnóstico ZIP") }
         OutlinedButton(enabled = !saving, onClick = { ErrorLogManager.exportErrorLogs(context, compressed = true) }, shape = MaterialTheme.shapes.medium) { Text("Compartir diagnóstico ZIP") }
+        TextButton(enabled = !saving, onClick = { confirmClear = true }) { Text("Limpiar diagnóstico y comenzar de cero") }
         if (saving) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it) }
       }

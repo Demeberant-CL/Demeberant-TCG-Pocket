@@ -112,10 +112,13 @@ fun pocketColorScheme(mode: ThemeMode, systemDark: Boolean = true): androidx.com
     outlineVariant = androidx.compose.ui.graphics.lerp(surface, base.onSurface, 0.22f))
 }
 
+val LocalVisualStyle = androidx.compose.runtime.staticCompositionLocalOf { com.example.data.preferences.VisualStyle.GALLERY }
+
 @Composable
 fun PocketAppTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   themeMode: ThemeMode = ThemeMode.SYSTEM,
+  visualStyle: com.example.data.preferences.VisualStyle = com.example.data.preferences.VisualStyle.GALLERY,
   content: @Composable () -> Unit
 ) {
   val colorScheme = pocketColorScheme(themeMode, darkTheme)
@@ -130,8 +133,15 @@ fun PocketAppTheme(
       }
     }
   }
-  MaterialTheme(colorScheme = colorScheme, typography = Typography,
-    shapes = Shapes(extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
-      medium = RoundedCornerShape(16.dp), large = RoundedCornerShape(20.dp), extraLarge = RoundedCornerShape(24.dp)),
-    content = content)
+  val radius = when (visualStyle) {
+    com.example.data.preferences.VisualStyle.GALLERY -> 24
+    com.example.data.preferences.VisualStyle.EDITORIAL -> 6
+    com.example.data.preferences.VisualStyle.COMPACT -> 12
+  }
+  androidx.compose.runtime.CompositionLocalProvider(LocalVisualStyle provides visualStyle) {
+    MaterialTheme(colorScheme = colorScheme, typography = Typography,
+      shapes = Shapes(extraSmall = RoundedCornerShape(4.dp), small = RoundedCornerShape((radius / 2).dp),
+        medium = RoundedCornerShape((radius * 2 / 3).dp), large = RoundedCornerShape(radius.dp), extraLarge = RoundedCornerShape((radius + 4).dp)),
+      content = content)
+  }
 }

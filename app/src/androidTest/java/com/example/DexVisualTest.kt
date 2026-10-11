@@ -51,7 +51,7 @@ class DexVisualTest {
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
-    compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Mazos recientes"))
+    compose.onNodeWithTag("home_list").performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
     capture("inicio-mazos")
@@ -114,6 +114,13 @@ class DexVisualTest {
           compose.waitUntil(10_000) { themeModel.userPreferences.value.themeMode == mode }
           capture("tema-${mode.storedValue}")
         }
+        for (style in com.example.data.preferences.VisualStyle.entries) {
+          compose.runOnIdle { themeModel.setVisualStyle(style) }
+          compose.waitUntil(10_000) { themeModel.userPreferences.value.visualStyle == style }
+          capture("diseno-${style.storedValue}")
+        }
+        compose.runOnIdle { themeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+        compose.waitUntil(10_000) { themeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
         compose.runOnIdle { themeModel.setThemeMode(com.example.data.preferences.ThemeMode.DARK) }
         compose.waitUntil(10_000) { themeModel.userPreferences.value.themeMode == com.example.data.preferences.ThemeMode.DARK }
         compose.onNodeWithText("Abrir").assertDoesNotExist()
@@ -167,6 +174,23 @@ class DexVisualTest {
         compose.runOnIdle { main.editDeckQuantity(basic.id, 2) }
         compose.onNodeWithText("Mi mazo (2)").performClick()
         capture("mazos-editor-con-cartas")
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Leer carta"))
+        compose.onAllNodesWithText("Leer carta").onFirst().performClick()
+        compose.onNodeWithTag("card_reader").assertIsDisplayed()
+        capture("carta-lectura")
+        compose.onNodeWithText("Ampliar imagen · zoom con dos dedos").performScrollTo().performClick()
+        compose.onNodeWithText("Restablecer zoom").assertIsDisplayed()
+        capture("carta-ampliada")
+        compose.onNodeWithText("Volver a la carta").performClick()
+        compose.onNodeWithText("Cerrar carta").performClick()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cómo jugar"))
+        compose.onNodeWithText("Cómo jugar").performClick()
+        compose.onNodeWithText("Actualizar guía con este mazo").performScrollTo().performClick()
+        compose.waitUntil(15_000) { main.generatedDeck.value?.strategy?.contains("SECUENCIA SUGERIDA") == true }
+        capture("mazo-como-jugar")
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cartas"))
+        compose.onNodeWithText("Cartas").performClick()
+        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Hablar con IA"))
         compose.onNodeWithText("Hablar con IA").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("deck_chat_input").performTextInput("Conserva esta pregunta")

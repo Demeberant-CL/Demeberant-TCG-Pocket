@@ -20,6 +20,8 @@ import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
 fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier, reference: com.example.data.repository.GeneratedDeck? = null) {
+  var reading by remember { mutableStateOf<com.example.data.model.PokemonCard?>(null) }
+  reading?.let { CardDetailsDialog(com.example.data.repository.CardWithInventory(it, 0, false), "es", { reading = null }, readOnly = true) }
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val plans by main.localDeckPlans.collectAsStateWithLifecycle()
   val busy by main.isGeneratingDeck.collectAsStateWithLifecycle()
@@ -91,8 +93,12 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
           TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Ocultar cartas" else "Ver cartas") }
           if (expanded) {
             plan.reasons.drop(2).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-            plan.deck.cards.forEach { entry -> Text("${entry.count}× ${entry.card.name} · ${entry.card.id}",
-              style = MaterialTheme.typography.bodySmall) }
+            Text("Toca una carta para leer sus ataques y efectos.", style = MaterialTheme.typography.bodySmall)
+            plan.deck.cards.forEach { entry ->
+              OutlinedButton(onClick = { reading = entry.card }, modifier = Modifier.fillMaxWidth()) {
+                Text("${entry.count}× ${entry.card.name} · Leer carta")
+              }
+            }
           }
           Button(onClick = {
             if (main.hasUnsavedDeckChanges()) pending = plan else main.openLocalDeckPlan(plan, onOpen)
