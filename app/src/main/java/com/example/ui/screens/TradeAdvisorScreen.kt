@@ -25,7 +25,7 @@ import com.example.data.util.*
 import com.example.ui.viewmodel.TcgViewModel
 import kotlinx.coroutines.*
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
@@ -73,7 +73,7 @@ fun TradeAdvisorScreen(main: TcgViewModel, modifier: Modifier = Modifier) {
     }
     stickyHeader {
       Surface(color = MaterialTheme.colorScheme.surface) {
-      Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Recomendados", "Para ofrecer", "Qué conseguir", "Protección").forEachIndexed { n, label ->
           FilterChip(selected = tab == n, onClick = { tab = n; query = ""; scope.launch { listState.scrollToItem(0) } }, label = { Text(label) })
         }
