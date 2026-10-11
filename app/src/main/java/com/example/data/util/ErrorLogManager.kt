@@ -114,8 +114,19 @@ object ErrorLogManager {
     }
   }
   suspend fun clearLogs(context: Context): Boolean = withContext(Dispatchers.IO) {
-    flush()
-    synchronized(fileLock) { File(context.filesDir, "diagnostics").listFiles()?.all { it.delete() } ?: true }
+    val completed = java.util.concurrent.CompletableFuture<Boolean>()
+    val reset = Runnable {
+      synchronized(fileLock) {
+        val ok = File(context.filesDir, "diagnostics").listFiles()?.all { it.delete() } ?: true
+        if (ok) dropped.set(0)
+        completed.complete(ok)
+      }
+    }
+    try { writer.execute(reset) }
+    catch (_: java.util.concurrent.RejectedExecutionException) {
+      check(writer.queue.offer(reset, 5, TimeUnit.SECONDS)) { "Diagnostic writer is busy." }
+    }
+    completed.get(5, TimeUnit.SECONDS)
   }
   suspend fun saveLogs(context: Context, uri: android.net.Uri) {
     val content = readLogs(context)

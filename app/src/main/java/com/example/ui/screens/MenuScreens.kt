@@ -53,7 +53,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
+fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0, onDetailChange: (Boolean) -> Unit = {}) {
   var section by rememberSaveable { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
@@ -63,7 +63,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
     }
   }
   BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
-  LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
+  LaunchedEffect(section) { onDetailChange(section != 0); com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
@@ -209,8 +209,8 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
-      listOf("Colección y juego" to listOf(1, 2, 3, 4),
-        "Información" to listOf(6, 0), "Mi app" to listOf(8, 9)).forEach { (group, indices) ->
+      listOf("Mi app" to listOf(8, 9, 7), "Colección" to listOf(1, 2, 5),
+        "Aprender y practicar" to listOf(0, 3, 4), "Competición" to listOf(6)).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
             Column {

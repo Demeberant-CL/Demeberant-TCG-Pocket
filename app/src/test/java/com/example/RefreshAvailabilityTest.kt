@@ -20,6 +20,15 @@ class RefreshAvailabilityTest {
     now = 86_400_000L
     assertEquals(urls, cache.candidates(urls))
   }
+  @Test fun previouslyWorkingFallbackIsPreferredAndStillExpiresWhenMissing() {
+    val cache = ImageAvailability { 0L }
+    val urls = listOf("spanish", "english", "community")
+    cache.recordSuccess("community")
+    assertEquals(listOf("community", "spanish", "english"), cache.candidates(urls))
+    assertEquals(urls, cache.candidates(urls, preferSuccessful = false))
+    cache.recordMissing("community")
+    assertEquals(listOf("spanish", "english"), cache.candidates(urls))
+  }
   @Test fun automaticMetaRefreshUsesFreshnessAndFailureCooldown() {
     val now = Instant.parse("2026-10-04T12:00:00Z").toEpochMilli()
     assertFalse(MetaRefreshPolicy.shouldRefresh("2026-10-04T10:00:00Z", 0, now))

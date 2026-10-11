@@ -24,7 +24,8 @@ class DiagnosticInterceptor(private val sink: (String, String, Throwable?) -> Un
       sink("HTTP_END", "$id $route status=${response.code} ms=${(System.nanoTime()-started)/1_000_000} bytes=${response.body?.contentLength() ?: -1}", null)
       return response
     } catch (e: IOException) {
-      sink("HTTP_FAIL", "$id $route ms=${(System.nanoTime()-started)/1_000_000}", e)
+      if (chain.call().isCanceled()) sink("HTTP_CANCEL", "$id $route ms=${(System.nanoTime()-started)/1_000_000}", null)
+      else sink("HTTP_FAIL", "$id $route ms=${(System.nanoTime()-started)/1_000_000}", e)
       throw e
     }
   }

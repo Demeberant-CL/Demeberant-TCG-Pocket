@@ -15,6 +15,9 @@ data class MetaDeck(val name: String, val count: Int, val wins: Int, val losses:
   val cards: Map<String, Int>, val energies: List<String>, val tournamentId: String)
 data class MetaSnapshot(val updated: String, val tournaments: Int, val players: Int, val decks: List<MetaDeck>, val skipped: Int)
 
+class NoRecentTournamentResults : IllegalStateException("No hay resultados completos recientes. Se conserva el meta guardado.")
+class TournamentSourceUnavailable(code: Int) : java.io.IOException("Limitless no está disponible (HTTP $code). Se conserva el meta guardado.")
+
 /** Public tournament data only. Never sends collection or AI credentials to Limitless. */
 class TournamentRepository(context: Context, private val client: OkHttpClient = OkHttpClient.Builder()
   .callTimeout(25, TimeUnit.SECONDS).followRedirects(false).build(),
@@ -26,7 +29,7 @@ class TournamentRepository(context: Context, private val client: OkHttpClient = 
   }
   private suspend fun get(path: String): String {
     client.newCall(Request.Builder().url("https://play.limitlesstcg.com/api/$path").build()).await().use { r ->
-      require(r.isSuccessful) { "Limitless no está disponible (HTTP ${r.code}). Se conserva el meta guardado." }
+      if (!r.isSuccessful) throw TournamentSourceUnavailable(r.code)
       return r.body!!.byteStream().use { it.readBytesBounded(2000000).toString(Charsets.UTF_8) }
     }
   }
@@ -81,7 +84,7 @@ class TournamentRepository(context: Context, private val client: OkHttpClient = 
       }
       delay(250)
     }
-    require(players > 0) { "No hay resultados completos recientes. Se conserva el meta guardado." }
+    if (players == 0) throw NoRecentTournamentResults()
     ensureActive()
     val snapshot = MetaSnapshot(Instant.now().toString(), included, players, groups.values.sortedByDescending { it.count }, skipped)
     val bytes = encode(snapshot).toString().toByteArray(Charsets.UTF_8)

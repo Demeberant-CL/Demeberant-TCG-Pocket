@@ -62,3 +62,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ZXing Core 3.5.3: https://github.com/zxing/zxing — Apache License 2.0. Generación/lectura QR en pruebas; no acceso de cámara.
+
+## PocketDecks combat supplement
+
+`app/src/main/assets/pocket-combat-extra.json` is a transformed subset of
+PocketDecks/pokemon-tcg-pocket-cards `data/v5/cards.gameplay.no-image.min.json`,
+revision `ec444f849be468d0104977906b4e1f14b42a5d47`, retrieved 2026-10-10.
+Version 5 datasets are AGPL-3.0-or-later (not the MIT legacy dataset).
+The complete license is included in `app/src/main/assets/PocketDecks-AGPL.txt`.
+Corresponding transformed data and integration source are provided in this
+public repository; upstream: https://github.com/PocketDecks/pokemon-tcg-pocket-cards
+Copyright (C) 2026 Leonid Dalin and Chase Manning.
+Pokémon names, text and artwork remain owned by their respective rights holders.

@@ -69,13 +69,23 @@ class LocalDeckPlannerTest {
     val basic=card(1);val research=card(2,"Research","Entrenador");val ball=card(3,"Ball","Entrenador")
     val reset=card(4,"Reset","Entrenador")
     val pool=listOf(owned(basic),owned(research),owned(ball),owned(reset))+(5..18).map { owned(card(it,type="Entrenador")) }
-    val facts=mapOf(basic.id to attack(listOf("Water")),research.id to CombatData(text="Roba 2 cartas."),
+    val facts=mapOf(basic.id to attack(listOf("Water")),research.id to CombatData(text="Roba 2 cartas.\nDraw 2 cards."),
       ball.id to CombatData(text="Pon 1 Pokémon Básico aleatorio de tu baraja en tu mano."),
       reset.id to CombatData(text="Devuelve tu mano a la baraja y roba tantas cartas como antes."))
     assertTrue(CardRole.SEARCH in RoleClassifier.classify(facts.getValue(ball.id).text))
     val p=LocalDeckPlanner.recommend(pool,facts,PlannerOptions(type="Agua",anchorId=basic.id)).first()
     assertEquals(2,p.deck.cards.first { it.card.id==research.id }.count)
     assertEquals(2,p.deck.cards.first { it.card.id==ball.id }.count)
+  }
+  @Test fun targetedSupportIsExcludedEvenWhenTargetIsUnowned() {
+    val hero = card(1,"Hero")
+    val absent = card(2,"Missing Pokemon")
+    val dead = card(3,"Dead support","Entrenador")
+    val pool = listOf(owned(hero),owned(absent,0),owned(dead)) + (4..18).map { owned(card(it,type="Entrenador")) }
+    val facts = mapOf(hero.id to attack(listOf("Water")), dead.id to CombatData(text="Draw 2 cards. Attach energy to Missing Pokemon."))
+    val result = LocalDeckPlanner.recommend(pool,facts,PlannerOptions(type="Agua",anchorId=hero.id)).first()
+    assertFalse(result.deck.cards.any { it.card.id == dead.id })
+    assertTrue(result.deck.strategy.contains("SECUENCIA SUGERIDA"))
   }
   @Test fun shuffledInputIsDeterministicAndSearchIsBounded() {
     val pool=(1..200).map { owned(card(it)) }

@@ -3,6 +3,8 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
@@ -21,6 +24,7 @@ import com.example.data.util.DeckCodec
 import com.example.ui.components.ProfileAvatar
 import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -41,7 +45,10 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val catalogIds = remember(inventory) { inventory.mapTo(hashSetOf()) { it.card.id } }
   val copies = remember(inventory) { inventory.sumOf { it.ownedCount } }
   val progress = if (inventory.isEmpty()) 0f else owned.toFloat() / inventory.size
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  val listState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  Column(modifier.fillMaxSize()) {
+  LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("home_list"), state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
       Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -64,6 +71,16 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
       }
     }
+    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
+      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+          Text("Continuar edición", style = MaterialTheme.typography.labelLarge)
+          Text(deck.name, style = MaterialTheme.typography.titleMedium)
+          Text("${deck.totalCardCount}/20 cartas · " + deck.energyTypes.joinToString().ifBlank { "Energías por revisar" }, style = MaterialTheme.typography.bodySmall)
+          Button(onClick = onEditor, shape = MaterialTheme.shapes.medium) { Text("Continuar editando") }
+        }
+      }
+    } }
     message?.let { status -> item {
       Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -82,13 +99,15 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         OutlinedButton(onClick = onEditor, shape = MaterialTheme.shapes.medium) { Text("Abrir editor") }
       }
     }
+    item {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
     decks.take(3).forEach { saved -> item(key = "recent_${saved.id}") {
       val refs = remember(saved.cardListSerialized) {
         runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()
       }
       val canOpen = refs != null && refs.all { ref -> ref.first in catalogIds }
       OutlinedCard(onClick = { openSavedDeck(saved) }, enabled = canOpen,
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = Modifier.width(280.dp)) {
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
           verticalAlignment = Alignment.CenterVertically) {
           if (androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f) {
@@ -109,16 +128,8 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         }
       }
     } }
-    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
-      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text("Continuar edición", style = MaterialTheme.typography.labelLarge)
-          Text(deck.name, style = MaterialTheme.typography.titleMedium)
-          Text("${deck.totalCardCount}/20 cartas · " + deck.energyTypes.joinToString().ifBlank { "Energías por revisar" }, style = MaterialTheme.typography.bodySmall)
-          Button(onClick = onEditor, shape = MaterialTheme.shapes.medium) { Text("Continuar editando") }
-        }
-      }
-    } }
+    }
+    }
     item {
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -138,6 +149,12 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
     }
 
+  }
+  if (listState.canScrollForward) Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+    TextButton(onClick = { scope.launch { listState.animateScrollToItem((listState.firstVisibleItemIndex + 1).coerceAtMost(listState.layoutInfo.totalItemsCount - 1)) } }, modifier = Modifier.fillMaxWidth()) {
+      Text("↓ Más contenido: mazos y torneos")
+    }
+  }
   }
   if (chooseAvatar) AvatarPickerDialog(prefs.avatarId, onSave = { main.setProfileAvatar(it); chooseAvatar = false }, onClose = { chooseAvatar = false })
 }

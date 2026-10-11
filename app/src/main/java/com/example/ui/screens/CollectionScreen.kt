@@ -266,17 +266,16 @@ fun CollectionScreen(
         .fillMaxWidth()
         .padding(vertical = 8.dp)
         .testTag("collection_stats_card"),
-      shape = RoundedCornerShape(10.dp),
-      colors = CardDefaults.cardColors(containerColor = PocketSurface)
+      shape = MaterialTheme.shapes.large,
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-      Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+      Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
           com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
-            Modifier.size(48.dp).clip(CircleShape).clickable { showAvatarPicker = true }, "Cambiar avatar de perfil")
+            Modifier.size(60.dp).clip(CircleShape).clickable { showAvatarPicker = true }, "Cambiar avatar de perfil")
           Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
             Text("Colección", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("$totalOwned / $totalCatalog · ${(completionPercent * 100).toInt()}% · $totalCopies copias",
-              style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
+            Text("Tu catálogo de cartas", style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
             if (showProfileDetails) {
               Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
               Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
@@ -288,6 +287,11 @@ fun CollectionScreen(
           IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
             Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección", tint = PocketBluePrimary)
           }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          Column { Text("$totalOwned / $totalCatalog", style = MaterialTheme.typography.titleMedium); Text("Cartas distintas", style = MaterialTheme.typography.labelSmall) }
+          Column { Text("$totalCopies", style = MaterialTheme.typography.titleMedium); Text("Copias", style = MaterialTheme.typography.labelSmall) }
+          Column { Text("${(completionPercent * 100).toInt()}%", style = MaterialTheme.typography.titleMedium); Text("Completado", style = MaterialTheme.typography.labelSmall) }
         }
         LinearProgressIndicator(progress = { completionPercent },
           modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)),
@@ -478,6 +482,7 @@ fun CollectionScreen(
     SettingsScreen(
       themeMode = userPreferences.themeMode,
       onThemeModeChange = viewModel::setThemeMode,
+      visualStyle = userPreferences.visualStyle, onVisualStyleChange = viewModel::setVisualStyle,
       onDismiss = { showSettingsDialog = false; if (settingsOnly) onSettingsBack() }
     ) {
           if (onAiConnections != null) OutlinedButton(onClick = onAiConnections, modifier = Modifier.fillMaxWidth()) { Text("Conexiones IA") }

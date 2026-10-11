@@ -20,11 +20,12 @@ class LocalCombatFactsTest {
   @Test fun bundledFactsHaveRealCostsAndDoNotUsePlaceholderHealth() = runBlocking {
     val context=ApplicationProvider.getApplicationContext<Context>()
     val facts=LocalCombatRepository.snapshot(context)
-    assertTrue(facts.size>=2400)
+    assertTrue(facts.size>=3900)
     assertEquals(190,facts.getValue("A1-004").hp)
     assertEquals(listOf("Grass","Grass","Colorless","Colorless"),facts.getValue("A1-004").attacks[1].cost)
     assertEquals(150,facts.getValue("A1-129").hp)
     assertTrue(facts.getValue("A1-220").text.contains("{W}"))
+    assertTrue(facts.getValue("A1-007").text.contains("Powder Heal"))
   }
   @Test fun cachedRetreatHeaderDoesNotTurnEveryCardIntoSwitchSupport() {
     val rule=CardRulesEntity("A1-001","es",60,"Agua","PS: 60\nRetirada: 2\nPlacaje · 20 · Coste: Water, Colorless · Roba 1 carta.","","",1)

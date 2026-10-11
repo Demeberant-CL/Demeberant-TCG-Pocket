@@ -18,6 +18,17 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DiagnosticSummaryTest {
+  @Test fun resetRemovesQueuedHistoryAndKeepsNewEvents() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    ErrorLogManager.init(context)
+    repeat(50) { ErrorLogManager.event("OLD_EVENT", "before reset") }
+    assertTrue(ErrorLogManager.clearLogs(context))
+    ErrorLogManager.event("NEW_EVENT", "after reset")
+    val text = ErrorLogManager.readLogs(context)
+    assertFalse(text.contains("OLD_EVENT"))
+    assertTrue(text.contains("NEW_EVENT"))
+  }
+
   @Test fun sqlFloodDoesNotHideQrFailureOrCopyPrivateMessages() {
     val lines = sequence {
       repeat(10000) { yield("[2026-10-03T00:30:00Z] [ROOM_QUERY] DROP PRIVATE_COLLECTION") }
