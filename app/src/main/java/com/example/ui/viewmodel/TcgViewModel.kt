@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,6 +40,7 @@ import com.example.data.util.AppBackup
 import com.example.data.util.BackupSnapshot
 import com.example.data.util.DeckCodec
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
   private val repository: InventoryRepository
@@ -44,7 +48,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
   init {
     ErrorLogManager.init(application)
-    CardCatalog.loadBundled(application)
     val db = AppDatabase.getDatabase(application)
     repository = InventoryRepository.fromDatabase(db)
     preferencesRepository = UserPreferencesRepository(application)
@@ -58,6 +61,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
 
   // Collection inventory Flow
   val inventoryList: StateFlow<List<CardWithInventory>> = repository.inventoryFlow
+    .onStart { withContext(Dispatchers.IO) { CardCatalog.loadBundled(getApplication()) } }
     .catch { error ->
       _csvStatusMessage.value = "No se puede leer la colección: ${error.localizedMessage}"
       ErrorLogManager.logError(getApplication(), "INVENTORY_READ", "Error al leer la colección", error)
@@ -94,6 +98,12 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   private val _generatedDeck = MutableStateFlow<GeneratedDeck?>(null)
   val generatedDeck = _generatedDeck.asStateFlow()
   private var savedDraftSnapshot: GeneratedDeck? = null
+  private val draftStore = com.example.data.util.DeckDraftStore(application)
+  private val draftRevision = MutableStateFlow(0)
+  private var editingDeckId = 0L
+  private val _automaticEnergies = MutableStateFlow(true)
+  val automaticEnergies = _automaticEnergies.asStateFlow()
+
 
   fun hasUnsavedDeckChanges(): Boolean {
     val current = _generatedDeck.value ?: return false
@@ -141,8 +151,21 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   init {
     viewModelScope.launch {
       try {
-        // Ensure persisted card names and rarities have been hydrated before generation.
+        // Read and parse the bundled catalog off the main thread before generation.
+        withContext(Dispatchers.IO) { CardCatalog.loadBundled(getApplication()) }
         repository.inventoryFlow.first()
+        val recovery = withContext(Dispatchers.IO) { runCatching { draftStore.read() }.onFailure { ErrorLogManager.event("DRAFT_READ", "Could not restore recovery draft", it) }.getOrNull() }
+        if (recovery != null && _generatedDeck.value == null) {
+          val saved = repository.savedDecksFlow.first().firstOrNull { it.id == recovery.editingId }
+          editingDeckId = saved?.id ?: 0L
+          savedDraftSnapshot = saved?.let { entry -> runCatching {
+            val cards = DeckCodec.decode(entry.cardListSerialized)
+            GeneratedDeck(entry.name, entry.archetype, entry.strategy, cards, cards.sumOf { it.count },
+              DeckBuilderEngine.validate(cards), DeckCodec.energies(entry.cardListSerialized))
+          }.getOrNull() }
+          _automaticEnergies.value = recovery.automaticEnergies
+          _generatedDeck.value = recovery.deck
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -150,6 +173,16 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         ErrorLogManager.logError(getApplication(), "INIT_ASSET_LOAD", "Error al cargar la colección", e)
       } finally {
         initialization.complete(Unit)
+      }
+      viewModelScope.launch {
+        combine(_generatedDeck, draftRevision) { deck, _ -> deck }.debounce(250).collect { deck ->
+          if (deck != null) {
+            val recovery = com.example.data.util.DeckDraft(deck, editingDeckId, _automaticEnergies.value)
+            try { withContext(Dispatchers.IO) { draftStore.write(recovery) } }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { ErrorLogManager.event("DRAFT_SAVE", "Could not save recovery draft", e) }
+          }
+        }
       }
       runGeminiMetaAnalysis()
 
@@ -263,9 +296,6 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  private var editingDeckId = 0L
-  private val _automaticEnergies = MutableStateFlow(true)
-  val automaticEnergies = _automaticEnergies.asStateFlow()
 
   fun useAutomaticEnergies() {
     _automaticEnergies.value = true
@@ -435,12 +465,19 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       energyTypes = if (_automaticEnergies.value) com.example.domain.DeckAutomation.energies(cards) else deck.energyTypes)
   }
 
+  private val _isSavingDeck = MutableStateFlow(false)
+  val isSavingDeck = _isSavingDeck.asStateFlow()
+
   // Saved Decks Persistence
   fun saveCurrentDeck(customName: String? = null, allowDraft: Boolean = false, onSaved: () -> Unit = {}) {
+    if (_isSavingDeck.value) return
+    _isSavingDeck.value = true
     viewModelScope.launch {
-      val deck = _generatedDeck.value ?: return@launch
+      val deck = _generatedDeck.value
+      if (deck == null) { _isSavingDeck.value = false; return@launch }
       if (!allowDraft && deck.validationWarnings.isNotEmpty()) {
         _csvStatusMessage.value = "El mazo necesita correcciones antes de guardarse: ${deck.validationWarnings.joinToString(" ")}"
+        _isSavingDeck.value = false
         return@launch
       }
       try {
@@ -456,6 +493,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         )
         editingDeckId = repository.saveDeck(entity)
         savedDraftSnapshot = deck
+        draftRevision.value++
         _csvStatusMessage.value = "Mazo guardado."
         onSaved()
       } catch (e: CancellationException) {
@@ -463,7 +501,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       } catch (e: Exception) {
         reportMessage("Error al guardar: ${e.localizedMessage}")
         ErrorLogManager.logError(getApplication(), "SAVE_DECK", "Error al guardar mazo en base de datos", e)
-      }
+      } finally { _isSavingDeck.value = false }
     }
   }
 

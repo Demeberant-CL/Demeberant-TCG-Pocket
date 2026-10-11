@@ -28,7 +28,7 @@ import kotlinx.coroutines.*
 import java.io.File
 
 @Composable
-fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, onPrepare: (() -> Unit) -> Unit = { it() }) {
+fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, enabled: Boolean = true, onPrepare: (() -> Unit) -> Unit = { it() }) {
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   var alternate by remember { mutableStateOf(false) }
@@ -66,7 +66,7 @@ fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, onPre
       finally { busy = false }
     }
   }
-  OutlinedButton(enabled = !busy, modifier = modifier.testTag("deck_to_game"), onClick = {
+  OutlinedButton(enabled = enabled && !busy, modifier = modifier.testTag("deck_to_game"), onClick = {
     onPrepare {
       snapshot = deck.copy(cards = deck.cards.toList(), energyTypes = deck.energyTypes.toList())
       alternate = false; help = false; result = null; shown = true
