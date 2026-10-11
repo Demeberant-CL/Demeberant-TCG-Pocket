@@ -203,7 +203,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
   val labels = listOf("Tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA", "Cartas sin conexión")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
     Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard)
   Column(modifier.fillMaxSize()) {
@@ -242,7 +242,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
       when (section) {
         0 -> HelpScreen(Modifier.weight(1f))
         1 -> PackRecommenderScreen(main, Modifier.weight(1f))
-        2 -> TradeMenuScreen(main, Modifier.weight(1f))
+        2 -> TradeAdvisorScreen(main, Modifier.weight(1f))
         3 -> SandboxScreen(main, advanced, Modifier.weight(1f))
         4 -> Column(Modifier.weight(1f)) {
           MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }

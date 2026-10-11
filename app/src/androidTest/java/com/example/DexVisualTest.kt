@@ -30,7 +30,7 @@ class DexVisualTest {
     val db = AppDatabase.getDatabase(context)
     val catalog = CardCatalog.ALL_CARDS
     db.inventoryDao().insertCards(catalog.take(1343).mapIndexed { index, card ->
-      InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 1097) 2 else 1,false)
+      InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 5) 4 else if (index < 1097) 2 else 1,false)
     })
     val sample = listOf("Pikachu", "Charizard").map { name ->
       catalog.first { it.name.startsWith(name,true) && it.isEx && it.isFullArt }
@@ -51,6 +51,35 @@ class DexVisualTest {
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
+    val homeModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+    compose.onNodeWithTag("home_list").performScrollToNode(hasText("Elegir objetivo e intercambios"))
+    compose.onNodeWithText("Elegir objetivo e intercambios").performClick()
+    compose.onNodeWithText("Asesor de intercambios").assertIsDisplayed()
+    capture("intercambios-objetivos")
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Copiar propuesta"))
+    compose.onAllNodesWithText("Copiar propuesta").onFirst().performClick()
+    compose.onAllNodesWithText("Propuesta copiada").onFirst().assertExists()
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Protección"))
+    compose.onNodeWithText("Protección").performClick()
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Buscar nombre o código"))
+    compose.onNodeWithText("Buscar nombre o código").performTextInput(catalog.first().id)
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Bloquear para intercambio"))
+    compose.onAllNodesWithText("Bloquear para intercambio").onFirst().performClick()
+    compose.waitUntil(10_000) { catalog.first().id in homeModel.userPreferences.value.trade.blocked }
+    capture("intercambios-proteccion")
+    compose.onNodeWithTag("nav_item_0").performClick()
+    for (style in listOf(com.example.data.preferences.VisualStyle.DECISIONS, com.example.data.preferences.VisualStyle.ALBUM)) {
+      compose.runOnIdle { homeModel.setVisualStyle(style) }
+      compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == style }
+      compose.onNodeWithTag("home_list").performScrollToIndex(0)
+      capture("inicio-${style.storedValue}")
+      compose.onNodeWithTag("nav_item_1").performClick()
+      capture("coleccion-${style.storedValue}")
+      compose.onNodeWithTag("nav_item_0").performClick()
+    }
+    compose.runOnIdle { homeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
+
     compose.onNodeWithTag("home_list").performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.

@@ -65,12 +65,12 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().testTag("saved_deck_${saved.id}")) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual == com.example.data.preferences.VisualStyle.COMPACT) 10.dp else 14.dp)) {
-          val stacked = visual == com.example.data.preferences.VisualStyle.EDITORIAL || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) 10.dp else 14.dp)) {
+          val stacked = visual in listOf(com.example.data.preferences.VisualStyle.EDITORIAL, com.example.data.preferences.VisualStyle.ALBUM) || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
           Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
               Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(saved.name, style = if (visual == com.example.data.preferences.VisualStyle.COMPACT) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, maxLines = 2,
+                Text(saved.name, style = if (visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, maxLines = 2,
                   overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text("$total/20 cartas", style = MaterialTheme.typography.bodyMedium)
                 if (energies.isNotEmpty()) com.example.ui.components.EnergyBadges(energies)
@@ -79,9 +79,9 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
               }
-              if (!stacked) Box(Modifier.padding(top = 20.dp)) { DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT) }
+              if (!stacked) Box(Modifier.padding(top = 20.dp)) { DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) }
             }
-            if (stacked) DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT)
+            if (stacked) DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS))
             if (available != null) Text(if (available < total) "Faltan ${total - available} copias · $available/$total disponibles" else "Todas las copias disponibles",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)

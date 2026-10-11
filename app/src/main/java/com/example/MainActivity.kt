@@ -154,7 +154,9 @@ class MainActivity : ComponentActivity() {
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
               onEditor = { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) },
               onCreate = { deckEditorRequest = -kotlin.math.abs(deckEditorRequest) - 1; navigateTo(2) },
-              onMeta = { metaReturnTab = 0; navigateTo(5) })
+              onMeta = { metaReturnTab = 0; navigateTo(5) },
+              onTrade = { screenStates.removeState(4); moreSection = 2; navigateTo(4) },
+              onCollection = { expansion -> viewModel.setExpansionFilter(expansion); screenStates.removeState(1); navigateTo(1) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)

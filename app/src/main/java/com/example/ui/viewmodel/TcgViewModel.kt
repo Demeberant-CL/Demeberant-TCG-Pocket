@@ -201,6 +201,13 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun setTradeSettings(value: com.example.data.util.TradeSettings) {
+    viewModelScope.launch {
+      try { preferencesRepository.setTrade(value) }
+      catch (e: Exception) { _csvStatusMessage.value = "No se pudieron guardar los objetivos de intercambio." }
+    }
+  }
+
   fun setVisualStyle(style: com.example.data.preferences.VisualStyle) {
     viewModelScope.launch {
       try { preferencesRepository.setVisualStyle(style) }

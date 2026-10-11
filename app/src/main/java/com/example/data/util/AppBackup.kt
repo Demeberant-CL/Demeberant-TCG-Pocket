@@ -20,7 +20,9 @@ object AppBackup {
     .put("decks", JSONArray(value.decks.map { deck -> JSONObject().put("name", deck.name)
       .put("archetype", deck.archetype).put("strategy", deck.strategy).put("cards", deck.cardListSerialized)
       .put("total", deck.totalCards).put("createdAt", deck.createdAt) }))
-    .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue).put("avatar", value.preferences.avatarId).put("style", value.preferences.visualStyle.storedValue)).toString(2)
+    .put("preferences", JSONObject().put("theme", value.preferences.themeMode.storedValue).put("avatar", value.preferences.avatarId).put("style", value.preferences.visualStyle.storedValue)
+      .put("trade", JSONObject().put("reserve", value.preferences.trade.reserve).put("blocked", JSONArray(value.preferences.trade.blocked.sorted()))
+        .put("expansion", value.preferences.trade.expansion).put("targetDeck", value.preferences.trade.targetDeck))).toString(2)
 
   fun decode(text: String): BackupSnapshot {
     require(text.length <= 8_000_000) { "Respaldo demasiado grande." }
@@ -51,7 +53,18 @@ object AppBackup {
     val prefs = root.getJSONObject("preferences")
     val theme = prefs.getString("theme")
     require(theme == "blue" || com.example.data.preferences.ThemeMode.entries.any { it.storedValue == theme }) { "Ajustes no válidos." }
+    val tradeJson = prefs.optJSONObject("trade")
+    val reserve = tradeJson?.optInt("reserve", 2) ?: 2
+    require(reserve in 1..2) { "Reserva no válida." }
+    val blockedJson = tradeJson?.optJSONArray("blocked") ?: JSONArray()
+    require(blockedJson.length() <= 10_000) { "Demasiadas protecciones." }
+    val blocked = (0 until blockedJson.length()).map { CardId.normalize(blockedJson.getString(it)) }.toSet()
+    val expansion = tradeJson?.optString("expansion").orEmpty()
+    require(expansion.length <= 24) { "Expansión no válida." }
+    val target = tradeJson?.optString("targetDeck").orEmpty()
+    if (target.isNotBlank()) DeckCodec.references(target)
+    val trade = TradeSettings(reserve, blocked, expansion, target)
     return BackupSnapshot(cards, decks, UserPreferences(com.example.data.preferences.ThemeMode.fromStored(theme),
-      com.example.data.preferences.ProfileAvatars.normalize(prefs.optString("avatar")), com.example.data.preferences.VisualStyle.fromStored(prefs.optString("style"))), prefs.has("avatar"))
+      com.example.data.preferences.ProfileAvatars.normalize(prefs.optString("avatar")), com.example.data.preferences.VisualStyle.fromStored(prefs.optString("style")), trade), prefs.has("avatar"))
   }
 }

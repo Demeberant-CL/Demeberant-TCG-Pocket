@@ -130,8 +130,9 @@ fun CollectionScreen(
   onAiConnections: (() -> Unit)? = null,
   advanced: com.example.ui.viewmodel.AdvancedViewModel? = null
 ) {
-  var listView by rememberSaveable { mutableStateOf(false) }
-  var largeCards by rememberSaveable { mutableStateOf(false) }
+  val visualStyle = com.example.ui.theme.LocalVisualStyle.current
+  var listView by rememberSaveable(visualStyle) { mutableStateOf(visualStyle == com.example.data.preferences.VisualStyle.DECISIONS) }
+  var largeCards by rememberSaveable(visualStyle) { mutableStateOf(visualStyle == com.example.data.preferences.VisualStyle.ALBUM) }
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val fullInventory by viewModel.inventoryList.collectAsStateWithLifecycle()
