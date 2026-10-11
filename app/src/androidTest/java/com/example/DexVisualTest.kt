@@ -117,7 +117,7 @@ class DexVisualTest {
         compose.runOnIdle { themeModel.setThemeMode(com.example.data.preferences.ThemeMode.DARK) }
         compose.waitUntil(10_000) { themeModel.userPreferences.value.themeMode == com.example.data.preferences.ThemeMode.DARK }
         compose.onNodeWithText("Abrir").assertDoesNotExist()
-        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performClick()
+        compose.onAllNodes(hasText(sample[0].name) and hasClickAction()).onFirst().performScrollTo().performClick()
         compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Añadir cartas"))
         compose.onNodeWithText("Añadir cartas").assertIsDisplayed()
         backToLibrary()
@@ -210,6 +210,9 @@ class DexVisualTest {
         compose.onNodeWithText("Crear nuevo").performClick()
         compose.waitForIdle()
         capture("mazos-crear-ia")
+        compose.onNodeWithText("← Crear mazo").performClick()
+        compose.onNodeWithText("← Mis mazos").performClick()
+        compose.onNodeWithTag("nav_item_4").assertExists()
       }
     }
   }
