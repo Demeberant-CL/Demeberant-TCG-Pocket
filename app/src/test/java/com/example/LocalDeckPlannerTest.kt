@@ -12,6 +12,15 @@ class LocalDeckPlannerTest {
       70,type,"","",rulesName=name,category=if(type=="Entrenador") "item" else "pokemon",stage=stage,evolvesFrom=parent)
   private fun owned(card: PokemonCard, count: Int = 2) = CardWithInventory(card,count,false)
   private fun attack(cost: List<String>, damage: String = "60") = CombatData(100,1,listOf(CombatAttack(cost,damage)))
+  @Test fun lostAttackTurnReducesRankingAgainstOtherwiseIdenticalAttacker() {
+    val hero = card(1, "Hero")
+    val pool = listOf(owned(hero)) + (2..18).map { owned(card(it, type = "Entrenador")) }
+    val normal = CombatData(100, 1, listOf(CombatAttack(listOf("Water"), "100")))
+    val delayed = normal.copy(attacks = listOf(normal.attacks.single().copy(effect = "During your next turn, this Pokémon cannot attack.")))
+    fun plan(data: CombatData) = LocalDeckPlanner.recommend(pool, mapOf(hero.id to data), PlannerOptions(type = "Agua", anchorId = hero.id)).first()
+    assertTrue(plan(normal).score > plan(delayed).score)
+    assertTrue(plan(delayed).cautions.any { "no mide rendimiento competitivo" in it })
+  }
   @Test fun completeDeckPreservesInventoryAndNameLimitsAcrossPrintings() {
     val base = card(1,"Core")
     val pool = listOf(owned(base,1),owned(base.copy(id="B1-999"),1)) + (2..18).map { owned(card(it)) }

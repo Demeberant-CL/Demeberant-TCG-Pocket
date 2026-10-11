@@ -202,14 +202,14 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo")
+  val labels = listOf("Tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA", "Cartas sin conexión")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
-      listOf("Mi app" to listOf(8, 9, 7), "Colección" to listOf(1, 2, 5),
+      listOf("Mi app" to listOf(8, 9, 10, 7), "Colección" to listOf(1, 2, 5),
         "Aprender y practicar" to listOf(0, 3, 4), "Competición" to listOf(6)).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
@@ -248,6 +248,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
           MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }
           ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = calculation == 1, packsOnly = calculation == 0)
         }
+        10 -> OfflineImagesScreen(Modifier.weight(1f))
         9 -> AIAssistantScreen(main, advanced, {}, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
         else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))
       }
