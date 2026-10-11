@@ -26,7 +26,10 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
   val context = LocalContext.current
   val allCandidates = remember(id, language, highResolution) {
     val saved = if (language == "es") com.example.data.util.SpanishImageStore.file(context, id).takeIf { it.exists() }?.toURI()?.toString() else null
-    listOfNotNull(saved) + TcgdexHelper.imageCandidates(id, language, highResolution)
+    val remote = TcgdexHelper.imageCandidates(id, language, highResolution)
+    if (highResolution && remote.firstOrNull()?.endsWith("/high.webp") == true)
+      remote.take(1) + listOfNotNull(saved) + remote.drop(1)
+    else listOfNotNull(saved) + remote
   }
   var candidates by remember(allCandidates) { mutableStateOf(ImageAvailability.session.candidates(allCandidates, preferSuccessful = !highResolution)) }
   var index by remember(candidates) { mutableStateOf(0) }
