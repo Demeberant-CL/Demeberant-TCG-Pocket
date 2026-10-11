@@ -95,11 +95,23 @@ fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, enabl
             Image(image.bitmap.asImageBitmap(), "Código QR del mazo", Modifier.fillMaxWidth().aspectRatio(1f).testTag("deck_qr_image"))
             Text("En Pokémon TCG Pocket, abre la opción para importar un mazo mediante QR.", style = MaterialTheme.typography.bodyMedium)
             Text("Las variantes de arte pueden cambiar. La aceptación depende del juego.", style = MaterialTheme.typography.bodySmall)
+
+          }
+          TextButton(onClick = { help = !help }) { Text("¿No funciona el QR?") }
+          if (help) {
+            Text("Usa la imagen original, sin recortarla. Mantén el margen blanco y evita reflejos. Puedes probar otra distribución con las mismas cartas.", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(enabled = !busy, onClick = { generate(!alternate) }) {
+              Text(if (alternate) "Volver al QR principal" else "Probar QR alternativo")
+            }
+          }
+        }
+        result?.let { image ->
+          AdaptiveActionRow(Modifier.padding(top = 8.dp)) { actionModifier ->
             Button(enabled = !busy, onClick = {
               val filename = snapshot.name.replace(Regex("[^\\p{L}\\p{N}_-]+"), "-").take(60)
               save.launch("$filename-qr.png")
-            }, modifier = Modifier.fillMaxWidth()) { Text("Guardar imagen") }
-            OutlinedButton(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
+            }, modifier = actionModifier) { Text("Guardar imagen") }
+            OutlinedButton(enabled = !busy, modifier = actionModifier, onClick = {
               busy = true
               scope.launch {
                 try {
@@ -122,13 +134,6 @@ fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, enabl
                 finally { busy = false }
               }
             }) { Text("Compartir imagen") }
-          }
-          TextButton(onClick = { help = !help }) { Text("¿No funciona el QR?") }
-          if (help) {
-            Text("Usa la imagen original, sin recortarla. Mantén el margen blanco y evita reflejos. Puedes probar otra distribución con las mismas cartas.", style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(enabled = !busy, onClick = { generate(!alternate) }) {
-              Text(if (alternate) "Volver al QR principal" else "Probar QR alternativo")
-            }
           }
         }
       }

@@ -77,13 +77,7 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
               }
-              if (!stacked) DeckCoverPair(covers)
-              Box {
-                IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                  DropdownMenuItem(text = { Text("Eliminar mazo") }, onClick = { showMenu = false; pendingDelete = saved })
-                }
-              }
+              if (!stacked) Box(Modifier.padding(top = 36.dp)) { DeckCoverPair(covers) }
             }
             if (stacked) DeckCoverPair(covers)
             if (available != null) Text(if (available < total) "Faltan ${total - available} copias · $available/$total disponibles" else "Todas las copias disponibles",
@@ -91,6 +85,12 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             if (refs == null) Text("Lista por revisar. El mazo se conserva.", style = MaterialTheme.typography.bodySmall)
             if (refs != null && refs.any { !cards.containsKey(it.first) }) Text("Hay cartas fuera del catálogo actual.", style = MaterialTheme.typography.bodySmall)
+          }
+          Box(Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "Opciones de ${saved.name}") }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+              DropdownMenuItem(text = { Text("Eliminar mazo") }, onClick = { showMenu = false; pendingDelete = saved })
+            }
           }
         }
       }
@@ -107,7 +107,7 @@ private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry
   Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
     covers.forEach { entry ->
       com.example.ui.components.PocketCardImage(entry.card.id, entry.card.name,
-        modifier = Modifier.width(64.dp).height(90.dp).clip(MaterialTheme.shapes.small))
+        modifier = Modifier.width(76.dp).height(108.dp).clip(MaterialTheme.shapes.small))
     }
   }
 }

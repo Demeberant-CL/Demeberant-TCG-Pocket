@@ -36,8 +36,10 @@ class DexVisualTest {
       catalog.first { it.name.startsWith(name,true) && it.isEx && it.isFullArt }
     }
     sample.forEach { card ->
-      db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=2,
-        cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2)),listOf("Rayo"))))
+      val partner = catalog.first { it.type == card.type && it.stage == "basic" && it.id != card.id }
+      db.savedDeckDao().insertDeck(SavedDeckEntity(name=card.name,archetype="Prueba visual",strategy="",totalCards=4,
+        cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2),
+          com.example.data.repository.DeckCardEntry(partner,2)),listOf(card.type))))
     }
     compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
     val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
