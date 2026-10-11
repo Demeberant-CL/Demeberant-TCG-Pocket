@@ -21,7 +21,7 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
   contentScale: ContentScale = ContentScale.Fit,
   unavailable: @Composable () -> Unit = { Text(name, style = MaterialTheme.typography.labelSmall) }) {
   val allCandidates = remember(id, language, highResolution) { TcgdexHelper.imageCandidates(id, language, highResolution) }
-  var candidates by remember(allCandidates) { mutableStateOf(ImageAvailability.session.candidates(allCandidates)) }
+  var candidates by remember(allCandidates) { mutableStateOf(ImageAvailability.session.candidates(allCandidates, preferSuccessful = !highResolution)) }
   var index by remember(candidates) { mutableStateOf(0) }
   var failed by remember(candidates) { mutableStateOf(candidates.isEmpty()) }
   var loading by remember(candidates) { mutableStateOf(true) }

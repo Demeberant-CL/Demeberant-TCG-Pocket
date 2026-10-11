@@ -25,6 +25,7 @@ class RefreshAvailabilityTest {
     val urls = listOf("spanish", "english", "community")
     cache.recordSuccess("community")
     assertEquals(listOf("community", "spanish", "english"), cache.candidates(urls))
+    assertEquals(urls, cache.candidates(urls, preferSuccessful = false))
     cache.recordMissing("community")
     assertEquals(listOf("spanish", "english"), cache.candidates(urls))
   }

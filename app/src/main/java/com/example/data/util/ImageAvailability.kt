@@ -8,10 +8,12 @@ class ImageAvailability(private val now: () -> Long = { android.os.SystemClock.e
     missing.remove(url); missing[url] = now()
     if (missing.size > 4096) missing.remove(missing.keys.first())
   }
-  @Synchronized fun candidates(urls: List<String>): List<String> {
+  @Synchronized fun candidates(urls: List<String>, preferSuccessful: Boolean = true): List<String> {
     val time = now()
     missing.entries.removeAll { time - it.value !in 0 until 86_400_000L }
-    return urls.filterNot { it in missing }.sortedByDescending { it in successful }
+    return urls.filterNot { it in missing }.let { available ->
+      if (preferSuccessful) available.sortedByDescending { it in successful } else available
+    }
   }
   @Synchronized fun recordSuccess(url: String) {
     successful.remove(url); successful.add(url)
