@@ -133,8 +133,8 @@ fun ManualDeckScreen(viewModel: TcgViewModel, advanced: AdvancedViewModel, modif
         }
         LinearProgressIndicator(progress = { (current.totalCardCount / 20f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
         if (generating) LinearProgressIndicator(Modifier.fillMaxWidth())
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          items(3) { index -> FilterChip(selected = tab == index, onClick = { tab = index },
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          repeat(3) { index -> FilterChip(selected = tab == index, onClick = { tab = index }, modifier = Modifier.weight(1f),
             label = { Text(listOf("Cartas", "Energías", "Cómo jugar")[index]) }) }
         }
       }

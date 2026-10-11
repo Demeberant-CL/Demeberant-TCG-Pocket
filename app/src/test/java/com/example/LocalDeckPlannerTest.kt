@@ -77,6 +77,16 @@ class LocalDeckPlannerTest {
     assertEquals(2,p.deck.cards.first { it.card.id==research.id }.count)
     assertEquals(2,p.deck.cards.first { it.card.id==ball.id }.count)
   }
+  @Test fun targetedSupportIsExcludedEvenWhenTargetIsUnowned() {
+    val hero = card(1,"Hero")
+    val absent = card(2,"Missing Pokemon")
+    val dead = card(3,"Dead support","Entrenador")
+    val pool = listOf(owned(hero),owned(absent,0),owned(dead)) + (4..18).map { owned(card(it,type="Entrenador")) }
+    val facts = mapOf(hero.id to attack(listOf("Water")), dead.id to CombatData(text="Draw 2 cards. Attach energy to Missing Pokemon."))
+    val result = LocalDeckPlanner.recommend(pool,facts,PlannerOptions(type="Agua",anchorId=hero.id)).first()
+    assertFalse(result.deck.cards.any { it.card.id == dead.id })
+    assertTrue(result.deck.strategy.contains("SECUENCIA SUGERIDA"))
+  }
   @Test fun shuffledInputIsDeterministicAndSearchIsBounded() {
     val pool=(1..200).map { owned(card(it)) }
     val p=LocalDeckPlanner.recommend(pool,options=PlannerOptions(type="Agua"))

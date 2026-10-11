@@ -96,7 +96,7 @@ object LocalDeckPlanner {
       item.card.id to (direct
         ?: if (CardRole.DRAW in roleMap[item.card.id].orEmpty()) 0.5 else 0.0)
     }
-    val named = owned.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
+    val named = inventory.filter { !trainer(it.card) && it.card.rulesName.length >= 4 }
       .map { name(it.card.rulesName) to RoleClassifier.normalize(it.card.rulesName) }.distinct()
     val namedTargets = owned.filter { trainer(it.card) }.associate { item ->
       val text = RoleClassifier.normalize(data[item.card.id]?.text.orEmpty())
@@ -277,7 +277,7 @@ object LocalDeckPlanner {
           consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
         val provisional = GeneratedDeck(hero.card.rulesName, "Constructor local", "", rows, rows.sumOf { it.count }, warnings, palette)
-        val strategy = DeckPlayGuide.generate(provisional, data) + "\n\n" + consistency
+        val strategy = DeckPlayGuide.generate(provisional, data, hero.card.id) + "\n\n" + consistency
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
           strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))
       }

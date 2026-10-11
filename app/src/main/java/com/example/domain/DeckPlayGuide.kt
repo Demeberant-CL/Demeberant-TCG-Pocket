@@ -4,13 +4,13 @@ import com.example.data.repository.GeneratedDeck
 
 /** Uses only the selected list and known card facts; advice is distinct from printed effects. */
 object DeckPlayGuide {
-  fun generate(deck: GeneratedDeck, data: Map<String, CombatData>): String {
+  fun generate(deck: GeneratedDeck, data: Map<String, CombatData>, anchorId: String? = null): String {
     val pokemon = deck.cards.filter { it.card.type != "Entrenador" }
     val basics = pokemon.filter { it.card.stage == "basic" }
     fun playable(a: CombatAttack) = a.cost != null && a.cost.all { c ->
       LocalDeckPlanner.energy(c)?.let { it == "Incoloro" || it in deck.energyTypes } == true
     }
-    val attacker = pokemon.maxByOrNull { row ->
+    val attacker = pokemon.firstOrNull { it.card.id == anchorId } ?: pokemon.maxByOrNull { row ->
       data[row.card.id]?.attacks.orEmpty().filter(::playable).maxOfOrNull { a ->
         (Regex("^\\d+").find(a.damage)?.value?.toDoubleOrNull() ?: 0.0) / (1 + a.cost!!.size)
       } ?: 0.0

@@ -503,9 +503,10 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       }
       try {
         require(deck.cards.isNotEmpty() && (customName ?: deck.name).isNotBlank()) { "Añade cartas y un nombre." }
-        val strategy = if (deck.strategy.isNotBlank()) deck.strategy else {
+        val strategy = if ("SECUENCIA SUGERIDA" in deck.strategy) deck.strategy else {
           val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
-          withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(deck, facts) }
+          val localGuide = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(deck, facts) }
+          listOf(deck.strategy, localGuide).filter(String::isNotBlank).joinToString("\n\n")
         }
         val savedDeck = deck.copy(strategy = strategy)
         val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes)

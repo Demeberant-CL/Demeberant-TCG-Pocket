@@ -139,6 +139,12 @@ private fun DeckProposalReview(main: TcgViewModel, model: AdvancedViewModel, sug
         val entry = proposed.cards.first { it.card.id == change.id }
         DeckChangeRow(entry.card.id, entry.card.name, change.count, "Tienes ${owned[entry.card.id] ?: 0} · Se usarán ${entry.count}") { reading = entry.card }
       }
+      item { Text("Todas las cartas de la propuesta", style = MaterialTheme.typography.titleMedium) }
+      items(proposed.cards, key = { "read-${it.card.id}" }) { entry ->
+        OutlinedButton(onClick = { reading = entry.card }, modifier = Modifier.fillMaxWidth()) {
+          Text("${entry.count}× ${entry.card.name} · Leer carta")
+        }
+      }
       item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Motivo y estrategia", style = MaterialTheme.typography.titleMedium)
         Text(proposed.strategy)

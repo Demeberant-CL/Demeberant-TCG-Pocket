@@ -27,6 +27,15 @@ class ExportAndPreferencesTest {
     (cache.get(null) as MutableMap<*, *>).clear()
   }
 
+  @Test fun layoutAndThemePersistIndependently() = runBlocking {
+    val context = RuntimeEnvironment.getApplication()
+    val repository = UserPreferencesRepository(context)
+    repository.setThemeMode(ThemeMode.TEAL)
+    repository.setVisualStyle(VisualStyle.EDITORIAL)
+    val stored = UserPreferencesRepository(context).userPreferencesFlow.first()
+    assertEquals(ThemeMode.TEAL, stored.themeMode)
+    assertEquals(VisualStyle.EDITORIAL, stored.visualStyle)
+  }
   @Test fun selectedThemeIsPersistedAndReadByAnotherRepository() = runBlocking {
     val context = RuntimeEnvironment.getApplication()
     val repository = UserPreferencesRepository(context)

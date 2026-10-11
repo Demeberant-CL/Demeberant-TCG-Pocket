@@ -183,12 +183,10 @@ class DexVisualTest {
         capture("carta-ampliada")
         compose.onNodeWithText("Volver a la carta").performClick()
         compose.onNodeWithText("Cerrar carta").performClick()
-        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cómo jugar"))
         compose.onNodeWithText("Cómo jugar").performClick()
         compose.onNodeWithText("Actualizar guía con este mazo").performScrollTo().performClick()
         compose.waitUntil(15_000) { main.generatedDeck.value?.strategy?.contains("SECUENCIA SUGERIDA") == true }
         capture("mazo-como-jugar")
-        compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Cartas"))
         compose.onNodeWithText("Cartas").performClick()
         compose.onNodeWithTag("manual_deck_list").performScrollToNode(hasText("Hablar con IA"))
         compose.onNodeWithText("Hablar con IA").performClick()
