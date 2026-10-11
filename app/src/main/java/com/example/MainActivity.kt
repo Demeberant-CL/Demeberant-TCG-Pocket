@@ -108,8 +108,9 @@ class MainActivity : ComponentActivity() {
           bottomBar = {
             if (!(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
             val density = LocalDensity.current
+            val displayLabels = if (density.fontScale >= 1.3f) listOf("Inicio", "Cartas", "Mazos", "Más") else labels
             val textMeasurer = rememberTextMeasurer()
-            val widestLabel = labels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelLarge).size.width }
+            val widestLabel = displayLabels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelMedium).size.width }
             val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 24.dp)
             val navigationScroll = rememberScrollState()
             val activeIndex = destinations.indexOf(if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex).coerceAtLeast(0)
@@ -132,7 +133,7 @@ class MainActivity : ComponentActivity() {
                     }
                   },
                   icon = { Icon(icons[position], contentDescription = label, modifier = Modifier.size(28.dp)) },
-                  label = { Text(label, style = androidx.compose.material3.MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                  label = { Text(displayLabels[position], style = androidx.compose.material3.MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
