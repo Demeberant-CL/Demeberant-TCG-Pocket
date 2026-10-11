@@ -4,6 +4,12 @@ import com.example.data.repository.GeneratedDeck
 
 /** Uses only the selected list and known card facts; advice is distinct from printed effects. */
 object DeckPlayGuide {
+  fun refresh(deck: GeneratedDeck, data: Map<String, CombatData>): String {
+    val notes = if (deck.strategy.startsWith("GUÍA LOCAL\n")) "" else deck.strategy.substringBefore("\n\nGUÍA LOCAL\n")
+    val anchor = deck.cards.firstOrNull { it.card.rulesName == deck.name.substringBefore(" · ") }?.card?.id
+    return listOf(notes, "GUÍA LOCAL\n" + generate(deck, data, anchor)).filter(String::isNotBlank).joinToString("\n\n")
+  }
+
   fun generate(deck: GeneratedDeck, data: Map<String, CombatData>, anchorId: String? = null): String {
     val pokemon = deck.cards.filter { it.card.type != "Entrenador" }
     val basics = pokemon.filter { it.card.stage == "basic" }

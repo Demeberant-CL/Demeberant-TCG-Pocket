@@ -25,6 +25,18 @@ class DeckPlayGuideTest {
     assertTrue(text.contains("2× Robo"))
     assertFalse(text.contains("Ausente"))
   }
+  @Test fun refreshingChangedListPreservesNotesWithoutDuplicatingAnOldGuide() {
+    val original = card("A1-001", "Anterior", "Agua")
+    val replacement = card("A1-002", "Actual", "Agua")
+    val before = GeneratedDeck("Prueba","","Mis notas",listOf(DeckCardEntry(original,2)),2,emptyList(),listOf("Agua"))
+    val saved = before.copy(strategy = DeckPlayGuide.refresh(before,emptyMap()))
+    val changed = saved.copy(cards = listOf(DeckCardEntry(replacement,2)))
+    val guide = DeckPlayGuide.refresh(changed,emptyMap())
+    assertTrue(guide.startsWith("Mis notas"))
+    assertFalse(guide.contains("Anterior"))
+    assertTrue(guide.contains("Actual"))
+    assertEquals(1, Regex("GUÍA LOCAL").findAll(guide).count())
+  }
   @Test fun missingFactsAndMissingBasicsStayExplicit() {
     val trainer = card("A1-003", "Objeto", "Entrenador")
     val deck = GeneratedDeck("Prueba","","",listOf(DeckCardEntry(trainer,2)),2,listOf("Mazo incompleto"),listOf("Agua","Fuego"))

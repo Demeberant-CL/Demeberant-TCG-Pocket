@@ -453,7 +453,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       try {
         val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
-        val guide = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(original, facts) }
+        val guide = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.refresh(original, facts) }
         if (_generatedDeck.value == original) {
           _generatedDeck.value = original.copy(strategy = guide)
           reportMessage("Guía actualizada. Guarda el mazo para conservarla.")
@@ -503,11 +503,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       }
       try {
         require(deck.cards.isNotEmpty() && (customName ?: deck.name).isNotBlank()) { "Añade cartas y un nombre." }
-        val strategy = if ("SECUENCIA SUGERIDA" in deck.strategy) deck.strategy else {
-          val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
-          val localGuide = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.generate(deck, facts) }
-          listOf(deck.strategy, localGuide).filter(String::isNotBlank).joinToString("\n\n")
-        }
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
+        val strategy = withContext(Dispatchers.Default) { com.example.domain.DeckPlayGuide.refresh(deck, facts) }
         val savedDeck = deck.copy(strategy = strategy)
         val serializedCards = DeckCodec.encode(deck.cards, deck.energyTypes)
         val entity = SavedDeckEntity(

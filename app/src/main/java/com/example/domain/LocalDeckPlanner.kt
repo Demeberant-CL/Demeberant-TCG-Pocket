@@ -277,7 +277,7 @@ object LocalDeckPlanner {
           consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
         val provisional = GeneratedDeck(hero.card.rulesName, "Constructor local", "", rows, rows.sumOf { it.count }, warnings, palette)
-        val strategy = DeckPlayGuide.generate(provisional, data, hero.card.id) + "\n\n" + consistency
+        val strategy = "GUÍA LOCAL\n" + DeckPlayGuide.generate(provisional, data, hero.card.id) + "\n\n" + consistency
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
           strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))
       }

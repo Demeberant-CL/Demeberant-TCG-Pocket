@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.Dialog
@@ -125,7 +126,7 @@ private fun CardImageZoom(id: String, name: String, language: String, onDismiss:
           TextButton(onClick = { scale = 1f; offset = Offset.Zero }) { Text("Restablecer zoom") }
           TextButton(onClick = onDismiss) { Text("Volver a la carta") }
         }
-        Box(Modifier.weight(1f).fillMaxWidth().pointerInput(id) {
+        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds().pointerInput(id) {
           detectTransformGestures { _, pan, zoom, _ ->
             scale = (scale * zoom).coerceIn(1f, 5f)
             val limitX = size.width * (scale - 1f) / 2f
