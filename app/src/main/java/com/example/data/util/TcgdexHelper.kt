@@ -41,7 +41,10 @@ object TcgdexHelper {
     }
     val community = if (highResolution) listOfNotNull(communityImages[key])
       else listOfNotNull(communityThumbnails[key], communityImages[key])
-    return (spanish + remote + community).distinct()
+    val supportedHighSets = setOf("A1", "A1A", "A2", "A2A", "A2B", "A3", "A3A", "A4")
+    // Known older sets have Spanish high assets. For newer sets use published explicit Spanish paths first.
+    return (if (highResolution && key.substringBeforeLast('-') in supportedHighSets) remote.take(1) + spanish + remote.drop(1) + community
+      else spanish + remote + community).distinct()
   }
 
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {

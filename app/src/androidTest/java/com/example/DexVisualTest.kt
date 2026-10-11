@@ -60,6 +60,8 @@ class DexVisualTest {
       compose.waitForIdle()
       capture(name)
       if (index == 1) {
+        compose.onNodeWithContentDescription("Ajustes").assertDoesNotExist()
+        compose.onNodeWithText("Vista").performClick()
         compose.onNodeWithText("Lista").performClick()
         capture("coleccion-lista")
         compose.onNodeWithText("Cuadrícula").performScrollTo().performClick()
@@ -69,10 +71,7 @@ class DexVisualTest {
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithContentDescription("Ajustes").performClick()
-        compose.onNodeWithText("Listo").assertIsDisplayed()
-        capture("ajustes-dialogo")
-        compose.onNodeWithText("Listo").performClick()
+
       }
       if (index == 3) {
         compose.waitUntil(20_000) { compose.onNodeWithText("Conexiones").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled).not() }

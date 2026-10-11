@@ -28,6 +28,7 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
   var index by remember(candidates) { mutableStateOf(0) }
   var failed by remember(candidates) { mutableStateOf(candidates.isEmpty()) }
   var loading by remember(candidates) { mutableStateOf(true) }
+  var limitedResolution by remember(candidates) { mutableStateOf(false) }
   var retry by remember(candidates) { mutableStateOf(0) }
   BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
     val compact = maxWidth < 100.dp || maxHeight < 120.dp
@@ -50,12 +51,21 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
       }.build()
       AsyncImage(model = request, contentDescription = name, contentScale = contentScale,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
-        onSuccess = { loading = false; ImageAvailability.session.recordSuccess(candidates[index]) }, onError = { state ->
+        onSuccess = { state ->
+          loading = false
+          limitedResolution = highResolution && state.result.drawable.intrinsicWidth < 700
+          ImageAvailability.session.recordSuccess(candidates[index])
+        }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {
             ImageAvailability.session.recordMissing(candidates[index])
             if (index < candidates.lastIndex) index++ else { failed = true; loading = false }
           } else { failed = true; loading = false }
         })
+    }
+    if (limitedResolution && !loading && !failed && highResolution) {
+      Surface(Modifier.align(Alignment.BottomCenter), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
+        Text("Resolución limitada · consulta el texto de efectos", Modifier.padding(6.dp), style = MaterialTheme.typography.labelSmall)
+      }
     }
     if (loading && !failed) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
   }
