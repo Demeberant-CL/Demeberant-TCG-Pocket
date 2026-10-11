@@ -200,7 +200,7 @@ class DexVisualTest {
         compose.onNodeWithText("QR del mazo").assertIsDisplayed()
         capture("mazos-qr")
         compose.onNodeWithText("Probar QR alternativo").assertDoesNotExist()
-        compose.onNodeWithText("Cerrar").performClick()
+        compose.onNodeWithTag("deck_qr_close").performClick()
         // Re-enter the hub to capture the AI creation form without making a billable API request.
         backToLibrary()
         compose.onNodeWithText("+ Crear mazo").performClick()

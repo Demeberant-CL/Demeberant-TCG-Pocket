@@ -78,7 +78,7 @@ fun DeckQrExportButton(deck: GeneratedDeck, modifier: Modifier = Modifier, enabl
       Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
           Text("QR del mazo", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-          TextButton(enabled = !busy, onClick = { shown = false }) { Text("Cerrar") }
+          TextButton(enabled = !busy, modifier = Modifier.testTag("deck_qr_close"), onClick = { shown = false }) { Text("Cerrar") }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
           Text(snapshot.name, style = MaterialTheme.typography.titleLarge)
