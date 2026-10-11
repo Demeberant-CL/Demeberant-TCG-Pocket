@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
+import androidx.compose.ui.platform.LocalContext
 import coil.network.HttpException
 import com.example.data.util.TcgdexHelper
 import com.example.data.util.ImageAvailability
@@ -41,7 +44,11 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
         Text("Reintentar", style = MaterialTheme.typography.labelSmall)
       }
     } else key(retry) {
-      AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale,
+      val request = ImageRequest.Builder(LocalContext.current).data(candidates[index]).apply {
+        // Decode original pixels for the reader: graphicsLayer zoom must not magnify a thumbnail.
+        if (highResolution) size(Size.ORIGINAL)
+      }.build()
+      AsyncImage(model = request, contentDescription = name, contentScale = contentScale,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
         onSuccess = { loading = false; ImageAvailability.session.recordSuccess(candidates[index]) }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {

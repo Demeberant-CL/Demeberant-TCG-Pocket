@@ -1,10 +1,17 @@
 package com.example.data.util
 
 object TcgdexHelper {
+  @Volatile private var spanishImages: Map<String, String> = emptyMap()
   @Volatile private var communityImages: Map<String, String> = emptyMap()
   @Volatile private var communityThumbnails: Map<String, String> = emptyMap()
 
   fun loadImageIndex(context: android.content.Context) {
+    val spanishRoot = org.json.JSONObject(context.assets.open("pocket-spanish-image-index.json").bufferedReader().use { it.readText() }).getJSONObject("images")
+    spanishImages = spanishRoot.keys().asSequence().associateWith { key ->
+      val path = spanishRoot.getString(key)
+      require(path.startsWith("/cards/") && "/es_ES/" in path && path.endsWith(".png"))
+      "https://ptcgp-assets.centropkmn.com$path"
+    }
     val root = org.json.JSONObject(context.assets.open("pocket-image-index.json").bufferedReader().use { it.readText() })
     val revision = root.getString("revision")
     require(revision.matches(Regex("[a-f0-9]{40}")))
@@ -24,14 +31,17 @@ object TcgdexHelper {
   }
 
   fun imageCandidates(id: String, language: String = "es", highResolution: Boolean = false): List<String> {
+    val key = CardId.normalize(id)
+    val spanish = if (language == "es") listOfNotNull(spanishImages[key]) else emptyList()
     val primary = getCardImageUrl(id, language)
     val languages = listOf(primary, getCardImageUrl(id, "en")).distinct()
-    return languages.flatMap { low ->
-      if (highResolution) listOf(low.replace("low.webp", "high.webp"), low) else listOf(low)
-    } + CardId.normalize(id).let { key ->
-      if (highResolution) listOfNotNull(communityImages[key], communityThumbnails[key])
-      else listOfNotNull(communityThumbnails[key], communityImages[key])
+    val remote = languages.flatMap { low ->
+      // Readers must never fall back to a thumbnail pretending it is high resolution.
+      if (highResolution) listOf(low.replace("low.webp", "high.webp")) else listOf(low)
     }
+    val community = if (highResolution) listOfNotNull(communityImages[key])
+      else listOfNotNull(communityThumbnails[key], communityImages[key])
+    return (spanish + remote + community).distinct()
   }
 
   fun getCardImageUrl(cardFullId: String, lang: String = "es"): String {

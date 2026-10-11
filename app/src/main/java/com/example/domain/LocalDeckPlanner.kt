@@ -58,7 +58,11 @@ object LocalDeckPlanner {
     val attacks = data?.attacks.orEmpty().filter { usable(it, palette) }
     val attackScore = attacks.maxOfOrNull { a ->
       val raw = Regex("^\\d+").find(a.damage.trim())?.value?.toDoubleOrNull() ?: 0.0
-      val damage = raw * if (a.damage.contains("×") || a.damage.contains("x")) 0.5 else if (a.damage.contains('+')) 0.8 else 1.0
+      val effect = RoleClassifier.normalize(a.effect)
+      // Conditional printed damage is not guaranteed output. Penalize explicit tempo/resource costs.
+      val tempoLoss = if (effect.contains("cannot attack") || effect.contains("no puede atacar")) 0.5 else 1.0
+      val resourceLoss = if (effect.contains("discard") || effect.contains("descarta")) 0.85 else 1.0
+      val damage = raw * tempoLoss * resourceLoss * if (a.damage.contains("×") || a.damage.contains("x")) 0.5 else if (a.damage.contains('+')) 0.8 else 1.0
       val cost = a.cost!!.size
       val tempo = if (style == DeckStyle.FAST) 1.4 else 0.8
       damage / (1.0 + cost + delay * tempo) / 4.0 - cost * tempo
@@ -174,6 +178,14 @@ object LocalDeckPlanner {
           value += minOf(healing, 2) * if (options.style == DeckStyle.RESILIENT) 3.0 else 1.0
           value -= abs(tc - tcTarget) * 1.3 + (bc - 6).coerceAtLeast(0) * 1.5 + (families - 3).coerceAtLeast(0) * 3.0
           value -= (palette.size - 1) * 6.0
+          val unknownPokemon = pokemon.filter { data[it.card.id]?.attacks.orEmpty().none { a -> usable(a, palette) } }.sumOf { it.count }
+          value -= unknownPokemon * 5.0
+          // Keep support around the chosen strategy rather than collecting unrelated attackers.
+          val coreNames = lineage.toSet()
+          val outsideFamilies = pokemon.filter { basic(it.card) && name(it.card.rulesName) !in coreNames }
+          value -= (outsideFamilies.size - 1).coerceAtLeast(0) * 4.0
+          val expensive = pokemon.filter { row -> costs[row.card.id].orEmpty().minOrNull()?.let { it >= 3 } == true }.sumOf { it.count }
+          if (accelerators == 0) value -= (expensive - 2).coerceAtLeast(0) * 2.5
           val supporters = rows.filter { it.card.category.equals("supporter", true) }.sumOf { it.count }
           value -= (supporters - 7).coerceAtLeast(0) * 2.0
           value -= rows.filter { trainer(it.card) && data[it.card.id]?.text.isNullOrBlank() }.sumOf { it.count } * 1.5
@@ -252,6 +264,7 @@ object LocalDeckPlanner {
         val cautions = buildList {
           addAll(warnings)
           if (known < rows.sumOf { it.count }) add("${rows.sumOf { it.count } - known} cartas sin efectos o costes completos: valoración parcial.")
+          add("La valoración usa datos y reglas parciales; no mide rendimiento competitivo.")
           if (palette.size > 1) add("Varias energías: la energía generada puede retrasar los ataques.")
           if (rows.none { CardRole.DRAW in roleMap[it.card.id].orEmpty() }) add("Sin robo de cartas identificado.")
           if (rows.none { CardRole.SEARCH in roleMap[it.card.id].orEmpty() }) add("Sin búsqueda identificada.")

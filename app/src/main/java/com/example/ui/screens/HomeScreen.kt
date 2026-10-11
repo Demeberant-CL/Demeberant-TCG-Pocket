@@ -50,25 +50,26 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   Column(modifier.fillMaxSize()) {
   LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("home_list"), state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
-      com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
-      Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-          ProfileAvatar(prefs.avatarId, Modifier.size(60.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
+      Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          ProfileAvatar(prefs.avatarId, Modifier.size(44.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
           Column(Modifier.weight(1f)) {
-            Text("POCKET ATLAS", style = MaterialTheme.typography.headlineSmall)
+            Text("Pocket Atlas", style = MaterialTheme.typography.headlineMedium)
+            Text("Tu colección, tus estrategias", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
-        Text("Resumen", style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          listOf(owned.toString() to "cartas", copies.toString() to "copias",
-            "${(progress * 100).toInt()}%" to "catálogo").forEach { (value, label) ->
-            Column { Text(value, style = MaterialTheme.typography.headlineLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-              Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          listOf(owned.toString() to "Cartas", copies.toString() to "Copias",
+            "${(progress * 100).toInt()}%" to "Completado").forEach { (value, label) ->
+            Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+              Column(Modifier.padding(12.dp)) {
+                Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text(label, style = MaterialTheme.typography.labelSmall)
+              }
+            }
           }
         }
-        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp))
-        Text("${decks.size} mazos guardados", style = MaterialTheme.typography.bodySmall)
-      }
+        Button(onClick = onEditor, modifier = Modifier.fillMaxWidth()) { Text("Crear mazo") }
       }
     }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
@@ -132,7 +133,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     }
     item {
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Insights, null, tint = MaterialTheme.colorScheme.primary)
             Text("Meta de torneos", style = MaterialTheme.typography.titleMedium)
@@ -142,7 +143,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
               DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault()).format(Instant.parse(data.updated))
             }.getOrDefault(data.updated) }
             Text("Limitless · $date\n${data.tournaments} torneos · ${data.players} listas", style = MaterialTheme.typography.bodySmall)
-            Text("Muestra guardada. Consulta la fecha antes de usarla.", style = MaterialTheme.typography.bodySmall)
+
           } ?: Text("Consulta resultados públicos y mazos de ejemplo.", style = MaterialTheme.typography.bodySmall)
           OutlinedButton(onClick = onMeta, shape = MaterialTheme.shapes.medium) { Text("Ver meta y actualizar") }
         }

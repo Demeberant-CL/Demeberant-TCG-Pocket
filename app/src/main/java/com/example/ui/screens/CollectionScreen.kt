@@ -141,6 +141,7 @@ fun CollectionScreen(
   val expansionFilter by viewModel.expansionFilter.collectAsStateWithLifecycle()
   val rarityFilter by viewModel.rarityFilter.collectAsStateWithLifecycle()
   var showFiltersDialog by remember { mutableStateOf(false) }
+  var showViewOptions by remember { mutableStateOf(false) }
   var showProfileDetails by remember { mutableStateOf(false) }
   val csvMessage by viewModel.csvStatusMessage.collectAsStateWithLifecycle()
 
@@ -261,53 +262,23 @@ fun CollectionScreen(
     // -------------------------------------------------------------
     // CABECERA Y PROGRESO DE COLECCIÓN
     // -------------------------------------------------------------
-    Card(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 8.dp)
-        .testTag("collection_stats_card"),
-      shape = MaterialTheme.shapes.large,
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    ) {
-      Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-          com.example.ui.components.ProfileAvatar(userPreferences.avatarId,
-            Modifier.size(60.dp).clip(CircleShape).clickable { showAvatarPicker = true }, "Cambiar avatar de perfil")
-          Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable { showProfileDetails = !showProfileDetails }) {
-            Text("Colección", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Tu catálogo de cartas", style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
-            if (showProfileDetails) {
-              Text("Demeberant · Lv. 34", style = MaterialTheme.typography.bodySmall)
-              Text("Friend ID: 9824-5495-7457-6397", style = MaterialTheme.typography.bodySmall)
-            }
-          }
-          IconButton(onClick = { showSettingsDialog = true }) {
-            Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = PocketBluePrimary)
-          }
-          IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección", tint = PocketBluePrimary)
-          }
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        IconButton(onClick = { context.startActivity(android.content.Intent(context, com.example.zonebrowser.ZoneSyncActivity::class.java)) }) {
+          Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar colección")
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          Column { Text("$totalOwned / $totalCatalog", style = MaterialTheme.typography.titleMedium); Text("Cartas distintas", style = MaterialTheme.typography.labelSmall) }
-          Column { Text("$totalCopies", style = MaterialTheme.typography.titleMedium); Text("Copias", style = MaterialTheme.typography.labelSmall) }
-          Column { Text("${(completionPercent * 100).toInt()}%", style = MaterialTheme.typography.titleMedium); Text("Completado", style = MaterialTheme.typography.labelSmall) }
-        }
-        LinearProgressIndicator(progress = { completionPercent },
-          modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)),
-          color = PocketBluePrimary, trackColor = MaterialTheme.colorScheme.surfaceContainerHigh)
       }
+      Text("$totalOwned cartas · $totalCopies copias · ${(completionPercent * 100).toInt()}% completado",
+        style = MaterialTheme.typography.bodySmall, color = PocketTextSecondary)
     }
-
-
-    if (advanced != null) TextButton(onClick = { effectPage = true }) { Text("Buscar por efectos") }
 
     // CSV Import Success / Info Toast Banner
     csvMessage?.let { msg ->
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = 14.dp, vertical = 4.dp)
+          .padding(vertical = 4.dp)
           .clip(RoundedCornerShape(10.dp))
           .background(MaterialTheme.colorScheme.tertiaryContainer)
           .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
@@ -336,7 +307,7 @@ fun CollectionScreen(
       onValueChange = { viewModel.setSearchQuery(it) },
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 14.dp, vertical = 4.dp)
+        .padding(vertical = 4.dp)
 
         .testTag("search_card_input"),
       placeholder = { Text("Buscar Pokémon o código…", style = MaterialTheme.typography.bodyMedium, color = PocketTextSecondary) },
@@ -368,8 +339,7 @@ fun CollectionScreen(
         "$name · ${fullInventory.count { filter.matches(it) }}" to filter
       } }
     val stackControls = LocalDensity.current.fontScale >= 1.3f || LocalConfiguration.current.screenWidthDp < 340
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)
-      .border(1.dp, PocketBorder, RoundedCornerShape(10.dp)).background(PocketSurface, RoundedCornerShape(10.dp)).padding(10.dp),
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       if (stackControls) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.fillMaxWidth())
@@ -379,12 +349,17 @@ fun CollectionScreen(
         CollectionStatusMenu(statuses, collectionFilter, viewModel::setCollectionFilter, Modifier.weight(1f))
         CollectionAdvancedFilterButton(expansionFilter != null || rarityFilter != null, { showFiltersDialog = true })
       }
-      CollectionViewSelector(if (listView) 1 else if (largeCards) 0 else 2, {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("${filteredCards.size} resultados", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+        TextButton(onClick = { showViewOptions = !showViewOptions }) { Text("Vista") }
+        if (advanced != null) TextButton(onClick = { effectPage = true }) { Text("Efectos") }
+      }
+      if (showViewOptions) CollectionViewSelector(if (listView) 1 else if (largeCards) 0 else 2, {
         listView = it == 1
         if (it != 1) largeCards = it == 0
       }, Modifier.fillMaxWidth())
     }
-    Text("${filteredCards.size} resultados", modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+    Text("${filteredCards.size} resultados", modifier = Modifier.padding(vertical = 4.dp),
       style = MaterialTheme.typography.labelMedium, color = PocketTextSecondary)
     }
     }
