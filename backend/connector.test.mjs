@@ -127,10 +127,32 @@ test('snapshot refresh rejects stale queued commands',async t=>{
  const status=await rpc(call,tokens.access_token,'command_status',{id});
  assert.equal(JSON.parse(status.result.content[0].text).status,'rejected');
 });
-test('delete deck command requires explicit confirmation',async t=>{
+test('unimplemented edit commands are rejected even with confirmation',async t=>{
  const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call,'pocket:read pocket:control');
  const denied=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1'});
  assert.equal(denied.result.isError,true);
  const allowed=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1',confirmDelete:true});
- assert.equal(JSON.parse(allowed.result.content[0].text).status,'pending');
+ assert.equal(allowed.result.isError,true);
+});
+
+test('MCP control scopes match metadata and only implemented commands are advertised',async t=>{
+ const call=await fixture(t),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const response=await(await call('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token,Accept:'application/json, text/event-stream','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})})).json();
+ for(const tool of response.result.tools)assert.deepEqual(tool.securitySchemes,tool._meta.securitySchemes);
+ const control=response.result.tools.find(t=>t.name==='queue_app_command');
+ assert.deepEqual(control.securitySchemes[0].scopes,['pocket:control']);
+ assert.deepEqual(control.inputSchema.properties.action.enum,['inspect_decks','inspect_collection','inspect_errors']);
+ const diagnostics=await rpc(call,tokens.access_token,'app_diagnostics');
+ assert.equal(JSON.parse(diagnostics.result.content[0].text).diagnostics,null);
+});
+test('evolution proposals require a verified basic and their parent',async t=>{
+ const call=await fixture(t),{tokens}=await authorize(call);
+ for(const modify of [s=>s.cards.forEach(c=>c.stage='1'),s=>{s.cards[0].stage='1';s.cards[0].evolvesFrom='Missing';},s=>s.cards[0].category='unknown']){
+  const changed=structuredClone(snapshot);modify(changed);
+  const synced=await(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(changed)})).json();
+  assert.equal((await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(synced.revision))).result.isError,true);
+ }
+ const valid=structuredClone(snapshot);valid.cards[0].stage='1';valid.cards[0].evolvesFrom=valid.cards[1].rulesName;
+ const synced=await(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(valid)})).json();
+ assert.equal((await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(synced.revision))).result.isError,undefined);
 });

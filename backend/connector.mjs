@@ -12,10 +12,10 @@ const tools=[
   {name:'search_cards',description:'Busca cartas del catálogo sincronizado por nombre, código o expansión. Incluye cantidades reales y efectos cuando están disponibles; nunca inventes efectos desconocidos.',inputSchema:object({query:{type:'string',maxLength:120},ownedOnly:{type:'boolean'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:100}},[])},
   {name:'read_deck',description:'Consulta un mazo guardado mediante su ID o el borrador actual (draft).',inputSchema:object({id:{type:'string',maxLength:100}})},
   {name:'app_diagnostics',description:'Consulta el último informe de diagnóstico enviado por Android, sin datos secretos.',inputSchema:object({})},
-  {name:'queue_app_command',description:'Solicita una acción a Android; no se ejecuta hasta que el teléfono la recibe y confirma. Requiere revisión para eliminar mazos. Usa revision actual.',inputSchema:object({revision:text,action:{type:'string',enum:['refresh_catalog','sync_now','inspect_decks','inspect_collection','inspect_errors','duplicate_deck','delete_deck']},deckId:{type:'string',maxLength:100},confirmDelete:{type:'boolean'}},['revision','action'])},
+  {name:'queue_app_command',description:'Solicita una acción a Android; no se ejecuta hasta que el teléfono la recibe y confirma. Solo consultas de diagnóstico disponibles. Usa revision actual.',inputSchema:object({revision:text,action:{type:'string',enum:['inspect_decks','inspect_collection','inspect_errors']},deckId:{type:'string',maxLength:100},confirmDelete:{type:'boolean'}},['revision','action'])},
   {name:'command_status',description:'Consulta el estado y resultado de una instrucción enviada al teléfono.',inputSchema:object({id:{type:'string',maxLength:100}})},
-  {name:'submit_deck_proposal',description:'Envía un mazo de 20 cartas para revisión en Pocket Atlas. No modifica la colección ni guarda o reemplaza mazos. Usa IDs y revisión de la colección consultada. Máximo dos copias por nombre y líneas evolutivas completas. replacements debe estar vacío.',inputSchema:object({revision:text,name:{type:'string',maxLength:120},strategy:text,energies:{type:'array',minItems:1,maxItems:3,items:{type:'string',enum:['Planta','Fuego','Agua','Rayo','Psíquico','Lucha','Oscuridad','Metal']}},cards:{type:'array',minItems:10,maxItems:20,items:object({id:{type:'string'},count:{type:'integer',minimum:1,maximum:2}})},replacements:{type:'array',maxItems:0}})}
-].map(t=>({...t,securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}],_meta:{securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':'pocket:read']}]},annotations:{readOnlyHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),destructiveHint:t.name==='queue_app_command',idempotentHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),openWorldHint:false}}));
+  {name:'submit_deck_proposal',description:'Envía un mazo de 20 cartas para revisión en Rotom AI TCG Pocket. No modifica la colección ni guarda o reemplaza mazos. Usa IDs y revisión de la colección consultada. Máximo dos copias por nombre y líneas evolutivas completas. replacements debe estar vacío.',inputSchema:object({revision:text,name:{type:'string',maxLength:120},strategy:text,energies:{type:'array',minItems:1,maxItems:3,items:{type:'string',enum:['Planta','Fuego','Agua','Rayo','Psíquico','Lucha','Oscuridad','Metal']}},cards:{type:'array',minItems:10,maxItems:20,items:object({id:{type:'string'},count:{type:'integer',minimum:1,maximum:2}})},replacements:{type:'array',maxItems:0}})}
+].map(t=>({...t,securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}],_meta:{securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}]},annotations:{readOnlyHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),destructiveHint:t.name==='queue_app_command',idempotentHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),openWorldHint:false}}));
 export function validateSnapshot(s){
   if(!s||s.format!==1||!Array.isArray(s.cards)||s.cards.length>10000||!Array.isArray(s.decks)||s.decks.length>1000)throw Error('Invalid snapshot');
   const ids=new Set();
@@ -78,7 +78,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         const redirectOrigin=new URL(auth.redirect).origin;
         res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',
           'Content-Security-Policy':"default-src 'none'; form-action 'self' "+redirectOrigin+"; frame-ancestors 'none'",'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer'});
-        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Pocket Atlas</title><h1>Conectar Pocket Atlas</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><p>Destino: '+redirectOrigin+'</p><p>'+message+'</p><form method="post"><input type="hidden" name="csrf" value="'+csrf+'"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
+        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Rotom AI TCG Pocket</title><h1>Conectar Rotom AI TCG Pocket</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><p>Destino: '+redirectOrigin+'</p><p>'+message+'</p><form method="post"><input type="hidden" name="csrf" value="'+csrf+'"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
       };
       if(path==='/authorize'&&req.method==='GET')return showForm(authorization(url.searchParams));
       if(path==='/authorize'&&req.method==='POST'){
@@ -139,7 +139,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       const rpc=JSON.parse(await body());if(rpc.jsonrpc!=='2.0'||typeof rpc.method!=='string'||(rpc.id!==undefined&&typeof rpc.id!=='string'&&typeof rpc.id!=='number'))return reply(400,{error:'Invalid JSON-RPC'});
       if(rpc.id===undefined){if(rpc.method.startsWith('notifications/'))return reply(202);return reply(400,{error:'Missing ID'});}
       const result=value=>reply(200,{jsonrpc:'2.0',id:rpc.id,result:value});
-      if(rpc.method==='initialize')return result({protocolVersion:['2025-03-26','2025-06-18','2025-11-25'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2025-11-25',capabilities:{tools:{}},serverInfo:{name:'Pocket Atlas',version:'1.0.0'},instructions:'Los datos son una copia sincronizada del teléfono. Comprueba syncedAt. Las propuestas necesitan revisión y validación Android; no se aplican automáticamente.'});
+      if(rpc.method==='initialize')return result({protocolVersion:['2025-03-26','2025-06-18','2025-11-25'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2025-11-25',capabilities:{tools:{}},serverInfo:{name:'Rotom AI TCG Pocket',version:'1.0.0'},instructions:'Los datos son una copia sincronizada del teléfono. Comprueba syncedAt. Las propuestas necesitan revisión y validación Android; no se aplican automáticamente.'});
       if(rpc.method==='ping')return result({});
       if(rpc.method==='tools/list')return result({tools});
       if(rpc.method!=='tools/call')return reply(200,{jsonrpc:'2.0',id:rpc.id,error:{code:-32601,message:'Method not found'}});
@@ -147,16 +147,15 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       const toolResult=value=>result({content:[{type:'text',text:JSON.stringify(value)}]});
       try{
         if(!tools.some(t=>t.name===name))throw Error('Unknown tool');
-        if(!s)throw Error('Sin colección: sincroniza desde Pocket Atlas.');
         const permission=name==='submit_deck_proposal'?'pocket:propose':name==='queue_app_command'?'pocket:control':'pocket:read';if(!grant.scope.split(' ').includes(permission))throw Error('Insufficient scope');
-        if(name==='app_diagnostics')return toolResult({diagnostics:state.diagnostics||null,syncedAt:s.syncedAt});
+        if(name==='app_diagnostics')return toolResult({diagnostics:state.diagnostics||null,syncedAt:s?.syncedAt||null});
         if(name==='command_status'){const cmd=state.commands.find(c=>c.id===args.id);if(!cmd)throw Error('Command not found');return toolResult(cmd);}
+        if(!s)throw Error('Sin colección: sincroniza desde Rotom AI TCG Pocket.');
         if(name==='queue_app_command'){
           if(args.revision!==s.revision)throw Error('La colección cambió. Consúltala otra vez.');
-          const allowed=['refresh_catalog','sync_now','inspect_decks','inspect_collection','inspect_errors','duplicate_deck','delete_deck'];
+          const allowed=['inspect_decks','inspect_collection','inspect_errors'];
           if(!allowed.includes(args.action)||state.commands.filter(c=>c.status==='pending').length>=20)throw Error('Invalid command or full queue');
-          if(['duplicate_deck','delete_deck'].includes(args.action)&&(!args.deckId||!s.decks.some(d=>d.id===args.deckId)))throw Error('Deck not found');
-          if(args.action==='delete_deck'&&args.confirmDelete!==true)throw Error('La eliminación requiere confirmación explícita.');
+          if(args.deckId!==undefined||args.confirmDelete!==undefined)throw Error('Unsupported command arguments');
           const cmd={id:random(),revision:s.revision,action:args.action,deckId:args.deckId||null,status:'pending',createdAt:new Date(clock()).toISOString()};
           persist({...state,commands:[...state.commands.slice(-99),cmd]});return toolResult({id:cmd.id,status:'pending',message:'Android debe recibir y procesar esta instrucción. No se ha ejecutado aún.'});
         }
@@ -173,9 +172,16 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
           const seen=new Set(),names=new Map();let count=0;
           for(const row of args.cards){const card=s.cards.find(c=>c.id===row.id);if(!card||seen.has(row.id)||!Number.isInteger(row.count)||row.count<1||row.count>2||row.count>card.owned)throw Error('Invalid IDs or unavailable quantities');seen.add(row.id);count+=row.count;const key=card.rulesName||card.name;names.set(key,(names.get(key)||0)+row.count);}
           if(count!==20||[...names.values()].some(n=>n>2))throw Error('20 cartas; máximo dos copias por nombre.');
-          if(state.proposals.length>=20)throw Error('Buzón lleno. Sincroniza para iniciar otra revisión.');
+          const selected=args.cards.map(row=>s.cards.find(c=>c.id===row.id));
+          if(!selected.some(c=>c.category==='pokemon'&&c.stage==='basic'))throw Error('Falta un Pokémon básico verificado.');
+          for(const c of selected){
+            if(!['pokemon','item','supporter','tool','Fossil','trainer'].includes(c.category))throw Error('Categoría sin verificar.');
+            if(c.category==='pokemon'&&!['basic','1','2'].includes(c.stage))throw Error('Etapa sin verificar.');
+            if(c.category==='pokemon'&&c.stage!=='basic'&&(!c.evolvesFrom||!selected.some(parent=>(parent.rulesName||parent.name).toLocaleLowerCase()===c.evolvesFrom.toLocaleLowerCase())))throw Error('Falta una preevolución verificada.');
+          }
+          if(state.proposals.length>=20)throw Error('Buzón lleno. Elimina la copia del servidor desde Android y vuelve a sincronizar para iniciar otra revisión.');
           const id=random();persist({...state,proposals:[...state.proposals,{id,revision:s.revision,createdAt:new Date(clock()).toISOString(),deck:{name:args.name,strategy:args.strategy,energies:args.energies,cards:args.cards,replacements:[]}}]});
-          return toolResult({id,status:'pending_review',message:'Enviada. En Pocket Atlas pulsa Recibir propuestas y revisa el mazo.'});
+          return toolResult({id,status:'pending_review',message:'Enviada. En Rotom AI TCG Pocket pulsa Recibir propuestas y revisa el mazo.'});
         }
       }catch(e){return result({isError:true,content:[{type:'text',text:e.message}]});}
     }catch{reply(400,{error:req.url?.startsWith('/authorize')?'La conexión no está registrada o sus parámetros no son válidos. Inicia una nueva conexión desde ChatGPT.':'Invalid request'});}

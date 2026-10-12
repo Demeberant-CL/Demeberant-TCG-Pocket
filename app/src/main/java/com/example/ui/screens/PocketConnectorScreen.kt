@@ -41,7 +41,7 @@ fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier
       item { OutlinedButton(onClick = { opened = null; model.receiveConnector() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Recibir propuestas") } }
       item { OutlinedButton(onClick = { model.receiveConnectorCommands() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar instrucciones del chat") } }
       item { Text("Instrucciones pendientes: ${commands.size}. Las acciones de edición no se ejecutan automáticamente.") }
-      item { OutlinedButton(onClick = { model.runSafeConnectorCommands(draft) }, enabled = !busy && commands.any { it.optString("action") in setOf("inspect_errors", "inspect_decks", "inspect_collection") }, modifier = Modifier.fillMaxWidth()) { Text("Responder consultas seguras") } }
+      item { OutlinedButton(onClick = { model.runSafeConnectorCommands() }, enabled = !busy && commands.any { it.optString("action") in setOf("inspect_errors", "inspect_decks", "inspect_collection") }, modifier = Modifier.fillMaxWidth()) { Text("Responder consultas seguras") } }
       item { OutlinedButton(onClick = { model.sendConnectorDiagnostics() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Enviar diagnóstico básico") } }
       item { TextButton(onClick = { confirmDelete = true }, enabled = !busy) { Text("Eliminar datos del servidor") } }
     }

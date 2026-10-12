@@ -65,7 +65,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ProfileAvatar(prefs.avatarId, Modifier.size(48.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
         Column(Modifier.weight(1f)) {
-          Text("Pocket Atlas", style = MaterialTheme.typography.titleLarge)
+          Text("Rotom AI TCG Pocket", style = MaterialTheme.typography.titleLarge)
           Text("$distinct cartas · $copies copias · $progress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {

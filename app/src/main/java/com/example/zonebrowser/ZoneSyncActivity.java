@@ -703,7 +703,7 @@ public final class ZoneSyncActivity extends Activity {
                     zip.putNextEntry(new java.util.zip.ZipEntry("registro.json"));
                     zip.write(text.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
                     zip.putNextEntry(new java.util.zip.ZipEntry("resumen.txt"));
-                    String summary = "TCG Dex · Diagnóstico " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
+                    String summary = "Rotom AI TCG Pocket · Diagnóstico " + versionName() + "\nRegistro de navegación y peticiones, rutas anonimizadas.\nSin cuerpos, cabeceras, contraseñas, cookies, tokens ni parámetros.\nNo registra todos los códigos HTTP de éxito ni actividad fuera de esta app.\n";
                     zip.write(summary.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
                 }
                 written = true;

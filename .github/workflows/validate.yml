@@ -132,7 +132,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal' || github.ref == 'refs/heads/fix/pocket-atlas-connector-audit-20261012' || github.head_ref == 'fix/pocket-atlas-connector-audit-20261012'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
             large-test.log
 
   delivery:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal' || github.ref == 'refs/heads/fix/pocket-atlas-connector-audit-20261012' || github.head_ref == 'fix/pocket-atlas-connector-audit-20261012'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     steps:
@@ -196,10 +196,10 @@ jobs:
       - name: Package verified update
         run: |
           version="1.0.$((1000 + GITHUB_RUN_NUMBER))"
-          mv delivery/app-debug.apk "delivery/TCG-Dex-$version.apk"
-          printf 'TCG Dex %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nOcho temas, biblioteca visual y QR directo desde el editor. Correcciones de imágenes, respuestas de IA y torneos.\nSincronizar colección está en Ajustes y en el acceso rápido de Colección.\nLa colección y los mazos se conservan.\n' "$version" > delivery/LEEME.txt
-          (cd delivery && zip "TCG-Dex-$version.zip" "TCG-Dex-$version.apk" LEEME.txt signing-certificate.txt)
-          (cd preview-assets && zip -r "../delivery/TCG-Dex-$version-vista-previa.zip" . -i '*.png')
+          mv delivery/app-debug.apk "delivery/Rotom-AI-TCG-Pocket-$version.apk"
+          printf 'Rotom AI TCG Pocket %s\n\nInstala el APK sobre tu app actual, sin desinstalar.\nConector MCP auditado, permisos coherentes y consultas remotas compatibles con Android. Nombre Rotom AI TCG Pocket actualizado.\nSincronizar colección está en Ajustes y en el acceso rápido de Colección.\nLa colección y los mazos se conservan.\n' "$version" > delivery/LEEME.txt
+          (cd delivery && zip "Rotom-AI-TCG-Pocket-$version.zip" "Rotom-AI-TCG-Pocket-$version.apk" LEEME.txt signing-certificate.txt)
+          (cd preview-assets && zip -r "../delivery/Rotom-AI-TCG-Pocket-$version-vista-previa.zip" . -i '*.png')
       - uses: actions/upload-artifact@v4
         with:
           name: verified-delivery

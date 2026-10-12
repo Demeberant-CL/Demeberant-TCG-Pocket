@@ -1,11 +1,11 @@
-# Conector Pocket Atlas ↔ chat
+# Conector Rotom AI TCG Pocket ↔ chat
 
 Implementación independiente de la API de generación. El servidor no llama a OpenAI, Gemini ni otro modelo. No convierte la IA local en un modelo conversacional ni incrusta este hilo dentro del APK.
 
 ## Flujo disponible
 
-1. Ajustes → Conector de chat: guardar origen HTTPS y clave del dispositivo.
-2. Sincronizar: comparte catálogo, cantidades, lista de deseos, efectos ya descargados, mazos guardados y borrador. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior y se vacía el buzón de propuestas anteriores.
+1. Más → Rotom AI · Conector: guardar origen HTTPS y clave del dispositivo.
+2. Sincronizar: comparte catálogo, cantidades, lista de deseos, efectos ya descargados, mazos guardados y borrador. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior y se conserva el buzón de propuestas y se rechazan instrucciones pendientes de la revisión anterior.
 3. En un cliente MCP configurar `https://TU-SERVIDOR/mcp` con OAuth. El propietario autoriza utilizando la clave del propietario, diferente de la clave Android. Esta clave no debe colocarse en la app ni enviarse en el chat.
 4. El chat puede consultar `collection_summary`, `search_cards` (100 filas por página) y `read_deck`.
 5. `submit_deck_proposal` deposita una propuesta de 20 cartas ligada a la revisión consultada. No altera inventario ni mazos guardados. El servidor comprueba IDs, cantidades, energías y máximo dos por nombre; Android valida también estructura y evoluciones.
@@ -52,3 +52,7 @@ Documentación de referencia:
 - https://developers.openai.com/plugins/deploy/connect-chatgpt
 - https://developers.openai.com/plugins/build/auth
 - https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+
+## Consultas remotas
+
+`queue_app_command` requiere `pocket:control` y solo admite `inspect_decks`, `inspect_collection` e `inspect_errors`. Android responde al pulsar Responder consultas seguras. No se anuncian acciones de edición que Android no implementa. `command_status` consulta el resultado; `app_diagnostics` está disponible incluso antes de sincronizar una colección. El diagnóstico básico no contiene trazas ni claves. El buzón conserva hasta 20 propuestas: sincronizar no lo vacía.

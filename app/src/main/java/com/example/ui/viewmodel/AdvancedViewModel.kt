@@ -68,7 +68,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun saveConnector(url: String, key: String) = task("CONNECTOR_CONFIG") {
     PocketConnector.validate(url.trim(), key.trim())
-    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Pocket Atlas")
+    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Rotom AI TCG Pocket")
     withContext(Dispatchers.IO) { connectorStore.save(config) }
     connectorConfig.value = config
     connectorProposals.value = emptyList()
@@ -137,10 +137,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
     message.value = "Estado básico enviado. No se compartieron registros ni datos sensibles."
   }
-  fun runSafeConnectorCommands(draft: GeneratedDeck?) = task("CONNECTOR_COMMANDS") {
+  fun runSafeConnectorCommands() = task("CONNECTOR_COMMANDS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
     val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/commands", "GET")
     val rows = response.getJSONArray("commands")
+    require(rows.length() <= 20) { "Demasiados comandos pendientes." }
     var done = 0
     for (i in 0 until rows.length()) {
       val cmd = rows.getJSONObject(i)
@@ -155,13 +156,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         org.json.JSONObject().put("id", cmd.getString("id")).put("status", "completed").put("message", report))
       done++
     }
-    connectorCommands.value = emptyList()
+    val remaining = pocketConnector.request(config.endpoint, config.apiKey, "/app/commands", "GET").getJSONArray("commands")
+    connectorCommands.value = (0 until remaining.length()).map { remaining.getJSONObject(it) }
     message.value = "$done consultas de diagnóstico respondidas. Las acciones de modificación requieren aprobación en Android."
   }
   fun deleteConnectorData() = task("CONNECTOR_DELETE") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
     pocketConnector.request(config.endpoint, config.apiKey, "/app/data", "DELETE")
     connectorProposals.value = emptyList()
+    connectorCommands.value = emptyList()
     message.value = "Copia de colección y propuestas eliminadas del servidor."
   }
   private val connectionStore = AiConnectionStore(application)

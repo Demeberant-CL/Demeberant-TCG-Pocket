@@ -1,4 +1,4 @@
-# Demeberant TCG Pocket
+# Rotom AI TCG Pocket
 
 Aplicación Android y web para gestionar una colección de Pokémon TCG Pocket.
 
