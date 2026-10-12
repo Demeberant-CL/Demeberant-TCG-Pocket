@@ -129,6 +129,14 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     connectorCommands.value = (0 until rows.length()).map { rows.getJSONObject(it) }
     message.value = "${rows.length()} instrucciones pendientes. Revisa antes de ejecutarlas."
   }
+  fun sendConnectorDiagnostics() = task("CONNECTOR_DIAGNOSTICS") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val version = application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: "unknown"
+    // Deliberately exclude logs, tokens, device identifiers and exception traces.
+    val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
+    pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
+    message.value = "Estado básico enviado. No se compartieron registros ni datos sensibles."
+  }
   fun runSafeConnectorCommands(draft: GeneratedDeck?) = task("CONNECTOR_COMMANDS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
     val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/commands", "GET")
