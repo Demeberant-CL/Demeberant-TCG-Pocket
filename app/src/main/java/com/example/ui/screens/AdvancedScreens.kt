@@ -243,7 +243,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }
           Text(if (provider == com.example.data.ai.AiProvider.GEMINI)
             "Gemini tiene cuotas gratuitas según modelo y cuenta. Si activaste facturación, puede cobrar. En el nivel gratuito Google puede usar el contenido para mejorar sus productos."
-            else if (provider == com.example.data.ai.AiProvider.OPENAI) "ChatGPT Plus no incluye crédito API. Revisa los límites y costes de tu cuenta."
+            else if (provider == com.example.data.ai.AiProvider.OPENAI) "OpenAI API se factura por separado. Tu plan ChatGPT Plus o Pro no incluye uso de API."
             else "La disponibilidad, cuota y coste dependen del modelo y de tu cuenta. Revisa tu proveedor antes de consultar.")
           Text("La clave se cifra en este teléfono y no se incluye en diagnósticos ni respaldos. No uses una clave compartida para todos los usuarios.")
           if (provider.keysUrl.isNotBlank()) TextButton(onClick = {
@@ -277,8 +277,8 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false },
     title = { Text(if (useChatGptPlan) "${action.label} · plan ChatGPT" else "${action.label} · ${connection.provider.label}") },
     text = { Text(if (useChatGptPlan)
-      "${action.description}\\n\\nModelo: ${planModel}. Se enviarán a OpenAI las cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán diagnósticos. La consulta usa el plan y los límites de tu cuenta ChatGPT."
-      else "${action.description}\\n\\nModelo: ${connection.model}. Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
+      "${action.description}\n\nModelo: ${planModel}. Se enviarán a OpenAI las cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán diagnósticos. La consulta usa el plan y los límites de tu cuenta ChatGPT."
+      else "${action.description}\n\nModelo: ${connection.model}. Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
     confirmButton = { TextButton(onClick = {
       if (useChatGptPlan) model.askChatGptPlan(action, deck, planModel) else model.askConnected(action, deck)
       confirmSend = false
