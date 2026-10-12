@@ -172,6 +172,11 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val chatGptPlanModels = MutableStateFlow<List<ChatGptModel>>(emptyList())
   private val chatGptPreferences = application.getSharedPreferences("rotom-chatgpt-settings", Application.MODE_PRIVATE)
   val selectedChatGptPlanModel = MutableStateFlow(chatGptPreferences.getString("selected-model", "").orEmpty())
+  val chatGptPlanPreferred = MutableStateFlow(chatGptPreferences.getBoolean("use-plan", false))
+  fun setChatGptPlanPreferred(preferred: Boolean) {
+    chatGptPreferences.edit().putBoolean("use-plan", preferred).apply()
+    chatGptPlanPreferred.value = preferred
+  }
   private suspend fun loadChatGptPlanModels(): List<ChatGptModel> {
     val found = chatGptPlanRepository.models()
     chatGptPlanModels.value = found
@@ -218,6 +223,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       chatGptPlanModels.value = emptyList()
       selectedChatGptPlanModel.value = ""
       chatGptPreferences.edit().remove("selected-model").apply()
+      setChatGptPlanPreferred(false)
     }
     if (!hadAccount) message.value = "No hay una cuenta ChatGPT conectada."
   }
