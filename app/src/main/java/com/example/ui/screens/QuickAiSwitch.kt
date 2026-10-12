@@ -12,9 +12,9 @@ import com.example.ui.viewmodel.AdvancedViewModel
 @Composable
 fun QuickAiSwitch(
   model: AdvancedViewModel,
-  chatGptConnected: Boolean,
-  chatGptSelected: Boolean,
-  onSelectChatGpt: () -> Unit,
+  chatGptConnected: Boolean = false,
+  chatGptSelected: Boolean = false,
+  onSelectChatGpt: () -> Unit = {},
 ) {
   val profiles by model.profiles.collectAsStateWithLifecycle()
   val active by model.connection.collectAsStateWithLifecycle()
@@ -34,7 +34,7 @@ fun QuickAiSwitch(
           Text("${saved.provider.label} · ${saved.model}", style = MaterialTheme.typography.bodySmall)
         } }, onClick = {
           expanded = false
-          if (chatGptSelected) model.setChatGptPlanPreferred(false)
+          model.setChatGptPlanPreferred(false)
           if (saved.id != active.id) model.selectConnection(saved.id)
         }, modifier = Modifier.testTag("ai_profile_${saved.id}"))
       }
