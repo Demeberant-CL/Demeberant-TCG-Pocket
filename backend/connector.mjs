@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {randomBytes, timingSafeEqual, createHash, createHmac} from 'node:crypto';
+import {randomBytes, timingSafeEqual, createHash, createHmac, createCipheriv, createDecipheriv} from 'node:crypto';
 import {readFileSync, writeFileSync, renameSync, mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -36,6 +36,41 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
   if(stateFile){try{state=JSON.parse(readFileSync(stateFile,'utf8'));if(state.snapshot)validateSnapshot(state.snapshot);if(!Array.isArray(state.proposals)||state.proposals.length>20)throw Error('Invalid state');}catch(e){if(e.code!=='ENOENT')throw e;}}
   state.commands??=[];state.diagnostics??=null;if(!Array.isArray(state.commands)||state.commands.length>100)throw Error('Invalid commands');
   const clients=new Map(),codes=new Map(),tokens=new Map(),rates=new Map(),forms=new Map();
+  // Keep OAuth grants encrypted beside the collection, never in plaintext.
+  // A durable volume is required to survive replacement of a Render instance.
+  const authFile=stateFile?stateFile+'.oauth':null;
+  const authKey=createHash('sha256').update('rotom-oauth-storage-v1\0'+ownerSecret).digest();
+  const authMaps={codes,tokens,forms};
+  if(authFile){
+    try{
+      const envelope=JSON.parse(readFileSync(authFile,'utf8'));
+      if(envelope.version!==1)throw Error('Unsupported OAuth storage');
+      const decipher=createDecipheriv('aes-256-gcm',authKey,Buffer.from(envelope.iv,'base64url'));
+      decipher.setAAD(Buffer.from(base));decipher.setAuthTag(Buffer.from(envelope.tag,'base64url'));
+      const stored=JSON.parse(Buffer.concat([decipher.update(Buffer.from(envelope.data,'base64url')),decipher.final()]).toString('utf8'));
+      for(const [name,map] of Object.entries(authMaps)){
+        if(!Array.isArray(stored[name])||stored[name].length>1000)throw Error('Invalid OAuth storage');
+        for(const [key,value] of stored[name]){
+          if(typeof key!=='string'||!value||!Number.isFinite(value.expires))throw Error('Invalid OAuth grant');
+          if(value.expires>clock())map.set(key,value);
+        }
+      }
+    }catch(e){if(e.code!=='ENOENT')throw Error('OAuth storage cannot be read; restore its owner key and public URL.');}
+  }
+  const saveAuth=()=>{
+    if(!authFile)return;
+    const stored=Object.fromEntries(Object.entries(authMaps).map(([name,map])=>[name,[...map]]));
+    const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',authKey,iv);cipher.setAAD(Buffer.from(base));
+    const data=Buffer.concat([cipher.update(JSON.stringify(stored),'utf8'),cipher.final()]);
+    mkdirSync(dirname(authFile),{recursive:true,mode:0o700});
+    writeFileSync(authFile+'.tmp',JSON.stringify({version:1,iv:iv.toString('base64url'),tag:cipher.getAuthTag().toString('base64url'),data:data.toString('base64url')}),{mode:0o600});
+    renameSync(authFile+'.tmp',authFile);
+  };
+  // Persist consumption too, so used codes/forms/refresh tokens stay consumed.
+  for(const map of Object.values(authMaps)){
+    map.set=(key,value)=>{Map.prototype.set.call(map,key,value);saveAuth();return map;};
+    map.delete=key=>{const removed=Map.prototype.delete.call(map,key);if(removed)saveAuth();return removed;};
+  }
   // Registered public clients carry authenticated metadata so Render restarts do not erase them.
   const clientSignature=payload=>createHmac('sha256',ownerSecret).update('pocket-client-v1.'+payload).digest('base64url');
   const readClient=id=>{
@@ -191,3 +226,4 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const server=createConnectorServer({deviceToken:process.env.POCKET_DEVICE_TOKEN,ownerSecret:process.env.POCKET_OWNER_SECRET,publicUrl:process.env.POCKET_PUBLIC_URL,stateFile:process.env.POCKET_STATE_FILE||'./data/pocket.json',legacyClientId:process.env.POCKET_LEGACY_CLIENT_ID,legacyRedirect:process.env.POCKET_LEGACY_REDIRECT});
   server.listen(Number(process.env.PORT||8080),process.env.HOST||'127.0.0.1');
 }
+
