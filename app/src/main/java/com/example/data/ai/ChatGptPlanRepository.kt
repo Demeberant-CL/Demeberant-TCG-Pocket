@@ -285,23 +285,23 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     return ValidatedIdentity(claims.claims)
   }
 
-  private suspend fun tokenRequest(form: FormBody): OAuthTokens = withContext(Dispatchers.IO) {
+  private suspend fun tokenRequest(form: FormBody, fallbackIdToken: String = "", fallbackScopes: Set<String> = emptySet()): OAuthTokens = withContext(Dispatchers.IO) {
     val request = Request.Builder().url("https://auth.openai.com/api/accounts/oauth/token").post(form).build()
     client.newCall(request).execute().use { response ->
       require(response.isSuccessful) { "OpenAI no pudo completar la autorización (HTTP ${response.code})." }
-      parseTokens(response.body?.string() ?: error("OpenAI no devolvió credenciales."))
+      parseTokens(response.body?.string() ?: error("OpenAI no devolvió credenciales."), fallbackIdToken, fallbackScopes)
     }
   }
 
-  private fun parseTokens(body: String): OAuthTokens {
+  private fun parseTokens(body: String, fallbackIdToken: String = "", fallbackScopes: Set<String> = emptySet()): OAuthTokens {
     require(body.length <= 100_000)
     val json = JSONObject(body)
-    val scopes = json.getString("scope").split(' ').filter(String::isNotBlank).toSet()
+    val scopes = json.optString("scope").split(' ').filter(String::isNotBlank).toSet().ifEmpty { fallbackScopes }
     val lifetime = json.optLong("expires_in", 3600).coerceIn(60, 86_400)
     return OAuthTokens(
       accessToken = json.getString("access_token"),
       refreshToken = json.getString("refresh_token"),
-      idToken = json.getString("id_token"),
+      idToken = json.optString("id_token").ifBlank { fallbackIdToken },
       scopes = scopes,
       expiresAtMillis = System.currentTimeMillis() + lifetime * 1000,
     )
@@ -316,16 +316,13 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .add("refresh_token", saved.refreshToken)
       .add("resource", "https://api.openai.com/v1")
       .build()
-    val rotated = tokenRequest(form)
-    val claims = validateIdToken(rotated.idToken, saved.clientId, null)
+    val rotated = tokenRequest(form, saved.idToken, saved.scopes)
     val updated = saved.copy(
       accessToken = rotated.accessToken,
       refreshToken = rotated.refreshToken,
       idToken = rotated.idToken,
       scopes = rotated.scopes,
       expiresAtMillis = rotated.expiresAtMillis,
-      email = claims.getStringClaim("email") ?: saved.email,
-      name = claims.getStringClaim("name") ?: saved.name,
     )
     require(updated.canUsePlan) { "El plan ChatGPT ya no está autorizado para Rotom." }
     withContext(Dispatchers.IO) { store.write(updated) }
