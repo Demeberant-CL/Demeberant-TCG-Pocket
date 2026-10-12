@@ -321,6 +321,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   private val _localPlannerMessage = MutableStateFlow<String?>(null)
   val localPlannerMessage = _localPlannerMessage.asStateFlow()
 
+  fun clearLocalDeckPlans() { if (!_isGeneratingDeck.value) { _localDeckPlans.value = emptyList(); _localPlannerMessage.value = null } }
+
   fun recommendLocalDecks(options: com.example.domain.PlannerOptions = com.example.domain.PlannerOptions()) {
     if (_isGeneratingDeck.value) return
     _isGeneratingDeck.value = true

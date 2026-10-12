@@ -10,7 +10,7 @@ import com.example.domain.DeckCriteria
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DeckCriteriaFields(expansions: List<String>, onChange: (DeckCriteria) -> Unit) {
+fun DeckCriteriaFields(expansions: List<String>, enabled: Boolean = true, onChange: (DeckCriteria) -> Unit) {
   var ownedOnly by rememberSaveable { mutableStateOf(true) }
   var chosen by rememberSaveable { mutableStateOf(listOf<String>()) }
   var required by rememberSaveable { mutableStateOf("") }
@@ -22,18 +22,18 @@ fun DeckCriteriaFields(expansions: List<String>, onChange: (DeckCriteria) -> Uni
       .onSuccess { error = null; onChange(it) }.onFailure { error = "Revisa los códigos de carta."; onChange(DeckCriteria(inputValid = false)) }
   }
   FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    FilterChip(selected = ownedOnly, onClick = { ownedOnly = true }, label = { Text("Mi colección") })
-    FilterChip(selected = !ownedOnly, onClick = { ownedOnly = false }, label = { Text("Catálogo") })
+    FilterChip(enabled = enabled, selected = ownedOnly, onClick = { ownedOnly = true }, label = { Text("Mi colección") })
+    FilterChip(enabled = enabled, selected = !ownedOnly, onClick = { ownedOnly = false }, label = { Text("Catálogo") })
   }
-  TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Ocultar criterios" else "Expansiones y cartas") }
+  TextButton(enabled = enabled, onClick = { expanded = !expanded }) { Text(if (expanded) "Ocultar criterios" else "Expansiones y cartas") }
   if (expanded) {
     Text("Expansiones", style = MaterialTheme.typography.titleSmall)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      FilterChip(selected = chosen.isEmpty(), onClick = { chosen = emptyList() }, label = { Text("Todas") })
-      expansions.forEach { code -> FilterChip(selected = code in chosen, onClick = { chosen = if (code in chosen) chosen - code else chosen + code }, label = { Text(code) }) }
+      FilterChip(enabled = enabled, selected = chosen.isEmpty(), onClick = { chosen = emptyList() }, label = { Text("Todas") })
+      expansions.forEach { code -> FilterChip(enabled = enabled, selected = code in chosen, onClick = { chosen = if (code in chosen) chosen - code else chosen + code }, label = { Text(code) }) }
     }
-    OutlinedTextField(required, { required = it.take(500) }, label = { Text("Cartas obligatorias · códigos") }, placeholder = { Text("A1-001, A1-002") }, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(excluded, { excluded = it.take(500) }, label = { Text("Cartas excluidas · códigos") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(enabled = enabled, value = required, onValueChange = { required = it.take(500) }, label = { Text("Cartas obligatorias · códigos") }, placeholder = { Text("A1-001, A1-002") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(enabled = enabled, value = excluded, onValueChange = { excluded = it.take(500) }, label = { Text("Cartas excluidas · códigos") }, modifier = Modifier.fillMaxWidth())
   } else if (chosen.isNotEmpty()) Text(chosen.joinToString(), style = MaterialTheme.typography.bodySmall)
   error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 }

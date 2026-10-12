@@ -33,6 +33,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
   var criteria by remember { mutableStateOf(DeckCriteria()) }
   var variant by rememberSaveable { mutableIntStateOf(0) }
   var pending by remember { mutableStateOf<DeckPlan?>(null) }
+  LaunchedEffect(type, style, anchorId, criteria) { main.clearLocalDeckPlans(); variant = 0 }
   val anchor = inventory.firstOrNull { it.card.id == anchorId }?.card
   val found = remember(inventory, query, criteria) {
     if (query.trim().length < 2) emptyList() else inventory.filter { (!criteria.ownedOnly || it.ownedCount > 0) &&
@@ -48,21 +49,21 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
     item {
       Text("Energía", style = MaterialTheme.typography.titleMedium)
       LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { FilterChip(selected = type == null, onClick = { type = null }, label = { Text("Automática") }) }
-        items(DeckCodec.energyNames) { name -> FilterChip(selected = type == name, onClick = { type = name }, label = { Text(name) }) }
+        item { FilterChip(enabled = !busy, selected = type == null, onClick = { type = null }, label = { Text("Automática") }) }
+        items(DeckCodec.energyNames) { name -> FilterChip(enabled = !busy, selected = type == name, onClick = { type = name }, label = { Text(name) }) }
       }
       Text("Estilo", style = MaterialTheme.typography.titleMedium)
       LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(DeckStyle.entries) { value -> FilterChip(selected = style == value.name,
+        items(DeckStyle.entries) { value -> FilterChip(enabled = !busy, selected = style == value.name,
           onClick = { style = value.name }, label = { Text(value.label) }) }
       }
     }
     item {
-      DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted()) { criteria = it; variant = 0 }
-      OutlinedTextField(query, { query = it; anchorId = null }, modifier = Modifier.fillMaxWidth(),
+      DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted(), enabled = !busy) { criteria = it; variant = 0 }
+      OutlinedTextField(enabled = !busy, value = query, onValueChange = { query = it; anchorId = null }, modifier = Modifier.fillMaxWidth(),
         label = { Text("Pokémon principal (opcional)") }, singleLine = true)
       anchor?.let { Text("Elegido: ${it.name} · ${it.id}", style = MaterialTheme.typography.labelMedium) }
-      found.forEach { item -> TextButton(onClick = { anchorId = item.card.id; query = "" }, modifier = Modifier.fillMaxWidth()) {
+      found.forEach { item -> TextButton(enabled = !busy, onClick = { anchorId = item.card.id; query = "" }, modifier = Modifier.fillMaxWidth()) {
         Text("${item.card.name} · ${item.card.id} · ${item.ownedCount} copias")
       } }
       Button(onClick = { main.recommendLocalDecks(PlannerOptions(type, DeckStyle.valueOf(style), anchorId, criteria, variant++, plans.map { LocalDeckPlanner.signature(it.deck) }.toSet())) },

@@ -130,4 +130,13 @@ class LocalDeckPlannerTest {
     assertTrue(plans.all { it.deck.cards.map { e -> e.card.id }.containsAll(setOf(first.id,second.id)) })
     assertTrue(plans.all { it.deck.cards.filter { e -> e.card.rulesName=="Same" }.sumOf { e -> e.count }==2 })
   }
+
+  @Test fun alternativeSearchAvoidsThePreviousExactLists() {
+    val pool=(1..24).map { owned(card(it)) }+(25..38).map { owned(card(it,type="Entrenador")) }
+    val first=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua"))
+    val signatures=first.map { LocalDeckPlanner.signature(it.deck) }.toSet()
+    val next=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua",variant=1,previous=signatures))
+    assertTrue(next.all { LocalDeckPlanner.signature(it.deck) !in signatures })
+    assertTrue(next.all { it.deck.totalCardCount==20 })
+  }
 }

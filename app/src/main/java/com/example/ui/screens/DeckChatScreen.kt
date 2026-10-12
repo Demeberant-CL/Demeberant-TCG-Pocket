@@ -67,7 +67,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
         DeckChoice("Energía", energy, listOf("" to "Todas") + DeckCodec.energyNames.map { it to it }) { energy = it }
         DeckChoice("Estilo", style, listOf("Equilibrado", "Agresivo", "Control").map { it to it }) { style = it }
       }
-      item { DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted()) { criteria = it } }
+      item { DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted(), enabled = !busy) { criteria = it; model.discardDeckChatSuggestion() } }
       items(messages) { row ->
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor =
           if (row.user) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface)) {
