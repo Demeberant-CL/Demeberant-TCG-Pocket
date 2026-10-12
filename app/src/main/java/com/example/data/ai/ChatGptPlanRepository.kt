@@ -298,7 +298,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       expiresAtMillis = tokens.expiresAtMillis,
     )
     store.write(account)
-    account
+    return account
   }
 
   private data class ValidatedIdentity(val values: Map<String, Any>) {
