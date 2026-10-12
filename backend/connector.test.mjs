@@ -116,3 +116,21 @@ test('diagnostics are sanitized and proposals survive resync',async t=>{
  const report=await rpc(call,tokens.access_token,'app_diagnostics');
  assert.deepEqual(JSON.parse(report.result.content[0].text).diagnostics.errors,['Sync failed']);
 });
+
+test('snapshot refresh rejects stale queued commands',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const queued=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'inspect_collection'});
+ const id=JSON.parse(queued.result.content[0].text).id;
+ await sync(call);
+ const pending=await(await call('/app/commands',{headers:appHeaders})).json();
+ assert.equal(pending.commands.length,0);
+ const status=await rpc(call,tokens.access_token,'command_status',{id});
+ assert.equal(JSON.parse(status.result.content[0].text).status,'rejected');
+});
+test('delete deck command requires explicit confirmation',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const denied=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1'});
+ assert.equal(denied.result.isError,true);
+ const allowed=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1',confirmDelete:true});
+ assert.equal(JSON.parse(allowed.result.content[0].text).status,'pending');
+});
