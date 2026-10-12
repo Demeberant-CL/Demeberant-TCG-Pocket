@@ -132,6 +132,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
+    needs: [android]
     if: github.ref == 'refs/heads/fix/pocket-atlas-renewal' || github.ref == 'refs/heads/fix/pocket-atlas-connector-audit-20261012' || github.head_ref == 'fix/pocket-atlas-connector-audit-20261012'
     runs-on: ubuntu-latest
     steps:
@@ -144,8 +145,31 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Restore persistent test signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing ANDROID_DEBUG_KEYSTORE_BASE64. Tests will run, but no installable APK will be published."
+            echo "APK withheld: configure a persistent signing key before distributing updates." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/collection-signing.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/collection-signing.keystore" -storepass android -alias androiddebugkey > /dev/null
+          echo "CI_SIGNING_STORE_FILE=$RUNNER_TEMP/collection-signing.keystore" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
       - name: Build disposable emulator test APKs
         run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: verified-apk
+      - name: Use the verified signed deliverable in emulator
+        run: cp verified-apk/app-debug.apk app/build/outputs/apk/debug/app-debug.apk
       - name: Enable emulator acceleration
         run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: Phone layout and screenshots
@@ -160,6 +184,7 @@ jobs:
             adb shell cmd uimode night yes
             adb shell wm size 1080x2400
             adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -W -n com.aistudio.tcgpocket2.kxmpzq/com.example.MainActivity
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.example.DexVisualTest com.aistudio.tcgpocket2.kxmpzq.test/androidx.test.runner.AndroidJUnitRunner | tee normal-test.log
             mkdir -p design-preview/normal
@@ -170,6 +195,9 @@ jobs:
             mkdir -p design-preview/large-text
             adb exec-out run-as com.aistudio.tcgpocket2.kxmpzq tar -cf - -C files/design-preview . | tar -xf - -C design-preview/large-text/
             grep -F 'OK (1 test)' large-test.log
+      - name: Remove emulator signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/collection-signing.keystore"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

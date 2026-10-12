@@ -41,7 +41,7 @@ class DexVisualTest {
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2),
           com.example.data.repository.DeckCardEntry(partner,2)),listOf(card.type))))
     }
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("Pocket Atlas").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("Rotom AI TCG Pocket").fetchSemanticsNodes().isNotEmpty() }
     val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
     compose.waitUntil(20_000) { connectionsModel.connectionReady.value && !connectionsModel.busy.value }
     compose.runOnIdle { connectionsModel.saveConnection(com.example.data.ai.AiConnection(apiKey="fixture-only", id="fixture-gemini", label="Gemini prueba")) }
@@ -142,8 +142,8 @@ class DexVisualTest {
         capture("ia-conexiones")
         compose.onNodeWithText("Cerrar").performClick()
         compose.onNodeWithText("← Ajustes").performClick()
-        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Conector de chat"))
-        compose.onNodeWithText("Conector de chat").performClick()
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Rotom AI · Conector"))
+        compose.onNodeWithText("Rotom AI · Conector").performClick()
         compose.onNodeWithText("Servidor HTTPS").assertExists()
         compose.onNodeWithText("Clave del dispositivo").assertExists()
         capture("conector-chat")
