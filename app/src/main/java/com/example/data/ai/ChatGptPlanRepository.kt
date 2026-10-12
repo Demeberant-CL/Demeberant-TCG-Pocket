@@ -54,6 +54,16 @@ data class ChatGptPlanAccount(
 
 data class ChatGptModel(val slug: String, val displayName: String)
 
+internal object ChatGptPlanProtocol {
+  fun pkceChallenge(verifier: String): String = Base64.getUrlEncoder().withoutPadding()
+    .encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
+
+  fun grantsPlanUsage(scope: String): Boolean {
+    val scopes = scope.split(' ').filter(String::isNotBlank).toSet()
+    return "chatgpt.tokens.use.direct" in scopes && "resource.invoke" in scopes
+  }
+}
+
 private data class OAuthTokens(
   val accessToken: String,
   val refreshToken: String,
@@ -184,8 +194,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     val verifier = randomToken(64)
     val state = randomToken(32)
     val nonce = randomToken(32)
-    val challenge = Base64.getUrlEncoder().withoutPadding()
-      .encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
+    val challenge = ChatGptPlanProtocol.pkceChallenge(verifier)
     val existing = store.read()
     val knownClientId = existing?.clientId ?: store.registeredClientId()
     val requestedClientId = knownClientId ?: "dynamic_agent_client"
@@ -258,7 +267,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .build()
     val tokens = tokenRequest(form)
     val claims = validateIdToken(tokens.idToken, clientId, nonce)
-    require("chatgpt.tokens.use.direct" in tokens.scopes && "resource.invoke" in tokens.scopes) {
+    require(ChatGptPlanProtocol.grantsPlanUsage(tokens.scopes.joinToString(" "))) {
       "La cuenta inició sesión, pero no autorizó el uso del plan ChatGPT en Rotom."
     }
     val account = ChatGptPlanAccount(
