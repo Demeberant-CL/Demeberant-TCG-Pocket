@@ -111,7 +111,8 @@ class ExampleUnitTest {
     ErrorLogManager.log(context, "UNIT_TEST", "Mensaje de prueba para logger")
 
     val logs = ErrorLogManager.readLogs(context)
-    assertTrue(logs.contains("[UNIT_TEST] Mensaje de prueba para logger"))
+    assertTrue(logs.contains("[UNIT_TEST] version="))
+    assertTrue(logs.contains("Mensaje de prueba para logger"))
   }
 
   @Test
