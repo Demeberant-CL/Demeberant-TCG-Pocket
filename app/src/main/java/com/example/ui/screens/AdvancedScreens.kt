@@ -80,7 +80,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
             if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount.email.ifBlank { "Conectado" }}"
+            Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
               else if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,
               style = MaterialTheme.typography.titleSmall)
             if (useChatGptPlan && planModel.isNotBlank()) Text(planModel,
@@ -207,7 +207,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
                     ?: run { model.message.value = "Abre Rotom en el teléfono para iniciar sesión con ChatGPT." }
                 }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar con ChatGPT") }
               } else {
-                Text("Conectado como ${planAccount.email.ifBlank { "cuenta ChatGPT" }}. Credenciales cifradas en este teléfono.")
+                Text("Conectado como ${planAccount?.email?.ifBlank { "cuenta ChatGPT" } ?: "cuenta ChatGPT"}. Credenciales cifradas en este teléfono.")
                 OutlinedButton(enabled = !busy, onClick = model::discoverChatGptPlanModels,
                   modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Buscar modelos disponibles") }
                 if (planModels.isNotEmpty()) {
