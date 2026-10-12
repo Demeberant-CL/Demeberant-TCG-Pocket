@@ -13,7 +13,8 @@ import java.util.concurrent.TimeUnit
 /** A data relay, independent of model providers. Never forwards API credentials. */
 class PocketConnector {
   private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
-    .callTimeout(40, TimeUnit.SECONDS).build()
+    .connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS)
+    .callTimeout(90, TimeUnit.SECONDS).build()
   companion object {
     fun validate(endpoint: String, token: String) {
       val url = endpoint.toHttpUrl()
@@ -24,7 +25,7 @@ class PocketConnector {
   }
   suspend fun request(endpoint: String, token: String, path: String, method: String, payload: JSONObject? = null): JSONObject = withContext(Dispatchers.IO) {
     validate(endpoint, token)
-    require(path in listOf("/app/snapshot", "/app/proposals", "/app/data"))
+    require(path in listOf("/app/snapshot", "/app/proposals", "/app/data", "/app/commands", "/app/commands/result", "/app/diagnostics"))
     val body = payload?.toString()?.toRequestBody("application/json".toMediaType())
     require(body == null || body.contentLength() <= 8_000_000) { "La colección supera el límite del conector." }
     val request = Request.Builder().url(endpoint.toHttpUrl().resolve(path)!!).header("Authorization", "Bearer $token")
@@ -32,7 +33,10 @@ class PocketConnector {
     try {
       client.newCall(request).execute().use { response ->
         require(response.isSuccessful) { when (response.code) {
-          401 -> "La clave del dispositivo no es válida."
+          401 -> "El servidor rechazó la clave del dispositivo (HTTP 401)." 
+          403 -> "El servidor denegó el acceso al conector (HTTP 403)."
+          404 -> "La ruta del conector no existe en el servidor desplegado (HTTP 404)." 
+          413 -> "La colección enviada supera el límite del servidor (HTTP 413)."
           429 -> "El conector recibió demasiadas solicitudes. Reintenta en un minuto."
           else -> "El servidor del conector no completó la solicitud (${response.code})."
         } }
@@ -41,6 +45,9 @@ class PocketConnector {
         JSONObject(source.readUtf8())
       }
     } catch (e: IllegalArgumentException) { throw e }
+    catch (e: java.net.SocketTimeoutException) { throw IllegalArgumentException("Tiempo de espera agotado al comunicar con el conector. Reintenta más tarde.") }
+    catch (e: java.net.UnknownHostException) { throw IllegalArgumentException("No se pudo resolver el dominio del servidor. Revisa tu conexión.") }
+    catch (_: javax.net.ssl.SSLException) { throw IllegalArgumentException("Falló la conexión HTTPS segura con el servidor.") }
     catch (_: java.io.IOException) { throw IllegalArgumentException("No se pudo conectar con el servidor. Revisa la dirección y tu conexión.") }
   }
 }

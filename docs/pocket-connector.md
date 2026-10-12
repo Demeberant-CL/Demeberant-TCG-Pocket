@@ -1,11 +1,11 @@
-# Conector Pocket Atlas ↔ chat
+# Conector Rotom AI TCG Pocket ↔ chat
 
 Implementación independiente de la API de generación. El servidor no llama a OpenAI, Gemini ni otro modelo. No convierte la IA local en un modelo conversacional ni incrusta este hilo dentro del APK.
 
 ## Flujo disponible
 
-1. Ajustes → Conector de chat: guardar origen HTTPS y clave del dispositivo.
-2. Sincronizar: comparte catálogo, cantidades, lista de deseos, efectos ya descargados, mazos guardados y borrador. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior y se vacía el buzón de propuestas anteriores.
+1. Más → Rotom AI · Conector: guardar origen HTTPS y clave del dispositivo.
+2. Sincronizar: comparte catálogo, cantidades, lista de deseos, efectos ya descargados, mazos guardados y borrador. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior y se conserva el buzón de propuestas y se rechazan instrucciones pendientes de la revisión anterior.
 3. En un cliente MCP configurar `https://TU-SERVIDOR/mcp` con OAuth. El propietario autoriza utilizando la clave del propietario, diferente de la clave Android. Esta clave no debe colocarse en la app ni enviarse en el chat.
 4. El chat puede consultar `collection_summary`, `search_cards` (100 filas por página) y `read_deck`.
 5. `submit_deck_proposal` deposita una propuesta de 20 cartas ligada a la revisión consultada. No altera inventario ni mazos guardados. El servidor comprueba IDs, cantidades, energías y máximo dos por nombre; Android valida también estructura y evoluciones.
@@ -40,7 +40,7 @@ Construcción desde la raíz del repositorio:
 docker build -f backend/Dockerfile.connector -t pocket-connector .
 ```
 
-El alojamiento debe proporcionar HTTPS y un volumen persistente de propietario `node` para `/app/data`. Health check `/health`. Inicio sin Docker: `node backend/connector.mjs`. No exponer el puerto HTTP interno directamente a Internet. Los tokens y códigos OAuth se mantienen solo en memoria: al reiniciar se requiere reconectar el chat. Los clientes registrados llevan metadatos autenticados y sobreviven a reinicios mientras se conserve la clave del propietario. Los refresh tokens caducan a las 24 horas; access tokens a una hora; códigos a cinco minutos. Para revocar conexiones inmediatamente, reiniciar el proceso. Servidor de un solo propietario y una sola instancia: no usar el mismo volumen con varias réplicas.
+El alojamiento debe proporcionar HTTPS y un volumen persistente de propietario `node` para `/app/data`. Health check `/health`. Inicio sin Docker: `node backend/connector.mjs`. No exponer el puerto HTTP interno directamente a Internet. Los tokens OAuth se guardan cifrados con AES-256-GCM en el archivo lateral `POCKET_STATE_FILE.oauth`; se recuperan tras reiniciar si ese archivo y `POCKET_OWNER_SECRET` se conservan. En alojamientos con disco efímero, un reinicio o redeploy puede borrar el archivo y exigir reconectar. Los códigos OAuth siguen siendo temporales y de un solo uso. Los clientes registrados conservan sus metadatos autenticados junto al estado del servidor. Los refresh tokens caducan a las 24 horas; access tokens a una hora; códigos a cinco minutos. Para revocar conexiones inmediatamente, reiniciar el proceso. Servidor de un solo propietario y una sola instancia: no usar el mismo volumen con varias réplicas.
 
 Los datos se guardan en un archivo local del servidor con permisos 0600. El cifrado del volumen y sus copias depende del alojamiento. Eliminar datos del servidor elimina la copia activa y el buzón; no borra registros del chat ni respaldos del proveedor de alojamiento. El teléfono guarda su configuración cifrada con Android Keystore, fuera de respaldos de colección y Android.
 
@@ -52,3 +52,7 @@ Documentación de referencia:
 - https://developers.openai.com/plugins/deploy/connect-chatgpt
 - https://developers.openai.com/plugins/build/auth
 - https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+
+## Consultas remotas
+
+`queue_app_command` requiere `pocket:control` y solo admite `inspect_decks`, `inspect_collection` e `inspect_errors`. Android responde al pulsar Responder consultas seguras. No se anuncian acciones de edición que Android no implementa. `command_status` consulta el resultado; `app_diagnostics` está disponible incluso antes de sincronizar una colección. El diagnóstico básico no contiene trazas ni claves. El buzón conserva hasta 20 propuestas: sincronizar no lo vacía.

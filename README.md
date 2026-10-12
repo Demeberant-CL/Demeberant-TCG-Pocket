@@ -1,4 +1,4 @@
-# Demeberant TCG Pocket
+# Rotom AI TCG Pocket
 
 Aplicación Android y web para gestionar una colección de Pokémon TCG Pocket.
 
@@ -67,8 +67,8 @@ IA conecta directamente a Gemini, OpenAI o una API compatible con Chat Completio
 Configura tu propia clave y modelo, indica tu objetivo y pulsa Crear con mi IA.
 Para sustituir faltantes, abre un mazo de 20 cartas y usa Completar mazo.
 La respuesta se valida contra tu colección y solo se abre como borrador.
-El código del servidor opcional de `backend/` se conserva como herramienta independiente;
-no se ha desplegado y ya no es necesario para la pantalla IA.
+El servidor opcional de `backend/` ofrece la integración MCP independiente para consultar la colección;
+no es necesario para la IA local de Android.
 
 Sandbox practica con el mazo abierto de 20 cartas: mano, activo, banca de tres, descartes,
 robo, turnos, marcadores de daño/energía y deshacer. Es un tablero manual de un jugador,

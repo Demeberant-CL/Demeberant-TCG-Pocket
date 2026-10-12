@@ -1,0 +1,24 @@
+name: Rotom AI TCG Pocket connector checks
+on:
+  pull_request:
+    paths:
+      - 'backend/connector.mjs'
+      - 'backend/connector*.test.mjs'
+      - '.github/workflows/pocket-atlas-connector-check.yml'
+  push:
+    branches:
+      - 'fix/pocket-atlas-connector-audit-20261012'
+    paths:
+      - 'backend/connector.mjs'
+      - 'backend/connector*.test.mjs'
+      - '.github/workflows/pocket-atlas-connector-check.yml'
+jobs:
+  connector-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check backend/connector.mjs
+      - run: node --test backend/connector.test.mjs backend/connector.validation.test.mjs

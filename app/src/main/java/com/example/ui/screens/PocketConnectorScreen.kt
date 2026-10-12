@@ -16,6 +16,7 @@ import com.example.domain.AiProposal
 fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier: Modifier = Modifier) {
   val config by model.connectorConfig.collectAsStateWithLifecycle()
   val proposals by model.connectorProposals.collectAsStateWithLifecycle()
+  val commands by model.connectorCommands.collectAsStateWithLifecycle()
   val busy by model.busy.collectAsStateWithLifecycle()
   val message by model.message.collectAsStateWithLifecycle()
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
@@ -28,7 +29,7 @@ fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier
   LaunchedEffect(Unit) { model.loadConnector() }
   LaunchedEffect(config) { url = config?.endpoint.orEmpty(); key = config?.apiKey.orEmpty() }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    item { Text("Conector de chat", style = MaterialTheme.typography.headlineMedium) }
+    item { Text("Rotom AI TCG Pocket · Conector", style = MaterialTheme.typography.headlineMedium) }
     item { Text("Consulta tu colección desde un chat compatible con MCP y recibe mazos para revisarlos aquí.") }
     item { Text("Requiere un servidor HTTPS propio y habilitar el conector en el servicio de chat. Este conector no cobra consultas de IA; el alojamiento y el servicio de chat pueden tener coste.", style = MaterialTheme.typography.bodySmall) }
     item { OutlinedTextField(url, { url = it }, label = { Text("Servidor HTTPS") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth()) }
@@ -38,6 +39,10 @@ fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier
       item { Text("Dirección MCP para el chat: ${saved.endpoint.trimEnd('/')}/mcp", style = MaterialTheme.typography.bodySmall) }
       item { Button(onClick = { confirmSync = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Sincronizar colección y mazos") } }
       item { OutlinedButton(onClick = { opened = null; model.receiveConnector() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Recibir propuestas") } }
+      item { OutlinedButton(onClick = { model.receiveConnectorCommands() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar instrucciones del chat") } }
+      item { Text("Instrucciones pendientes: ${commands.size}. Las acciones de edición no se ejecutan automáticamente.") }
+      item { OutlinedButton(onClick = { model.runSafeConnectorCommands() }, enabled = !busy && commands.any { it.optString("action") in setOf("inspect_errors", "inspect_decks", "inspect_collection") }, modifier = Modifier.fillMaxWidth()) { Text("Responder consultas seguras") } }
+      item { OutlinedButton(onClick = { model.sendConnectorDiagnostics() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Enviar diagnóstico básico") } }
       item { TextButton(onClick = { confirmDelete = true }, enabled = !busy) { Text("Eliminar datos del servidor") } }
     }
     if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()); TextButton(onClick = model::cancel) { Text("Cancelar") } }
@@ -58,7 +63,7 @@ fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier
     }
   }
   if (confirmSync) AlertDialog(onDismissRequest = { confirmSync = false }, title = { Text("Sincronizar con el chat") },
-    text = { Text("Se enviarán las cantidades de tu colección, lista de deseos, catálogo, mazos guardados y el borrador abierto al servidor configurado. Las propuestas anteriores del servidor se eliminarán.") },
+    text = { Text("Se enviarán las cantidades de tu colección, lista de deseos, catálogo, mazos guardados y el borrador abierto al servidor configurado. Las propuestas anteriores del servidor se conservarán y se validarán al recibirlas.") },
     confirmButton = { TextButton(onClick = { confirmSync = false; model.syncConnector(draft) }) { Text("Sincronizar") } },
     dismissButton = { TextButton(onClick = { confirmSync = false }) { Text("Cancelar") } })
   if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Eliminar copia sincronizada") },

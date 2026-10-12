@@ -20,6 +20,28 @@ const appHeaders={Authorization:'Bearer '+deviceToken,'Content-Type':'applicatio
 async function sync(call){return(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(snapshot)})).json();}
 async function rpc(call,token,name,args={}){return(await call('/mcp',{method:'POST',headers:{Authorization:'Bearer '+token,Accept:'application/json, text/event-stream','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})})).json();}
 const proposal=revision=>({revision,name:'Test deck',strategy:'Test',energies:['Planta'],cards:snapshot.cards.map(c=>({id:c.id,count:2})),replacements:[]});
+test('OAuth access and rotating refresh survive restart without storing plaintext credentials',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-auth-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json'),first=await fixture(t,file);await sync(first);
+ const {tokens,params}=await authorize(first);const second=await fixture(t,file);
+ const summary=await rpc(second,tokens.access_token,'collection_summary');
+ assert.equal(JSON.parse(summary.result.content[0].text).copies,20);
+ const refresh=new URLSearchParams({grant_type:'refresh_token',refresh_token:tokens.refresh_token,client_id:params.get('client_id'),resource:publicUrl+'/mcp'});
+ const renewed=await second('/token',{method:'POST',body:refresh});assert.equal(renewed.status,200);
+ const next=await renewed.json();assert.ok(next.access_token);
+ const third=await fixture(t,file);assert.equal((await third('/token',{method:'POST',body:refresh})).status,400);
+ const {readFileSync}=await import('node:fs');const stored=readFileSync(file+'.oauth','utf8');
+ for(const secret of [ownerSecret,deviceToken,tokens.access_token,tokens.refresh_token,next.access_token])assert.ok(!stored.includes(secret));
+});
+test('restored OAuth tokens expire and encrypted grants reject another owner key or issuer',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-expiry-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json');let now=Date.now();const first=await fixture(t,file,{clock:()=>now});await sync(first);
+ const {tokens}=await authorize(first);now+=3600001;
+ const second=await fixture(t,file,{clock:()=>now});
+ assert.equal((await second('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token},body:'{}'})).status,401);
+ for(const extras of [{ownerSecret:'another-owner'.repeat(4)},{publicUrl:'https://another.example'}])
+  assert.throws(()=>createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile:file,...extras}),/OAuth storage cannot be read/);
+});
 test('OAuth + MCP reads + proposal receipt, staleness and deletion',async t=>{
  const call=await fixture(t);assert.equal((await call('/.well-known/openid-configuration')).status,404);assert.equal((await call('/app/proposals')).status,401);assert.equal((await call('/mcp')).status,401);
  const s=await sync(call),{tokens,params}=await authorize(call);assert.ok(tokens.access_token);assert.equal((await call('/token',{method:'POST',body:params})).status,400);
@@ -85,25 +107,75 @@ test('open authorization form survives restart and failed forms renew without gr
  const wrong=await post(retry,'wrong');assert.equal(wrong.status,401);const valid=(await wrong.text()).match(/name="csrf" value="([^"]+)"/)[1];assert.equal((await post(valid)).status,302);
 });
 
-test('OAuth access and refresh survive a server restart with encrypted storage',async t=>{
- const dir=mkdtempSync(join(tmpdir(),'rotom-auth-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
- const file=join(dir,'state.json'),first=await fixture(t,file);await sync(first);
- const {tokens,params}=await authorize(first);const second=await fixture(t,file);
- const summary=await rpc(second,tokens.access_token,'collection_summary');
- assert.equal(JSON.parse(summary.result.content[0].text).copies,20);
- const refresh=new URLSearchParams({grant_type:'refresh_token',refresh_token:tokens.refresh_token,client_id:params.get('client_id'),resource:publicUrl+'/mcp'});
- const renewed=await second('/token',{method:'POST',body:refresh});assert.equal(renewed.status,200);
- const next=await renewed.json();assert.ok(next.access_token);
- const third=await fixture(t,file);assert.equal((await third('/token',{method:'POST',body:refresh})).status,400);
- const {readFileSync}=await import('node:fs');const stored=readFileSync(file+'.oauth','utf8');
- for(const secret of [ownerSecret,deviceToken,tokens.access_token,tokens.refresh_token,next.access_token])assert.ok(!stored.includes(secret));
+test('remote command queue is scoped and requires Android acknowledgment',async t=>{
+ const call=await fixture(t),s=await sync(call);
+ const {tokens}=await authorize(call,'pocket:read pocket:control');
+ const {tokens:read}=await authorize(call,'pocket:read');
+ const denied=await rpc(call,read.access_token,'queue_app_command',{revision:s.revision,action:'inspect_errors'});
+ assert.equal(denied.result.isError,true);
+ const stale=await rpc(call,tokens.access_token,'queue_app_command',{revision:'outdated',action:'inspect_errors'});
+ assert.equal(stale.result.isError,true);
+ const queued=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'inspect_errors'});
+ const command=JSON.parse(queued.result.content[0].text);
+ assert.equal(command.status,'pending');
+ const pending=await(await call('/app/commands',{headers:appHeaders})).json();
+ assert.equal(pending.commands.length,1);
+ assert.equal((await call('/app/commands')).status,401);
+ const ack=await call('/app/commands/result',{method:'POST',headers:appHeaders,body:JSON.stringify({id:command.id,status:'completed',message:'Inspected'})});
+ assert.equal(ack.status,200);
+ const status=await rpc(call,tokens.access_token,'command_status',{id:command.id});
+ assert.equal(JSON.parse(status.result.content[0].text).status,'completed');
+ const again=await call('/app/commands/result',{method:'POST',headers:appHeaders,body:JSON.stringify({id:command.id,status:'completed',message:'Replay'})});
+ assert.equal(again.status,400);
 });
-test('OAuth tokens expire and encrypted storage is bound to its owner and URL',async t=>{
- const dir=mkdtempSync(join(tmpdir(),'rotom-expiry-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
- const file=join(dir,'state.json');let now=Date.now();const first=await fixture(t,file,{clock:()=>now});await sync(first);
- const {tokens}=await authorize(first);now+=3600001;
- const second=await fixture(t,file,{clock:()=>now});
- assert.equal((await second('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token},body:'{}'})).status,401);
- for(const extras of [{ownerSecret:'another-owner'.repeat(4)},{publicUrl:'https://another.example'}])
-  assert.throws(()=>createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile:file,...extras}),/OAuth storage cannot be read/);
+test('diagnostics are sanitized and proposals survive resync',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call);
+ await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(s.revision));
+ await sync(call);
+ const inbox=await(await call('/app/proposals',{headers:appHeaders})).json();
+ assert.equal(inbox.proposals.length,1);
+ assert.equal((await call('/app/diagnostics',{method:'PUT',headers:appHeaders,body:JSON.stringify({version:'1.0',errors:['Sync failed']})})).status,200);
+ const report=await rpc(call,tokens.access_token,'app_diagnostics');
+ assert.deepEqual(JSON.parse(report.result.content[0].text).diagnostics.errors,['Sync failed']);
 });
+
+test('snapshot refresh rejects stale queued commands',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const queued=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'inspect_collection'});
+ const id=JSON.parse(queued.result.content[0].text).id;
+ await sync(call);
+ const pending=await(await call('/app/commands',{headers:appHeaders})).json();
+ assert.equal(pending.commands.length,0);
+ const status=await rpc(call,tokens.access_token,'command_status',{id});
+ assert.equal(JSON.parse(status.result.content[0].text).status,'rejected');
+});
+test('unimplemented edit commands are rejected even with confirmation',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const denied=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1'});
+ assert.equal(denied.result.isError,true);
+ const allowed=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'delete_deck',deckId:'1',confirmDelete:true});
+ assert.equal(allowed.result.isError,true);
+});
+
+test('MCP control scopes match metadata and only implemented commands are advertised',async t=>{
+ const call=await fixture(t),{tokens}=await authorize(call,'pocket:read pocket:control');
+ const response=await(await call('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token,Accept:'application/json, text/event-stream','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})})).json();
+ for(const tool of response.result.tools)assert.deepEqual(tool.securitySchemes,tool._meta.securitySchemes);
+ const control=response.result.tools.find(t=>t.name==='queue_app_command');
+ assert.deepEqual(control.securitySchemes[0].scopes,['pocket:control']);
+ assert.deepEqual(control.inputSchema.properties.action.enum,['inspect_decks','inspect_collection','inspect_errors']);
+ const diagnostics=await rpc(call,tokens.access_token,'app_diagnostics');
+ assert.equal(JSON.parse(diagnostics.result.content[0].text).diagnostics,null);
+});
+test('evolution proposals require a verified basic and their parent',async t=>{
+ const call=await fixture(t),{tokens}=await authorize(call);
+ for(const modify of [s=>s.cards.forEach(c=>c.stage='1'),s=>{s.cards[0].stage='1';s.cards[0].evolvesFrom='Missing';},s=>s.cards[0].category='unknown']){
+  const changed=structuredClone(snapshot);modify(changed);
+  const synced=await(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(changed)})).json();
+  assert.equal((await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(synced.revision))).result.isError,true);
+ }
+ const valid=structuredClone(snapshot);valid.cards[0].stage='1';valid.cards[0].evolvesFrom=valid.cards[1].rulesName;
+ const synced=await(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(valid)})).json();
+ assert.equal((await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(synced.revision))).result.isError,undefined);
+});
+

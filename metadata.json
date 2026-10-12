@@ -1,5 +1,5 @@
 {
-  "name": "Demeberant TCG Pocket",
+  "name": "Rotom AI TCG Pocket",
   "description": "Gestión, análisis de colecciones y cálculo de probabilidades para Pokémon TCG Pocket",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

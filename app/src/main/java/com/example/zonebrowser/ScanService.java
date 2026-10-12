@@ -59,7 +59,7 @@ public final class ScanService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("TCG Dex · Actualizando colección")
+                .setContentTitle("Rotom AI TCG Pocket · Actualizando colección")
                 .setContentText(committing ? "Guardando y verificando cantidades…" : count + " cartas distintas · toca para volver")
                 .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true);
         if (!committing) builder.addAction(new Notification.Action.Builder(null, "Detener", stop).build());

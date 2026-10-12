@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Demeberant TCG Pocket"
+rootProject.name = "Rotom AI TCG Pocket"
 include(":app")

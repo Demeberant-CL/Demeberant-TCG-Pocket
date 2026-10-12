@@ -1,4 +1,4 @@
-# Constructor local de POCKET ATLAS
+# Constructor local de mazos de Rotom AI TCG Pocket
 
 La creación principal usa la colección en el dispositivo, sin peticiones de IA ni cuotas. Presenta hasta tres propuestas diferentes, selección automática de energía o un tipo, estilos Equilibrado/Rápido/Resistente y un Pokémon principal opcional. Abrir una propuesta requiere conservar o reemplazar explícitamente cualquier borrador con cambios; se comprueban las cantidades otra vez antes de aplicarla.
 
