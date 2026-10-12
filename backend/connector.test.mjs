@@ -71,3 +71,16 @@ test('registered client survives restart; altered and unregistered clients remai
  p.set('client_id','known-old-client');p.set('redirect_uri','https://chatgpt.com/connector/oauth/known');assert.equal((await legacy('/authorize?'+p)).status,200);
  p.set('redirect_uri','https://chatgpt.com/connector/oauth/other');assert.equal((await legacy('/authorize?'+p)).status,400);
 });
+
+test('open authorization form survives restart and failed forms renew without granting access',async t=>{
+ const first=await fixture(t),second=await fixture(t);
+ const registered=await(await first('/register',{method:'POST',body:JSON.stringify({redirect_uris:['https://chatgpt.com/connector/oauth/test']})})).json();
+ const p=new URLSearchParams({client_id:registered.client_id,redirect_uri:'https://chatgpt.com/connector/oauth/test',response_type:'code',code_challenge_method:'S256',code_challenge:createHash('sha256').update('v'.repeat(43)).digest('base64url'),resource:publicUrl+'/mcp'});
+ const page=await first('/authorize?'+p),html=await page.text(),csrf=html.match(/name="csrf" value="([^"]+)"/)[1];
+ assert.ok(page.headers.get('content-security-policy').includes("form-action 'self' https://chatgpt.com"));
+ const post=(token,secret=ownerSecret)=>second('/authorize?'+p,{method:'POST',headers:{Origin:'null'},body:new URLSearchParams({secret,csrf:token}),redirect:'manual'});
+ assert.equal((await post(csrf)).status,302);
+ const replay=await post(csrf);assert.equal(replay.status,403);assert.match(await replay.text(),/formulario se renovó/);
+ const renewed=await post('missing');assert.equal(renewed.status,403);const retry=(await renewed.text()).match(/name="csrf" value="([^"]+)"/)[1];
+ const wrong=await post(retry,'wrong');assert.equal(wrong.status,401);const valid=(await wrong.text()).match(/name="csrf" value="([^"]+)"/)[1];assert.equal((await post(valid)).status,302);
+});

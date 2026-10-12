@@ -67,21 +67,27 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         const payload=Buffer.from(JSON.stringify({issuer:base,redirects:input.redirect_uris,nonce:random()})).toString('base64url');
         const id='pa1.'+payload+'.'+clientSignature(payload);clients.set(id,{expires:clock()+86400000});return reply(201,{client_id:id,redirect_uris:input.redirect_uris,token_endpoint_auth_method:'none',grant_types:metadata.grant_types_supported,response_types:['code']});
       }
-      if(path==='/authorize'&&req.method==='GET'){
-        const auth=authorization(url.searchParams);
-        if(forms.size>=200)return reply(429,{error:'Try later'});
-        const csrf=random();forms.set(csrf,{binding:JSON.stringify(auth),expires:clock()+600000});
-        // Only the server-generated nonce is interpolated; query data is never inserted.
-        // Fixed HTML: untrusted query data is retained in the URL, never interpolated into HTML.
-        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'",'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer'});
-        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Pocket Atlas</title><h1>Conectar Pocket Atlas</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><form method="post"><input type="hidden" name="csrf" value="'+csrf+'"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
-      }
+      const formSignature=payload=>createHmac('sha256',ownerSecret).update('pocket-form-v1.'+payload).digest('base64url');
+      const showForm=(auth,status=200,message='')=>{
+        const payload=Buffer.from(JSON.stringify({binding:JSON.stringify(auth),expires:clock()+600000,nonce:random()})).toString('base64url');
+        const csrf=payload+'.'+formSignature(payload);
+        const redirectOrigin=new URL(auth.redirect).origin;
+        res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',
+          'Content-Security-Policy':"default-src 'none'; form-action 'self' "+redirectOrigin+"; frame-ancestors 'none'",'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer'});
+        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Pocket Atlas</title><h1>Conectar Pocket Atlas</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><p>Destino: '+redirectOrigin+'</p><p>'+message+'</p><form method="post"><input type="hidden" name="csrf" value="'+csrf+'"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
+      };
+      if(path==='/authorize'&&req.method==='GET')return showForm(authorization(url.searchParams));
       if(path==='/authorize'&&req.method==='POST'){
         const auth=authorization(url.searchParams),input=new URLSearchParams(await body());
-        const form=forms.get(input.get('csrf'));
-        if(!form || !same(form.binding,JSON.stringify(auth)))return reply(403,{error:'Authorization form expired. Reconnect from ChatGPT.'});
-        forms.delete(input.get('csrf'));
-        if(!same(input.get('secret'),ownerSecret))return reply(401,{error:'Unauthorized'});
+        const csrf=input.get('csrf')||'',parts=csrf.split('.');let form;
+        if(csrf.length<=30000&&parts.length===2&&same(parts[1],formSignature(parts[0]))){
+          try{form=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));}catch{}
+        }
+        if(!form||!Number.isFinite(form.expires)||form.expires<clock()||!same(form.binding,JSON.stringify(auth))||forms.has(csrf))
+          return showForm(auth,403,'El formulario se renovó. Introduce la clave del propietario y vuelve a autorizar.');
+        if(forms.size>=200)return reply(429,{error:'Try later'});
+        forms.set(csrf,{expires:form.expires});
+        if(!same(input.get('secret'),ownerSecret))return showForm(auth,401,'La clave no es válida. Usa la clave del propietario del archivo de configuración.');
         const code=random();codes.set(code,{...auth,expires:clock()+300000});const dest=new URL(auth.redirect);dest.searchParams.set('code',code);if(url.searchParams.has('state'))dest.searchParams.set('state',url.searchParams.get('state'));res.writeHead(302,{Location:dest.href,'Cache-Control':'no-store'});return res.end();
       }
       if(path==='/token'&&req.method==='POST'){
