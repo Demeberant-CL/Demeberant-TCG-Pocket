@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {randomBytes, timingSafeEqual, createHash} from 'node:crypto';
+import {randomBytes, timingSafeEqual, createHash, createHmac} from 'node:crypto';
 import {readFileSync, writeFileSync, renameSync, mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -25,13 +25,24 @@ export function validateSnapshot(s){
   }
   return s;
 }
-export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile,clock=Date.now}={}){
+export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile,clock=Date.now,legacyClientId,legacyRedirect}={}){
   if(!deviceToken||deviceToken.length<32||!ownerSecret||ownerSecret.length<32||same(deviceToken,ownerSecret))throw Error('Two different secrets of at least 32 characters required');
   const origin=new URL(publicUrl);if(origin.protocol!=='https:'||origin.pathname!=='/'||origin.search||origin.hash||origin.username||origin.password)throw Error('Public HTTPS origin required');
   const base=origin.origin;
   let state={snapshot:null,proposals:[]};
   if(stateFile){try{state=JSON.parse(readFileSync(stateFile,'utf8'));if(state.snapshot)validateSnapshot(state.snapshot);if(!Array.isArray(state.proposals)||state.proposals.length>20)throw Error('Invalid state');}catch(e){if(e.code!=='ENOENT')throw e;}}
   const clients=new Map(),codes=new Map(),tokens=new Map(),rates=new Map(),forms=new Map();
+  // Registered public clients carry authenticated metadata so Render restarts do not erase them.
+  const clientSignature=payload=>createHmac('sha256',ownerSecret).update('pocket-client-v1.'+payload).digest('base64url');
+  const readClient=id=>{
+    if(typeof id!=='string'||id.length>16000)return null;
+    if(legacyClientId&&id===legacyClientId&&legacyRedirect){
+      const redirect=new URL(legacyRedirect);
+      if(redirect.origin==='https://chatgpt.com'&&redirect.pathname.startsWith('/connector/oauth/')&&!redirect.search&&!redirect.hash)return {redirects:[legacyRedirect]};
+    }
+    const parts=id.split('.');if(parts.length!==3||parts[0]!=='pa1'||!same(parts[2],clientSignature(parts[1])))return null;
+    try{const row=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8'));return row.issuer===base&&Array.isArray(row.redirects)?row:null;}catch{return null;}
+  };
   const persist=(next)=>{if(stateFile){mkdirSync(dirname(stateFile),{recursive:true,mode:0o700});writeFileSync(stateFile+'.tmp',JSON.stringify(next),{mode:0o600});renameSync(stateFile+'.tmp',stateFile);}state=next;};
   const prune=()=>{for(const map of [clients,codes,tokens,rates,forms])for(const [k,v]of map)if(v.expires<clock())map.delete(k);};
   const metadata={issuer:base,authorization_endpoint:base+'/authorize',token_endpoint:base+'/token',registration_endpoint:base+'/register',response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:['pocket:read','pocket:propose']};
@@ -49,11 +60,12 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       if(rates.size>1000&&!rates.has(ip))return reply(429,{error:'Try later'});
       rates.set(ip,bucket);if(++bucket.count>120)return reply(429,{error:'Try later'});
       const body=async()=>{const chunks=[];let size=0;for await(const c of req){size+=c.length;if(size>8000000)throw Error('Body too large');chunks.push(c);}return Buffer.concat(chunks).toString('utf8');};
-      const authorization=(params)=>{const client=clients.get(params.get('client_id'));if(!client||params.get('response_type')!=='code'||!client.redirects.includes(params.get('redirect_uri'))||params.get('code_challenge_method')!=='S256'||! /^[A-Za-z0-9_-]{43}$/.test(params.get('code_challenge')||'')||params.get('resource')!==base+'/mcp')throw Error('Invalid authorization');const scope=(params.get('scope')||'pocket:read pocket:propose').split(' ');if(scope.some(s=>!metadata.scopes_supported.includes(s)))throw Error('Invalid scope');return {client:params.get('client_id'),redirect:params.get('redirect_uri'),challenge:params.get('code_challenge'),resource:params.get('resource'),scope:scope.join(' ')};};
+      const authorization=(params)=>{const client=readClient(params.get('client_id'));if(!client||params.get('response_type')!=='code'||!client.redirects.includes(params.get('redirect_uri'))||params.get('code_challenge_method')!=='S256'||! /^[A-Za-z0-9_-]{43}$/.test(params.get('code_challenge')||'')||params.get('resource')!==base+'/mcp')throw Error('Invalid authorization');const scope=(params.get('scope')||'pocket:read pocket:propose').split(' ');if(scope.some(s=>!metadata.scopes_supported.includes(s)))throw Error('Invalid scope');return {client:params.get('client_id'),redirect:params.get('redirect_uri'),challenge:params.get('code_challenge'),resource:params.get('resource'),scope:scope.join(' ')};};
       if(path==='/register'&&req.method==='POST'){
         if(clients.size>=100)return reply(429,{error:'Try later'});
         const input=JSON.parse(await body());if(!Array.isArray(input.redirect_uris)||input.redirect_uris.length<1||input.redirect_uris.length>5||input.redirect_uris.some(r=>{try{const u=new URL(r);return r.length>2000||u.protocol!=='https:'||u.username||u.password||u.hash;}catch{return true;}}))return reply(400,{error:'invalid_redirect_uri'});
-        const id=random();clients.set(id,{redirects:input.redirect_uris,expires:clock()+86400000});return reply(201,{client_id:id,redirect_uris:input.redirect_uris,token_endpoint_auth_method:'none',grant_types:metadata.grant_types_supported,response_types:['code']});
+        const payload=Buffer.from(JSON.stringify({issuer:base,redirects:input.redirect_uris,nonce:random()})).toString('base64url');
+        const id='pa1.'+payload+'.'+clientSignature(payload);clients.set(id,{expires:clock()+86400000});return reply(201,{client_id:id,redirect_uris:input.redirect_uris,token_endpoint_auth_method:'none',grant_types:metadata.grant_types_supported,response_types:['code']});
       }
       if(path==='/authorize'&&req.method==='GET'){
         const auth=authorization(url.searchParams);
@@ -135,10 +147,10 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
           return toolResult({id,status:'pending_review',message:'Enviada. En Pocket Atlas pulsa Recibir propuestas y revisa el mazo.'});
         }
       }catch(e){return result({isError:true,content:[{type:'text',text:e.message}]});}
-    }catch{reply(400,{error:'Invalid request'});}
+    }catch{reply(400,{error:req.url?.startsWith('/authorize')?'La conexión no está registrada o sus parámetros no son válidos. Inicia una nueva conexión desde ChatGPT.':'Invalid request'});}
   });
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  const server=createConnectorServer({deviceToken:process.env.POCKET_DEVICE_TOKEN,ownerSecret:process.env.POCKET_OWNER_SECRET,publicUrl:process.env.POCKET_PUBLIC_URL,stateFile:process.env.POCKET_STATE_FILE||'./data/pocket.json'});
+  const server=createConnectorServer({deviceToken:process.env.POCKET_DEVICE_TOKEN,ownerSecret:process.env.POCKET_OWNER_SECRET,publicUrl:process.env.POCKET_PUBLIC_URL,stateFile:process.env.POCKET_STATE_FILE||'./data/pocket.json',legacyClientId:process.env.POCKET_LEGACY_CLIENT_ID,legacyRedirect:process.env.POCKET_LEGACY_REDIRECT});
   server.listen(Number(process.env.PORT||8080),process.env.HOST||'127.0.0.1');
 }

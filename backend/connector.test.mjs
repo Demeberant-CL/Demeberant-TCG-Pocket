@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import {createConnectorServer} from './connector.mjs';
 const deviceToken='device'.repeat(8),ownerSecret='owner'.repeat(8),publicUrl='https://pocket.example';
 const snapshot={format:1,cards:Array.from({length:10},(_,i)=>({id:`A1-${String(i+1).padStart(3,'0')}`,name:`Card ${i}`,rulesName:`Card ${i}`,expansion:'A1',owned:2,type:'Planta',category:'pokemon',stage:'basic',evolvesFrom:'',effects:''})),decks:[{id:'1',name:'Saved',data:'{}'}]};
-async function fixture(t,stateFile){const server=createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const url=`http://127.0.0.1:${server.address().port}`;return async(path,options={})=>fetch(url+path,options);}
+async function fixture(t,stateFile,extras={}){const server=createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile,...extras});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const url=`http://127.0.0.1:${server.address().port}`;return async(path,options={})=>fetch(url+path,options);}
 async function authorize(call,scope='pocket:read pocket:propose',origin){
  const registered=await(await call('/register',{method:'POST',body:JSON.stringify({redirect_uris:['https://chat.example/callback']})})).json();
  const verifier='v'.repeat(43),p=new URLSearchParams({client_id:registered.client_id,redirect_uri:'https://chat.example/callback',response_type:'code',code_challenge_method:'S256',code_challenge:createHash('sha256').update(verifier).digest('base64url'),resource:publicUrl+'/mcp',scope,state:'state'});
@@ -57,4 +57,17 @@ test('OAuth form accepts opaque browser origin only with a valid single-use form
  assert.equal((await post(csrf,'https://evil.example')).status,403);
  assert.equal((await post(csrf)).status,302);
  assert.equal((await post(csrf)).status,403);
+});
+
+test('registered client survives restart; altered and unregistered clients remain rejected',async t=>{
+ const first=await fixture(t),second=await fixture(t);
+ const registered=await(await first('/register',{method:'POST',body:JSON.stringify({redirect_uris:['https://chat.example/callback']})})).json();
+ const p=new URLSearchParams({client_id:registered.client_id,redirect_uri:'https://chat.example/callback',response_type:'code',code_challenge_method:'S256',code_challenge:createHash('sha256').update('v'.repeat(43)).digest('base64url'),resource:publicUrl+'/mcp'});
+ assert.equal((await second('/authorize?'+p)).status,200);
+ p.set('redirect_uri','https://evil.example/callback');assert.equal((await second('/authorize?'+p)).status,400);
+ p.set('redirect_uri','https://chat.example/callback');p.set('client_id',registered.client_id+'x');assert.equal((await second('/authorize?'+p)).status,400);
+ p.set('client_id','unregistered');assert.equal((await second('/authorize?'+p)).status,400);
+ const legacy=await fixture(t,undefined,{legacyClientId:'known-old-client',legacyRedirect:'https://chatgpt.com/connector/oauth/known'});
+ p.set('client_id','known-old-client');p.set('redirect_uri','https://chatgpt.com/connector/oauth/known');assert.equal((await legacy('/authorize?'+p)).status,200);
+ p.set('redirect_uri','https://chatgpt.com/connector/oauth/other');assert.equal((await legacy('/authorize?'+p)).status,400);
 });
