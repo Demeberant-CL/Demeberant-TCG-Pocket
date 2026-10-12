@@ -29,6 +29,9 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   val retryAvailable by model.deckChatRetryAvailable.collectAsStateWithLifecycle()
   val connection by model.connection.collectAsStateWithLifecycle()
   val ready by model.connectionReady.collectAsStateWithLifecycle()
+  val planAccount by model.chatGptPlanAccount.collectAsStateWithLifecycle()
+  val planModel by model.selectedChatGptPlanModel.collectAsStateWithLifecycle()
+  val useChatGptPlan by model.chatGptPlanPreferred.collectAsStateWithLifecycle()
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   var criteria by remember { mutableStateOf(DeckCriteria()) }
   val current = deck ?: return
@@ -45,6 +48,8 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   LaunchedEffect(current) { model.startDeckChat(current); reviewing = false }
   LaunchedEffect(Unit) { com.example.data.util.AppDiagnostics.screen("DECK_CHAT") }
   LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(2 + messages.lastIndex) }
+  val canSend = if (useChatGptPlan) planAccount?.canUsePlan == true && planModel.isNotBlank()
+    else ready && connection.apiKey.isNotBlank()
   BackHandler { if (reviewing) reviewing = false else onBack() }
   if (reviewing && suggestion != null) {
     DeckProposalReview(main, model, suggestion!!, { reviewing = false }, onBack, modifier)
@@ -58,8 +63,11 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
       item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(current.name, style = MaterialTheme.typography.titleMedium)
         Text("${current.totalCardCount}/20 · " + current.energyTypes.joinToString().ifBlank { "Energías por elegir" }, style = MaterialTheme.typography.bodySmall)
-        Text(if (connection.apiKey.isBlank()) "Configura tu conexión para conversar" else "${connection.label} · ${connection.model}", style = MaterialTheme.typography.bodySmall)
-        QuickAiSwitch(model)
+        Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
+          else if (connection.apiKey.isBlank()) "Configura tu conexión para conversar" else "${connection.label} · ${connection.model}",
+          style = MaterialTheme.typography.bodySmall)
+        QuickAiSwitch(model, chatGptConnected = planAccount != null, chatGptSelected = useChatGptPlan,
+          onSelectChatGpt = { model.setChatGptPlanPreferred(true) })
         OutlinedButton(enabled = ready && !busy, onClick = onConnections, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
       } } }
       if (creating && messages.isEmpty()) item {
@@ -96,15 +104,21 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
     }
     Surface {
       Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (useChatGptPlan) Text(
+          if (planModel.isBlank()) "Selecciona un modelo de ChatGPT en Conexiones."
+          else "Usando ChatGPT · $planModel. Al enviar, también se comparte el mazo abierto y las cartas de tu colección necesarias para responder.",
+          style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(input, { input = it.take(2000) }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("deck_chat_input"),
           label = { Text(if (creating && messages.isEmpty()) "Idea para el mazo" else "Mensaje para la IA") }, maxLines = 4)
-        Button(enabled = ready && !busy && input.isNotBlank() && connection.apiKey.isNotBlank(), onClick = {
+        Button(enabled = canSend && !busy && input.isNotBlank(), onClick = {
           val text = input
           model.sendDeckChat(current, if (creating) "$text\nEstilo: $style" else text,
             if (creating) "create" else initialAction, if (creating) energy else "", criteria = criteria)
           // Keep the instructions available after errors and cancellation.
         }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-          Text(if (creating && messages.isEmpty()) "Generar propuesta" else "Enviar")
+          Text(if (useChatGptPlan) {
+            if (creating && messages.isEmpty()) "Generar con ChatGPT" else "Enviar a ChatGPT"
+          } else if (creating && messages.isEmpty()) "Generar propuesta" else "Enviar")
         }
       }
     }
