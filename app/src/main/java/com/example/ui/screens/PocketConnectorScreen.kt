@@ -29,7 +29,7 @@ fun PocketConnectorScreen(main: TcgViewModel, model: AdvancedViewModel, modifier
   LaunchedEffect(Unit) { model.loadConnector() }
   LaunchedEffect(config) { url = config?.endpoint.orEmpty(); key = config?.apiKey.orEmpty() }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    item { Text("Conector de chat", style = MaterialTheme.typography.headlineMedium) }
+    item { Text("Rotom AI TCG Pocket · Conector", style = MaterialTheme.typography.headlineMedium) }
     item { Text("Consulta tu colección desde un chat compatible con MCP y recibe mazos para revisarlos aquí.") }
     item { Text("Requiere un servidor HTTPS propio y habilitar el conector en el servicio de chat. Este conector no cobra consultas de IA; el alojamiento y el servicio de chat pueden tener coste.", style = MaterialTheme.typography.bodySmall) }
     item { OutlinedTextField(url, { url = it }, label = { Text("Servidor HTTPS") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth()) }
