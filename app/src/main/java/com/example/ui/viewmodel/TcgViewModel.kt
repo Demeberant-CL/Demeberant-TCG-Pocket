@@ -335,6 +335,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         val plans = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts, options) }
         ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size} pool=${inventory.size} expansions=${options.criteria.expansions.size} required=${options.criteria.required.size} excluded=${options.criteria.excluded.size} ownedOnly=${options.criteria.ownedOnly} variant=${options.variant}")
         _localDeckPlans.value = plans
+        if (options.previous.isNotEmpty() && plans.all { com.example.domain.LocalDeckPlanner.signature(it.deck) in options.previous })
+          _localPlannerMessage.value = "No se encontraron otras listas con estos criterios. Prueba otra energía, estilo o expansión."
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         ErrorLogManager.event("DECK_PLAN", "Local recommendations failed", e)

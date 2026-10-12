@@ -176,9 +176,15 @@ class DexVisualTest {
         compose.waitForIdle()
         capture("mazos-crear")
         compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        compose.onNodeWithText("Expansiones y cartas").performScrollTo().performClick()
+        compose.onNodeWithText("A1").performScrollTo().performClick()
+        capture("constructor-criterios")
+        val plannerStarted = android.os.SystemClock.elapsedRealtime()
         compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
         val plannerModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
         compose.waitUntil(45_000) { !plannerModel.isGeneratingDeck.value }
+        println("LOCAL_PLANNER_MS=" + (android.os.SystemClock.elapsedRealtime() - plannerStarted))
+        check(plannerModel.localDeckPlans.value.all { plan -> plan.deck.cards.all { it.card.id.startsWith("A1-") } })
         check(plannerModel.localDeckPlans.value.isNotEmpty()) { plannerModel.localPlannerMessage.value ?: "No local proposals" }
         compose.onNodeWithTag("local_planner_list").performScrollToNode(hasText("Abrir en editor"))
         capture("constructor-local")

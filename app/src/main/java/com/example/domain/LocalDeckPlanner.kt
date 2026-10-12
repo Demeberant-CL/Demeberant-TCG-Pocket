@@ -12,11 +12,12 @@ data class CombatAttack(val cost: List<String>?, val damage: String, val effect:
 data class CombatData(val hp: Int? = null, val retreat: Int? = null,
   val attacks: List<CombatAttack> = emptyList(), val text: String = "")
 enum class DeckStyle(val label: String) { BALANCED("Equilibrado"), FAST("Rápido"), RESILIENT("Resistente") }
-data class PlannerOptions(val type: String? = null, val style: DeckStyle = DeckStyle.BALANCED, val anchorId: String? = null, val criteria: DeckCriteria = DeckCriteria(), val variant: Int = 0)
+data class PlannerOptions(val type: String? = null, val style: DeckStyle = DeckStyle.BALANCED, val anchorId: String? = null, val criteria: DeckCriteria = DeckCriteria(), val variant: Int = 0, val previous: Set<String> = emptySet())
 data class DeckPlan(val deck: GeneratedDeck, val score: Int, val basics: Int, val trainers: Int,
   val knownCopies: Int, val reasons: List<String>, val cautions: List<String>, val ownedOnly: Boolean = true)
 
 object LocalDeckPlanner {
+  fun signature(deck: GeneratedDeck): String = deck.cards.sortedBy { it.card.id }.joinToString { "${it.card.id}:${it.count}" }
   private fun name(value: String) = value.trim().lowercase(Locale.ROOT)
   fun energy(value: String): String? = when (RoleClassifier.normalize(value)) {
     "grass", "planta" -> "Planta"; "fire", "fuego" -> "Fuego"; "water", "agua" -> "Agua"
@@ -338,9 +339,11 @@ object LocalDeckPlanner {
       .thenByDescending { it.score }.thenBy { it.deck.name }.thenBy { it.deck.energyTypes.joinToString() })
     val eligible = sorted.filter { runCatching { options.criteria.validate(it.deck) }.isSuccess }
     require(eligible.isNotEmpty()) { "No se pudo cumplir la combinación de cartas, expansiones y energía. Revisa preevoluciones y cartas obligatorias." }
-    val top = eligible.take(12)
+    val unseen = eligible.filter { signature(it.deck) !in options.previous }
+    val alternatives = unseen.ifEmpty { eligible }
+    val top = alternatives.take(12)
     val offset = Math.floorMod(options.variant, top.size)
-    val ordered = top.drop(offset) + top.take(offset) + eligible.drop(12)
+    val ordered = top.drop(offset) + top.take(offset) + alternatives.drop(12)
     val selected = mutableListOf<DeckPlan>()
     ordered.forEach { plan ->
       val names = plan.deck.cards.map { name(it.card.rulesName) }.toSet()

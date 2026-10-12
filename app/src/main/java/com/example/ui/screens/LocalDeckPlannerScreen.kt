@@ -34,7 +34,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
   var variant by rememberSaveable { mutableIntStateOf(0) }
   var pending by remember { mutableStateOf<DeckPlan?>(null) }
   val anchor = inventory.firstOrNull { it.card.id == anchorId }?.card
-  val found = remember(inventory, query) {
+  val found = remember(inventory, query, criteria) {
     if (query.trim().length < 2) emptyList() else inventory.filter { (!criteria.ownedOnly || it.ownedCount > 0) &&
       it.card.type != "Entrenador" && (it.card.name.contains(query.trim(), true) || it.card.id.contains(query.trim(), true)) }
       .sortedBy { it.card.id }.take(6)
@@ -65,7 +65,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
       found.forEach { item -> TextButton(onClick = { anchorId = item.card.id; query = "" }, modifier = Modifier.fillMaxWidth()) {
         Text("${item.card.name} · ${item.card.id} · ${item.ownedCount} copias")
       } }
-      Button(onClick = { main.recommendLocalDecks(PlannerOptions(type, DeckStyle.valueOf(style), anchorId, criteria, variant++)) },
+      Button(onClick = { main.recommendLocalDecks(PlannerOptions(type, DeckStyle.valueOf(style), anchorId, criteria, variant++, plans.map { LocalDeckPlanner.signature(it.deck) }.toSet())) },
         enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
         Text(if (busy) "Analizando colección…" else if (plans.isEmpty()) "Crear propuestas" else "Buscar otras propuestas")
       }
