@@ -114,9 +114,9 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         if(!same(bearer,deviceToken))return reply(401,{error:'Unauthorized'});
         if(path==='/app/snapshot'&&req.method==='PUT'){
           const snapshot={...validateSnapshot(JSON.parse(await body())),revision:random(),syncedAt:new Date(clock()).toISOString()};
-          persist({...state,snapshot,proposals:state.proposals});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
+          persist({...state,snapshot,proposals:state.proposals,commands:state.commands.map(cmd=>cmd.status==='pending'?{...cmd,status:'rejected',message:'Snapshot updated; request again using current revision',finishedAt:new Date(clock()).toISOString()}:cmd)});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
         }
-        if(path==='/app/commands'&&req.method==='GET')return reply(200,{commands:state.commands.filter(c=>c.status==='pending').map(({id,action,deckId,createdAt})=>({id,action,deckId,createdAt}))});
+        if(path==='/app/commands'&&req.method==='GET')return reply(200,{commands:state.commands.filter(c=>c.status==='pending').map(({id,revision,action,deckId,createdAt})=>({id,revision,action,deckId,createdAt}))});
         if(path==='/app/commands/result'&&req.method==='POST'){
           const input=JSON.parse(await body());const cmd=state.commands.find(c=>c.id===input.id);
           if(!cmd||cmd.status!=='pending'||!['completed','failed','rejected'].includes(input.status)||typeof input.message!=='string'||input.message.length>2000)return reply(400,{error:'Invalid command result'});
@@ -157,7 +157,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
           if(!allowed.includes(args.action)||state.commands.filter(c=>c.status==='pending').length>=20)throw Error('Invalid command or full queue');
           if(['duplicate_deck','delete_deck'].includes(args.action)&&(!args.deckId||!s.decks.some(d=>d.id===args.deckId)))throw Error('Deck not found');
           if(args.action==='delete_deck'&&args.confirmDelete!==true)throw Error('La eliminación requiere confirmación explícita.');
-          const cmd={id:random(),action:args.action,deckId:args.deckId||null,status:'pending',createdAt:new Date(clock()).toISOString()};
+          const cmd={id:random(),revision:s.revision,action:args.action,deckId:args.deckId||null,status:'pending',createdAt:new Date(clock()).toISOString()};
           persist({...state,commands:[...state.commands.slice(-99),cmd]});return toolResult({id:cmd.id,status:'pending',message:'Android debe recibir y procesar esta instrucción. No se ha ejecutado aún.'});
         }
         if(name==='collection_summary')return toolResult({revision:s.revision,syncedAt:s.syncedAt,distinct:s.cards.filter(c=>c.owned>0).length,copies:s.cards.reduce((n,c)=>n+c.owned,0),catalog:s.cards.length,decks:s.decks.map(({id,name})=>({id,name})),draft:s.draft?{id:'draft',name:s.draft.name}:null});
