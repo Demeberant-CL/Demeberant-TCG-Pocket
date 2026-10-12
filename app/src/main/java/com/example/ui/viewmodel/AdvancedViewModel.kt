@@ -111,7 +111,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val accepted = (0 until rows.length()).mapNotNull { i ->
       try {
         val row = rows.getJSONObject(i)
-        require(row.getString("revision") == response.getString("revision"))
+        // Revalidate every proposal against current local inventory, even after a resync.
         val proposal = AiValidator.parse(row.getJSONObject("deck").toString(), candidates)
         com.example.domain.DeckChat.parse(org.json.JSONObject().put("message", "Propuesta del conector").put("proposal", row.getJSONObject("deck")).toString(), candidates)
         proposal
@@ -119,6 +119,36 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
     connectorProposals.value = accepted
     message.value = "${accepted.size} propuestas válidas para revisar" + if (rejected > 0) ". $rejected rechazadas por cartas, cantidades o estructura." else "."
+  }
+  val connectorCommands = MutableStateFlow<List<org.json.JSONObject>>(emptyList())
+  fun receiveConnectorCommands() = task("CONNECTOR_COMMANDS") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/commands", "GET")
+    val rows = response.getJSONArray("commands")
+    require(rows.length() <= 20) { "Demasiados comandos pendientes." }
+    connectorCommands.value = (0 until rows.length()).map { rows.getJSONObject(it) }
+    message.value = "${rows.length()} instrucciones pendientes. Revisa antes de ejecutarlas."
+  }
+  fun runSafeConnectorCommands(draft: GeneratedDeck?) = task("CONNECTOR_COMMANDS") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/commands", "GET")
+    val rows = response.getJSONArray("commands")
+    var done = 0
+    for (i in 0 until rows.length()) {
+      val cmd = rows.getJSONObject(i)
+      val action = cmd.getString("action")
+      if (action !in setOf("inspect_errors", "inspect_decks", "inspect_collection")) continue
+      val report = when (action) {
+        "inspect_errors" -> "Diagnóstico disponible desde la aplicación; no se ha autorizado enviar registros sensibles."
+        "inspect_decks" -> "Mazos guardados: ${repository.savedDecksFlow.first().size}"
+        else -> "Cartas en inventario: ${repository.inventoryFlow.first().size}"
+      }
+      pocketConnector.request(config.endpoint, config.apiKey, "/app/commands/result", "POST",
+        org.json.JSONObject().put("id", cmd.getString("id")).put("status", "completed").put("message", report))
+      done++
+    }
+    connectorCommands.value = emptyList()
+    message.value = "$done consultas de diagnóstico respondidas. Las acciones de modificación requieren aprobación en Android."
   }
   fun deleteConnectorData() = task("CONNECTOR_DELETE") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
