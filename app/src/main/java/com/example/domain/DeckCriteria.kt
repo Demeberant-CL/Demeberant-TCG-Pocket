@@ -9,6 +9,7 @@ data class DeckCriteria(val expansions: Set<String> = emptySet(), val required: 
   val excluded: Set<String> = emptySet(), val ownedOnly: Boolean = true, val inputValid: Boolean = true) {
   fun pool(inventory: List<CardWithInventory>): List<CardWithInventory> {
     require(inputValid) { "Revisa los códigos de las cartas obligatorias y excluidas." }
+    require(required.size <= 20) { "Las cartas obligatorias superan las 20 posiciones del mazo." }
     require(required.intersect(excluded).isEmpty()) { "Una carta no puede ser obligatoria y excluida." }
     val allowed = inventory.filter { it.card.id !in excluded &&
       (expansions.isEmpty() || CardId.split(it.card.id).first in expansions) && (!ownedOnly || it.ownedCount > 0) }

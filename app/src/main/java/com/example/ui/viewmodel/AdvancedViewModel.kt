@@ -190,12 +190,18 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         ErrorLogManager.event("AI_CONTEXT", "id=$requestId pool=${pool.size} selected=${selectedPool.size} expansions=${criteria.expansions.size} required=${criteria.required.size} excluded=${criteria.excluded.size} ownedOnly=${criteria.ownedOnly}")
         loadMissingRules(selectedPool.map { it.card.id }, "es") { deckChatStatus.value = it }
         rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
         val candidates = mutableListOf<AiCandidate>()
         // Keep the complete context below the provider's 60 KB request limit.
         var size = DeckChat.prompt(deck, emptyList(), history, action, criteria).toByteArray(Charsets.UTF_8).size
         val overhead = DeckChat.prompt(deck, emptyList(), emptyList(), action, criteria).toByteArray(Charsets.UTF_8).size
         for (item in selectedPool) {
-          val candidate = AiCandidate(hydrate(item.card, rules[item.card.id]), item.ownedCount, rules[item.card.id]?.rulesText ?: "")
+          val rule = rules[item.card.id]
+          val local = facts[item.card.id]
+          val effectText = rule?.rulesText?.takeIf { it.isNotBlank() } ?: local?.let { value ->
+            (listOf(value.text) + value.attacks.map { a -> listOf(a.name, "Daño: ${a.damage}", a.cost?.joinToString(prefix = "Coste: ") ?: "Coste desconocido", a.effect).joinToString(" · ") }).filter(String::isNotBlank).joinToString("\n")
+          }.orEmpty()
+          val candidate = AiCandidate(hydrate(item.card, rule), item.ownedCount, effectText.take(3000))
           val cost = (DeckChat.prompt(deck, listOf(candidate), emptyList(), action, criteria).toByteArray(Charsets.UTF_8).size -
             overhead) + 2
           if (size + cost > 57000) continue

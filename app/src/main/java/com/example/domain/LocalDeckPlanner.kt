@@ -82,9 +82,9 @@ object LocalDeckPlanner {
     require(options.type == null || options.type in DeckCodec.energyNames) { "Elige una energía válida." }
     val owned = options.criteria.pool(inventory).filter { it.ownedCount > 0 && it.card.type != "Sin verificar" }
       .distinctBy { it.card.id }.sortedBy { it.card.id }
-    require(owned.any { basic(it.card) }) { "No hay Pokémon básicos disponibles con estos criterios. Revisa las expansiones o usa Catálogo." }
+    require(owned.any { basic(it.card) }) { "No hay básicos con etapa verificada entre las cartas seleccionadas. Revisa datos, expansiones o usa Catálogo." }
     val anchor = options.anchorId?.let { id -> owned.firstOrNull { it.card.id == id }
-      ?: throw IllegalArgumentException("La carta principal no está en tu colección.") }
+      ?: throw IllegalArgumentException("La carta principal no está disponible con estos criterios.") }
     require(anchor == null || !trainer(anchor.card)) { "La carta principal debe ser un Pokémon." }
     val palettes = if (options.type != null) listOf(listOf(options.type)) else buildList {
       DeckCodec.energyNames.forEach { add(listOf(it)) }
