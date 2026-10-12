@@ -11,8 +11,11 @@ const tools=[
   {name:'collection_summary',description:'Resumen de la colección sincronizada, fecha y mazos guardados.',inputSchema:object({})},
   {name:'search_cards',description:'Busca cartas del catálogo sincronizado por nombre, código o expansión. Incluye cantidades reales y efectos cuando están disponibles; nunca inventes efectos desconocidos.',inputSchema:object({query:{type:'string',maxLength:120},ownedOnly:{type:'boolean'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:100}},[])},
   {name:'read_deck',description:'Consulta un mazo guardado mediante su ID o el borrador actual (draft).',inputSchema:object({id:{type:'string',maxLength:100}})},
+  {name:'app_diagnostics',description:'Consulta el último informe de diagnóstico enviado por Android, sin datos secretos.',inputSchema:object({})},
+  {name:'queue_app_command',description:'Solicita una acción a Android; no se ejecuta hasta que el teléfono la recibe y confirma. Requiere revisión para eliminar mazos. Usa revision actual.',inputSchema:object({revision:text,action:{type:'string',enum:['refresh_catalog','sync_now','inspect_decks','inspect_collection','inspect_errors','duplicate_deck','delete_deck']},deckId:{type:'string',maxLength:100}},['revision','action'])},
+  {name:'command_status',description:'Consulta el estado y resultado de una instrucción enviada al teléfono.',inputSchema:object({id:{type:'string',maxLength:100}})},
   {name:'submit_deck_proposal',description:'Envía un mazo de 20 cartas para revisión en Pocket Atlas. No modifica la colección ni guarda o reemplaza mazos. Usa IDs y revisión de la colección consultada. Máximo dos copias por nombre y líneas evolutivas completas. replacements debe estar vacío.',inputSchema:object({revision:text,name:{type:'string',maxLength:120},strategy:text,energies:{type:'array',minItems:1,maxItems:3,items:{type:'string',enum:['Planta','Fuego','Agua','Rayo','Psíquico','Lucha','Oscuridad','Metal']}},cards:{type:'array',minItems:10,maxItems:20,items:object({id:{type:'string'},count:{type:'integer',minimum:1,maximum:2}})},replacements:{type:'array',maxItems:0}})}
-].map(t=>({...t,securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':'pocket:read']}],_meta:{securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':'pocket:read']}]},annotations:{readOnlyHint:t.name!=='submit_deck_proposal',destructiveHint:false,idempotentHint:t.name!=='submit_deck_proposal',openWorldHint:false}}));
+].map(t=>({...t,securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}],_meta:{securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':'pocket:read']}]},annotations:{readOnlyHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),destructiveHint:t.name==='queue_app_command',idempotentHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),openWorldHint:false}}));
 export function validateSnapshot(s){
   if(!s||s.format!==1||!Array.isArray(s.cards)||s.cards.length>10000||!Array.isArray(s.decks)||s.decks.length>1000)throw Error('Invalid snapshot');
   const ids=new Set();
@@ -29,8 +32,9 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
   if(!deviceToken||deviceToken.length<32||!ownerSecret||ownerSecret.length<32||same(deviceToken,ownerSecret))throw Error('Two different secrets of at least 32 characters required');
   const origin=new URL(publicUrl);if(origin.protocol!=='https:'||origin.pathname!=='/'||origin.search||origin.hash||origin.username||origin.password)throw Error('Public HTTPS origin required');
   const base=origin.origin;
-  let state={snapshot:null,proposals:[]};
+  let state={snapshot:null,proposals:[],commands:[],diagnostics:null};
   if(stateFile){try{state=JSON.parse(readFileSync(stateFile,'utf8'));if(state.snapshot)validateSnapshot(state.snapshot);if(!Array.isArray(state.proposals)||state.proposals.length>20)throw Error('Invalid state');}catch(e){if(e.code!=='ENOENT')throw e;}}
+  state.commands??=[];state.diagnostics??=null;if(!Array.isArray(state.commands)||state.commands.length>100)throw Error('Invalid commands');
   const clients=new Map(),codes=new Map(),tokens=new Map(),rates=new Map(),forms=new Map();
   // Registered public clients carry authenticated metadata so Render restarts do not erase them.
   const clientSignature=payload=>createHmac('sha256',ownerSecret).update('pocket-client-v1.'+payload).digest('base64url');
@@ -45,7 +49,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
   };
   const persist=(next)=>{if(stateFile){mkdirSync(dirname(stateFile),{recursive:true,mode:0o700});writeFileSync(stateFile+'.tmp',JSON.stringify(next),{mode:0o600});renameSync(stateFile+'.tmp',stateFile);}state=next;};
   const prune=()=>{for(const map of [clients,codes,tokens,rates,forms])for(const [k,v]of map)if(v.expires<clock())map.delete(k);};
-  const metadata={issuer:base,authorization_endpoint:base+'/authorize',token_endpoint:base+'/token',registration_endpoint:base+'/register',response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:['pocket:read','pocket:propose']};
+  const metadata={issuer:base,authorization_endpoint:base+'/authorize',token_endpoint:base+'/token',registration_endpoint:base+'/register',response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:['pocket:read','pocket:propose','pocket:control']};
   return createServer(async(req,res)=>{
     const reply=(code,value,extra={})=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store',...extra});res.end(value===undefined?'':JSON.stringify(value));};
     try{
@@ -110,10 +114,20 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         if(!same(bearer,deviceToken))return reply(401,{error:'Unauthorized'});
         if(path==='/app/snapshot'&&req.method==='PUT'){
           const snapshot={...validateSnapshot(JSON.parse(await body())),revision:random(),syncedAt:new Date(clock()).toISOString()};
-          persist({snapshot,proposals:[]});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
+          persist({...state,snapshot,proposals:state.proposals.filter(p=>p.revision===snapshot.revision)});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
+        }
+        if(path==='/app/commands'&&req.method==='GET')return reply(200,{commands:state.commands.filter(c=>c.status==='pending').map(({id,action,deckId,createdAt})=>({id,action,deckId,createdAt}))});
+        if(path==='/app/commands/result'&&req.method==='POST'){
+          const input=JSON.parse(await body());const cmd=state.commands.find(c=>c.id===input.id);
+          if(!cmd||cmd.status!=='pending'||!['completed','failed','rejected'].includes(input.status)||typeof input.message!=='string'||input.message.length>2000)return reply(400,{error:'Invalid command result'});
+          persist({...state,commands:state.commands.map(c=>c.id===cmd.id?{...c,status:input.status,message:input.message,finishedAt:new Date(clock()).toISOString()}:c)});return reply(200,{ok:true});
+        }
+        if(path==='/app/diagnostics'&&req.method==='PUT'){
+          const input=JSON.parse(await body());if(!input||typeof input.version!=='string'||input.version.length>100||!Array.isArray(input.errors)||input.errors.length>50||input.errors.some(e=>typeof e!=='string'||e.length>1000))return reply(400,{error:'Invalid diagnostics'});
+          persist({...state,diagnostics:{version:input.version,errors:input.errors,syncedAt:new Date(clock()).toISOString()}});return reply(200,{ok:true});
         }
         if(path==='/app/proposals'&&req.method==='GET')return reply(200,{revision:state.snapshot?.revision,proposals:state.proposals});
-        if(path==='/app/data'&&req.method==='DELETE'){persist({snapshot:null,proposals:[]});return reply(200,{deleted:true});}
+        if(path==='/app/data'&&req.method==='DELETE'){persist({snapshot:null,proposals:[],commands:[],diagnostics:null});return reply(200,{deleted:true});}
         return reply(404,{error:'Not found'});
       }
       if(path!=='/mcp')return reply(404,{error:'Not found'});
@@ -134,7 +148,17 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       try{
         if(!tools.some(t=>t.name===name))throw Error('Unknown tool');
         if(!s)throw Error('Sin colección: sincroniza desde Pocket Atlas.');
-        const permission=name==='submit_deck_proposal'?'pocket:propose':'pocket:read';if(!grant.scope.split(' ').includes(permission))throw Error('Insufficient scope');
+        const permission=name==='submit_deck_proposal'?'pocket:propose':name==='queue_app_command'?'pocket:control':'pocket:read';if(!grant.scope.split(' ').includes(permission))throw Error('Insufficient scope');
+        if(name==='app_diagnostics')return toolResult({diagnostics:state.diagnostics||null,syncedAt:s.syncedAt});
+        if(name==='command_status'){const cmd=state.commands.find(c=>c.id===args.id);if(!cmd)throw Error('Command not found');return toolResult(cmd);}
+        if(name==='queue_app_command'){
+          if(args.revision!==s.revision)throw Error('La colección cambió. Consúltala otra vez.');
+          const allowed=['refresh_catalog','sync_now','inspect_decks','inspect_collection','inspect_errors','duplicate_deck','delete_deck'];
+          if(!allowed.includes(args.action)||state.commands.filter(c=>c.status==='pending').length>=20)throw Error('Invalid command or full queue');
+          if(['duplicate_deck','delete_deck'].includes(args.action)&&(!args.deckId||!s.decks.some(d=>d.id===args.deckId)))throw Error('Deck not found');
+          const cmd={id:random(),action:args.action,deckId:args.deckId||null,status:'pending',createdAt:new Date(clock()).toISOString()};
+          persist({...state,commands:[...state.commands.slice(-99),cmd]});return toolResult({id:cmd.id,status:'pending',message:'Android debe recibir y procesar esta instrucción. No se ha ejecutado aún.'});
+        }
         if(name==='collection_summary')return toolResult({revision:s.revision,syncedAt:s.syncedAt,distinct:s.cards.filter(c=>c.owned>0).length,copies:s.cards.reduce((n,c)=>n+c.owned,0),catalog:s.cards.length,decks:s.decks.map(({id,name})=>({id,name})),draft:s.draft?{id:'draft',name:s.draft.name}:null});
         if(name==='search_cards'){
           if(typeof(args.query??'')!=='string'||(args.query||'').length>120||!Number.isInteger(args.offset??0)||(args.offset??0)<0||!Number.isInteger(args.limit??50)||(args.limit??50)<1||(args.limit??50)>100||('ownedOnly'in args&&typeof args.ownedOnly!=='boolean'))throw Error('Invalid search');
@@ -144,7 +168,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         if(name==='read_deck'){const d=args.id==='draft'?s.draft:s.decks.find(d=>d.id===args.id);if(!d)throw Error('Deck not found');return toolResult({revision:s.revision,syncedAt:s.syncedAt,deck:d});}
         if(name==='submit_deck_proposal'){
           if(args.revision!==s.revision)throw Error('La colección cambió. Consúltala otra vez.');
-          if(typeof args.name!=='string'||!args.name.trim()||args.name.length>120||typeof args.strategy!=='string'||args.strategy.length>5000||!Array.isArray(args.cards)||args.cards.length>20||!Array.isArray(args.replacements)||args.replacements.length||!Array.isArray(args.energies)||args.energies.length<1||args.energies.length>3||new Set(args.energies).size!==args.energies.length||args.energies.some(e=>!tools[3].inputSchema.properties.energies.items.enum.includes(e)))throw Error('Invalid proposal');
+          if(typeof args.name!=='string'||!args.name.trim()||args.name.length>120||typeof args.strategy!=='string'||args.strategy.length>5000||!Array.isArray(args.cards)||args.cards.length>20||!Array.isArray(args.replacements)||args.replacements.length||!Array.isArray(args.energies)||args.energies.length<1||args.energies.length>3||new Set(args.energies).size!==args.energies.length||args.energies.some(e=>!tools.find(t=>t.name==='submit_deck_proposal').inputSchema.properties.energies.items.enum.includes(e)))throw Error('Invalid proposal');
           const seen=new Set(),names=new Map();let count=0;
           for(const row of args.cards){const card=s.cards.find(c=>c.id===row.id);if(!card||seen.has(row.id)||!Number.isInteger(row.count)||row.count<1||row.count>2||row.count>card.owned)throw Error('Invalid IDs or unavailable quantities');seen.add(row.id);count+=row.count;const key=card.rulesName||card.name;names.set(key,(names.get(key)||0)+row.count);}
           if(count!==20||[...names.values()].some(n=>n>2))throw Error('20 cartas; máximo dos copias por nombre.');
