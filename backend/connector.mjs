@@ -39,7 +39,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
   // Keep OAuth grants encrypted beside the collection, never in plaintext.
   // A durable volume is required to survive replacement of a Render instance.
   const authFile=stateFile?stateFile+'.oauth':null;
-  const authKey=createHash('sha256').update('rotom-oauth-storage-v1\0'+ownerSecret).digest();
+  const authKey=createHash('sha256').update('rotom-oauth-storage-v1\\0'+ownerSecret).digest();
   const authMaps={codes,tokens,forms};
   if(authFile){
     try{
