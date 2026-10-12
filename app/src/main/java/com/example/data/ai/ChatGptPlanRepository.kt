@@ -81,6 +81,47 @@ private fun InputStream.readBytesBounded(maxBytes: Int): ByteArray {
   return output.toByteArray()
 }
 
+class ChatGptPlanHttpFailure(
+  val status: Int,
+  val errorCode: String?,
+  val requestId: String?,
+  message: String,
+) : IllegalStateException(message)
+
+private fun okhttp3.Response.toChatGptPlanFailure(): ChatGptPlanHttpFailure {
+  val responseText = runCatching {
+    body?.byteStream()?.use { it.readBytesBounded(16_384)?.toString(Charsets.UTF_8) }.orEmpty()
+  }.getOrDefault("")
+  val json = runCatching { JSONObject(responseText) }.getOrNull()
+  val error = json?.optJSONObject("error")
+  val detail = (error?.optString("message")?.takeIf(String::isNotBlank)
+    ?: json?.optString("detail")?.takeIf(String::isNotBlank))
+    ?.replace(Regex("[\\r\\n\\t]+"), " ")?.take(300)
+  val code = error?.optString("code")?.takeIf { it.isNotBlank() && it != "null" }
+  val requestId = header("x-request-id")?.take(100)
+  val reason = when (code) {
+    "subscription_sharing_user_not_eligible" -> "La cuenta, el espacio de trabajo o la política no permite usar el plan en esta app."
+    "subscription_sharing_usage_limit_exceeded" -> "Se alcanzó el límite de uso del plan para esta app."
+    "subscription_sharing_usage_unavailable" -> "OpenAI no pudo comprobar el uso del plan. Inténtalo más tarde."
+    "subscription_sharing_unsupported_capability", "subscription_sharing_route_not_supported" ->
+      "Esta solicitud contiene una opción o ruta que el acceso del plan no admite."
+    else -> when (statusCode) {
+      401 -> "ChatGPT no aceptó la autorización. Revisa la cuenta y vuelve a conectar."
+      403 -> "ChatGPT bloqueó esta solicitud por permisos o región."
+      429 -> "Se alcanzó un límite de solicitudes."
+      503 -> "El servicio de uso del plan no está disponible temporalmente."
+      else -> "OpenAI rechazó la solicitud."
+    }
+  }
+  val diagnostic = buildList {
+    add("HTTP $statusCode")
+    code?.let { add("código $it") }
+    requestId?.let { add("ID $it") }
+  }.joinToString(" · ")
+  return ChatGptPlanHttpFailure(statusCode, code, requestId,
+    listOf(reason, diagnostic, detail).filterNotNull().joinToString(" — "))
+}
+
 private data class OAuthTokens(
   val accessToken: String,
   val refreshToken: String,
@@ -331,7 +372,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
   private suspend fun tokenRequest(form: FormBody, fallbackIdToken: String = "", fallbackScopes: Set<String> = emptySet()): OAuthTokens = withContext(Dispatchers.IO) {
     val request = Request.Builder().url("https://auth.openai.com/api/accounts/oauth/token").post(form).build()
     client.newCall(request).execute().use { response ->
-      require(response.isSuccessful) { "OpenAI no pudo completar la autorización (HTTP ${response.code})." }
+      if (!response.isSuccessful) throw response.toChatGptPlanFailure()
       parseTokens(response.body?.string() ?: error("OpenAI no devolvió credenciales."), fallbackIdToken, fallbackScopes)
     }
   }
@@ -377,7 +418,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     val request = Request.Builder().url("https://api.openai.com/v1/models")
       .header("Authorization", "Bearer ${account.accessToken}").get().build()
     client.newCall(request).execute().use { response ->
-      require(response.isSuccessful) { "No se pudieron consultar los modelos de tu cuenta (HTTP ${response.code})." }
+      if (!response.isSuccessful) throw response.toChatGptPlanFailure()
       val json = JSONObject(response.body?.string() ?: error("OpenAI no devolvió modelos."))
       val rows = json.optJSONArray("models") ?: error("OpenAI devolvió un catálogo de modelos no compatible.")
       (0 until minOf(rows.length(), 500)).mapNotNull { index ->
@@ -405,11 +446,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .header("Authorization", "Bearer ${account.accessToken}")
       .post(body).build()
     client.newCall(request).execute().use { response ->
-      if (!response.isSuccessful) throw IllegalStateException(when (response.code) {
-        401, 403 -> "ChatGPT rechazó el acceso. Reconecta la cuenta."
-        429 -> "ChatGPT informó un límite de uso para esta app. Puedes revisarlo en los ajustes de ChatGPT."
-        else -> "La consulta de ChatGPT falló (HTTP ${response.code})."
-      })
+      if (!response.isSuccessful) throw response.toChatGptPlanFailure()
       val input = response.body?.byteStream()?.bufferedReader(Charsets.UTF_8)
         ?: error("OpenAI no devolvió una respuesta.")
       val output = StringBuilder()
@@ -426,8 +463,17 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
           when (event.optString("type")) {
             "response.output_text.delta" -> output.append(event.optString("delta"))
             "response.completed" -> completed = true
-            "response.failed" -> error("La consulta de ChatGPT no pudo completarse.")
-            "response.incomplete" -> error("La respuesta de ChatGPT quedó incompleta.")
+            "response.failed" -> {
+              val failed = event.optJSONObject("response")
+              val failure = failed?.optJSONObject("error")
+              val code = failure?.optString("code")?.takeIf { !it.isNullOrBlank() }
+              val detail = failure?.optString("message")?.takeIf { !it.isNullOrBlank() }?.take(240)
+              error(listOfNotNull("La consulta de ChatGPT falló", code, detail).joinToString(" — "))
+            }
+            "response.incomplete" -> {
+              val reason = event.optJSONObject("response")?.optJSONObject("incomplete_details")?.optString("reason")
+              error("La respuesta de ChatGPT quedó incompleta" + reason?.takeIf { !it.isNullOrBlank() }?.let { " ($it)" }.orEmpty())
+            }
           }
         }
       }
