@@ -31,15 +31,16 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
   const base=origin.origin;
   let state={snapshot:null,proposals:[]};
   if(stateFile){try{state=JSON.parse(readFileSync(stateFile,'utf8'));if(state.snapshot)validateSnapshot(state.snapshot);if(!Array.isArray(state.proposals)||state.proposals.length>20)throw Error('Invalid state');}catch(e){if(e.code!=='ENOENT')throw e;}}
-  const clients=new Map(),codes=new Map(),tokens=new Map(),rates=new Map();
+  const clients=new Map(),codes=new Map(),tokens=new Map(),rates=new Map(),forms=new Map();
   const persist=(next)=>{if(stateFile){mkdirSync(dirname(stateFile),{recursive:true,mode:0o700});writeFileSync(stateFile+'.tmp',JSON.stringify(next),{mode:0o600});renameSync(stateFile+'.tmp',stateFile);}state=next;};
-  const prune=()=>{for(const map of [clients,codes,tokens,rates])for(const [k,v]of map)if(v.expires<clock())map.delete(k);};
+  const prune=()=>{for(const map of [clients,codes,tokens,rates,forms])for(const [k,v]of map)if(v.expires<clock())map.delete(k);};
   const metadata={issuer:base,authorization_endpoint:base+'/authorize',token_endpoint:base+'/token',registration_endpoint:base+'/register',response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:['pocket:read','pocket:propose']};
   return createServer(async(req,res)=>{
     const reply=(code,value,extra={})=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store',...extra});res.end(value===undefined?'':JSON.stringify(value));};
     try{
       prune();const url=new URL(req.url,base),path=url.pathname;
-      if(req.headers.origin&&req.headers.origin!==base)return reply(403,{error:'Invalid origin'});
+      const formOrigin=path==='/authorize' && (!req.headers.origin || [base,'null','https://chatgpt.com'].includes(req.headers.origin));
+      if(req.headers.origin&&req.headers.origin!==base&&!formOrigin)return reply(403,{error:'Invalid origin'});
       if(req.method==='GET'&&path==='/health')return reply(200,{ok:true});
       if(req.method==='GET'&&['/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/mcp'].includes(path))return reply(200,{resource:base+'/mcp',authorization_servers:[base],scopes_supported:metadata.scopes_supported});
       if(req.method==='GET'&&path==='/.well-known/oauth-authorization-server')return reply(200,metadata);
@@ -55,13 +56,20 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         const id=random();clients.set(id,{redirects:input.redirect_uris,expires:clock()+86400000});return reply(201,{client_id:id,redirect_uris:input.redirect_uris,token_endpoint_auth_method:'none',grant_types:metadata.grant_types_supported,response_types:['code']});
       }
       if(path==='/authorize'&&req.method==='GET'){
-        authorization(url.searchParams);
+        const auth=authorization(url.searchParams);
+        if(forms.size>=200)return reply(429,{error:'Try later'});
+        const csrf=random();forms.set(csrf,{binding:JSON.stringify(auth),expires:clock()+600000});
+        // Only the server-generated nonce is interpolated; query data is never inserted.
         // Fixed HTML: untrusted query data is retained in the URL, never interpolated into HTML.
         res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'",'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer'});
-        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Pocket Atlas</title><h1>Conectar Pocket Atlas</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><form method="post"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
+        return res.end('<!doctype html><html lang="es"><meta name="viewport" content="width=device-width"><title>Conectar Pocket Atlas</title><h1>Conectar Pocket Atlas</h1><p>Permite consultar tu colección sincronizada y enviar propuestas pendientes de revisión. No permite modificar tus cartas ni guardar mazos.</p><form method="post"><input type="hidden" name="csrf" value="'+csrf+'"><label>Clave del propietario <input name="secret" type="password" required autocomplete="off"></label><button>Autorizar conexión</button></form></html>');
       }
       if(path==='/authorize'&&req.method==='POST'){
-        const auth=authorization(url.searchParams),input=new URLSearchParams(await body());if(!same(input.get('secret'),ownerSecret))return reply(401,{error:'Unauthorized'});
+        const auth=authorization(url.searchParams),input=new URLSearchParams(await body());
+        const form=forms.get(input.get('csrf'));
+        if(!form || !same(form.binding,JSON.stringify(auth)))return reply(403,{error:'Authorization form expired. Reconnect from ChatGPT.'});
+        forms.delete(input.get('csrf'));
+        if(!same(input.get('secret'),ownerSecret))return reply(401,{error:'Unauthorized'});
         const code=random();codes.set(code,{...auth,expires:clock()+300000});const dest=new URL(auth.redirect);dest.searchParams.set('code',code);if(url.searchParams.has('state'))dest.searchParams.set('state',url.searchParams.get('state'));res.writeHead(302,{Location:dest.href,'Cache-Control':'no-store'});return res.end();
       }
       if(path==='/token'&&req.method==='POST'){
