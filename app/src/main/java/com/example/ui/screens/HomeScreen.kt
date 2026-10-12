@@ -60,6 +60,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val showcase = remember(inventory) { inventory.filter { it.ownedCount > 0 }.sortedWith(compareByDescending<com.example.data.repository.CardWithInventory> { it.isWishlist }.thenByDescending { it.card.isEx }.thenBy { it.card.id }).take(6) }
   val homeState = rememberLazyListState()
   LaunchedEffect(style) { homeState.scrollToItem(0) }
+  val showFirstRunGuide = copies == 0
   LazyColumn(modifier.fillMaxSize().testTag("home_list"), state = homeState, contentPadding = PaddingValues(if (style == VisualStyle.COMPACT) 12.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (style == VisualStyle.COMPACT) 6.dp else 16.dp)) {
     item {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -71,6 +72,20 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
         Box {
           TextButton(onClick = { chooseDesign = true }) { Text("Diseño") }
 
+        }
+      }
+    }
+    if (showFirstRunGuide) item {
+      Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("¿Para qué sirve Rotom AI TCG Pocket?", style = MaterialTheme.typography.titleMedium)
+          Text("Organiza tu colección de cartas y te ayuda a construir y revisar mazos de 20 cartas. También incluye herramientas para practicar y analizar tus opciones.")
+          Text("Para empezar, importa tu archivo CSV en Cartas → Ajustes → Importar CSV. Si no tienes un archivo, puedes registrar tus cartas manualmente desde Cartas.")
+          Button(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Empezar con mi colección")
+          }
+          Text("La app no se conecta a tu cuenta del juego ni hace canjes. Las sugerencias de IA requieren configurar una clave propia en Ajustes → Conexiones IA.",
+            style = MaterialTheme.typography.bodySmall)
         }
       }
     }
