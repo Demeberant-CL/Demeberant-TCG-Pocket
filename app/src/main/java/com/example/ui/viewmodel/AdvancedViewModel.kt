@@ -131,7 +131,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun sendConnectorDiagnostics() = task("CONNECTOR_DIAGNOSTICS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
-    val version = application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: "unknown"
+    val version = getApplication<android.app.Application>().packageManager.getPackageInfo(getApplication<android.app.Application>().packageName, 0).versionName ?: "unknown"
     // Deliberately exclude logs, tokens, device identifiers and exception traces.
     val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
     pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
