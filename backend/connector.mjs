@@ -42,7 +42,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       if(req.headers.origin&&req.headers.origin!==base)return reply(403,{error:'Invalid origin'});
       if(req.method==='GET'&&path==='/health')return reply(200,{ok:true});
       if(req.method==='GET'&&['/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/mcp'].includes(path))return reply(200,{resource:base+'/mcp',authorization_servers:[base],scopes_supported:metadata.scopes_supported});
-      if(req.method==='GET'&&['/.well-known/oauth-authorization-server','/.well-known/openid-configuration'].includes(path))return reply(200,metadata);
+      if(req.method==='GET'&&path==='/.well-known/oauth-authorization-server')return reply(200,metadata);
       // Bound authentication attempts and total owner-scoped load. Do not trust forwarding headers.
       const ip=req.socket.remoteAddress||'local',bucket=rates.get(ip)||{count:0,expires:clock()+60000};
       if(rates.size>1000&&!rates.has(ip))return reply(429,{error:'Try later'});

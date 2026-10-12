@@ -20,7 +20,7 @@ async function sync(call){return(await call('/app/snapshot',{method:'PUT',header
 async function rpc(call,token,name,args={}){return(await call('/mcp',{method:'POST',headers:{Authorization:'Bearer '+token,Accept:'application/json, text/event-stream','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})})).json();}
 const proposal=revision=>({revision,name:'Test deck',strategy:'Test',energies:['Planta'],cards:snapshot.cards.map(c=>({id:c.id,count:2})),replacements:[]});
 test('OAuth + MCP reads + proposal receipt, staleness and deletion',async t=>{
- const call=await fixture(t);assert.equal((await call('/app/proposals')).status,401);assert.equal((await call('/mcp')).status,401);
+ const call=await fixture(t);assert.equal((await call('/.well-known/openid-configuration')).status,404);assert.equal((await call('/app/proposals')).status,401);assert.equal((await call('/mcp')).status,401);
  const s=await sync(call),{tokens,params}=await authorize(call);assert.ok(tokens.access_token);assert.equal((await call('/token',{method:'POST',body:params})).status,400);
  const summary=await rpc(call,tokens.access_token,'collection_summary');assert.equal(JSON.parse(summary.result.content[0].text).copies,20);
  const search=await rpc(call,tokens.access_token,'search_cards',{limit:2});assert.equal(JSON.parse(search.result.content[0].text).cards.length,2);
