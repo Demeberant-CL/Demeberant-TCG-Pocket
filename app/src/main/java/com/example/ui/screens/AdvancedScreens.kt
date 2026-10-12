@@ -63,19 +63,20 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var confirmSend by remember { mutableStateOf(false) }
   var confirmDelete by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
-  var useChatGptPlan by rememberSaveable { mutableStateOf(false) }
+  val useChatGptPlan by model.chatGptPlanPreferred.collectAsStateWithLifecycle()
   val context = androidx.compose.ui.platform.LocalContext.current
   LaunchedEffect(connection) {
     profileId = connection.id; profileName = connection.label
     provider = connection.provider; apiKey = connection.apiKey
     modelName = connection.model; url = connection.endpoint
   }
-  LaunchedEffect(planAccount) { if (planAccount == null) useChatGptPlan = false }
+  LaunchedEffect(planAccount) { if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false) }
   Column(modifier.fillMaxSize()) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      QuickAiSwitch(model)
+      QuickAiSwitch(model, chatGptConnected = planAccount != null, chatGptSelected = useChatGptPlan,
+        onSelectChatGpt = { model.setChatGptPlanPreferred(true) })
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
@@ -132,10 +133,6 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
         }
       }
       if (planAccount != null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Checkbox(checked = useChatGptPlan, enabled = !busy, onCheckedChange = { useChatGptPlan = it })
-          Text("Usar mi plan ChatGPT en vez de una clave API")
-        }
         Text(if (planModel.isBlank()) "Todavía no has elegido un modelo ChatGPT."
           else "Modelo seleccionado: ${planModels.firstOrNull { it.slug == planModel }?.displayName ?: planModel}",
           style = MaterialTheme.typography.labelLarge)
