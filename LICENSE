@@ -1,9 +1,11 @@
 MIT License
 
+Scope: This license covers original Rotom AI TCG Pocket source code and documentation authored for this project. It does not replace or override terms for third-party materials listed in THIRD_PARTY_NOTICES.md, including the AGPL-licensed PocketDecks-derived data and integration material. It does not grant rights to Pokémon names, characters, artwork, card images, logos, or other third-party marks and content. Those remain subject to their respective owners' terms and rights.
+
 Copyright (c) 2026 Demeberant-CL
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
+of the Software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
