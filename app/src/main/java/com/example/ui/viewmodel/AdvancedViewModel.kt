@@ -170,25 +170,43 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   private val chatGptPlanRepository = ChatGptPlanRepository(application)
   val chatGptPlanAccount = MutableStateFlow<ChatGptPlanAccount?>(null)
   val chatGptPlanModels = MutableStateFlow<List<ChatGptModel>>(emptyList())
-  val selectedChatGptPlanModel = MutableStateFlow("")
+  private val chatGptPreferences = application.getSharedPreferences("rotom-chatgpt-settings", Application.MODE_PRIVATE)
+  val selectedChatGptPlanModel = MutableStateFlow(chatGptPreferences.getString("selected-model", "").orEmpty())
+  private suspend fun loadChatGptPlanModels(): List<ChatGptModel> {
+    val found = chatGptPlanRepository.models()
+    chatGptPlanModels.value = found
+    if (selectedChatGptPlanModel.value !in found.map { it.slug }) {
+      val first = found.firstOrNull()?.slug.orEmpty()
+      selectedChatGptPlanModel.value = first
+      chatGptPreferences.edit().putString("selected-model", first).apply()
+    }
+    return found
+  }
   fun connectChatGptPlan(activity: android.app.Activity) = task("CHATGPT_SIGN_IN") {
     val account = chatGptPlanRepository.signIn(activity)
     chatGptPlanAccount.value = account
     chatGptPlanModels.value = emptyList()
-    selectedChatGptPlanModel.value = ""
-    message.value = "ChatGPT conectado en este teléfono como ${account.email.ifBlank { "tu cuenta" }}. Elige un modelo antes de consultar."
+    message.value = "Cuenta ChatGPT conectada. Cargando modelos disponibles…"
+    try {
+      val found = loadChatGptPlanModels()
+      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para Rotom."
+        else "ChatGPT conectado como ${account.email.ifBlank { "tu cuenta" }}. Modelo listo: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
+    } catch (e: CancellationException) { throw e }
+    catch (_: Exception) {
+      message.value = "ChatGPT quedó conectado. No se cargaron los modelos; vuelve a intentarlo desde el selector."
+    }
   }
   fun discoverChatGptPlanModels() = task("CHATGPT_MODELS") {
     chatGptPlanModels.value = emptyList()
-    val found = chatGptPlanRepository.models()
-    chatGptPlanModels.value = found
-    if (selectedChatGptPlanModel.value !in found.map { it.slug })
-      selectedChatGptPlanModel.value = found.firstOrNull()?.slug.orEmpty()
+    val found = loadChatGptPlanModels()
     message.value = if (found.isEmpty()) "Tu cuenta no muestra modelos disponibles para esta app."
-      else "${found.size} modelos disponibles en tu cuenta ChatGPT. El modelo elegido puede consumir sus límites de uso."
+      else "${found.size} modelos disponibles en tu cuenta ChatGPT. Modelo seleccionado: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
   }
   fun selectChatGptPlanModel(model: String) {
-    if (chatGptPlanModels.value.any { it.slug == model }) selectedChatGptPlanModel.value = model
+    if (chatGptPlanModels.value.any { it.slug == model }) {
+      selectedChatGptPlanModel.value = model
+      chatGptPreferences.edit().putString("selected-model", model).apply()
+    }
   }
   fun disconnectChatGptPlan() = task("CHATGPT_SIGN_OUT") {
     val hadAccount = chatGptPlanAccount.value != null
@@ -199,6 +217,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       chatGptPlanAccount.value = null
       chatGptPlanModels.value = emptyList()
       selectedChatGptPlanModel.value = ""
+      chatGptPreferences.edit().remove("selected-model").apply()
     }
     if (!hadAccount) message.value = "No hay una cuenta ChatGPT conectada."
   }
@@ -426,7 +445,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }
       catch (_: Exception) { message.value = "No se pudieron leer las conexiones IA. El archivo guardado se conserva; reinicia la app para intentar recuperarlo." }
       finally { connectionReady.value = true }
-      try { chatGptPlanAccount.value = chatGptPlanRepository.account() }
+      try {
+        val account = chatGptPlanRepository.account()
+        chatGptPlanAccount.value = account
+        if (account != null) try { loadChatGptPlanModels() }
+          catch (e: CancellationException) { throw e }
+          catch (_: Exception) { message.value = "ChatGPT está conectado. Abre el selector para volver a cargar sus modelos." }
+      } catch (e: CancellationException) { throw e }
       catch (_: Exception) { message.value = "No se pudo leer la conexión de ChatGPT. Los datos cifrados se conservan." }
     }
   }
