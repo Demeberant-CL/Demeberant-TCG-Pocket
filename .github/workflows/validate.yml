@@ -100,7 +100,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - name: Assistant backend regression tests
-        run: node --test backend/assistant.test.mjs
+        run: node --test backend/*.test.mjs
       - run: npm run build
       - name: Browser regression checks
         run: |

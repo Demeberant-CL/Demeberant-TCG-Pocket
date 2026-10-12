@@ -59,6 +59,73 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
     message.value = "Resultados actualizados desde Limitless."
   }
+  private val connectorStore = AiConnectionStore(application, fileName = "pocket-connector.enc")
+  private val pocketConnector = PocketConnector()
+  val connectorConfig = MutableStateFlow<AiConnection?>(null)
+  val connectorProposals = MutableStateFlow<List<AiProposal>>(emptyList())
+  fun loadConnector() = task("CONNECTOR_CONFIG") {
+    connectorConfig.value = withContext(Dispatchers.IO) { connectorStore.load() }
+  }
+  fun saveConnector(url: String, key: String) = task("CONNECTOR_CONFIG") {
+    PocketConnector.validate(url.trim(), key.trim())
+    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Pocket Atlas")
+    withContext(Dispatchers.IO) { connectorStore.save(config) }
+    connectorConfig.value = config
+    connectorProposals.value = emptyList()
+    message.value = "Conector guardado. Sincroniza la colección para compartirla con el chat."
+  }
+  fun syncConnector(draft: GeneratedDeck?) = task("CONNECTOR_SYNC") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val inventory = repository.inventoryFlow.first()
+    require(inventory.isNotEmpty()) { "Espera a que se cargue la colección." }
+    val rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+    val cards = org.json.JSONArray()
+    inventory.forEach { row ->
+      val rule = rules[row.card.id]
+      val c = hydrate(row.card, rule)
+      cards.put(org.json.JSONObject().put("id", c.id).put("name", c.name).put("rulesName", c.rulesName)
+        .put("expansion", c.id.substringBeforeLast("-")).put("owned", row.ownedCount).put("wishlist", row.isWishlist)
+        .put("type", c.type).put("category", c.category).put("stage", c.stage).put("evolvesFrom", c.evolvesFrom)
+        .put("effects", rule?.rulesText.orEmpty().take(10000)).put("effectsKnown", !rule?.rulesText.isNullOrBlank()))
+    }
+    val decks = org.json.JSONArray()
+    repository.savedDecksFlow.first().forEach { d -> decks.put(org.json.JSONObject().put("id", d.id.toString())
+      .put("name", d.name).put("data", d.cardListSerialized)) }
+    val snapshot = org.json.JSONObject().put("format", 1).put("cards", cards).put("decks", decks)
+    draft?.let { snapshot.put("draft", org.json.JSONObject().put("id", "draft").put("name", it.name)
+      .put("data", com.example.data.util.DeckCodec.encode(it.cards, it.energyTypes))) }
+    pocketConnector.request(config.endpoint, config.apiKey, "/app/snapshot", "PUT", snapshot)
+    connectorProposals.value = emptyList()
+    message.value = "Colección y mazos sincronizados. El chat puede consultar esta copia."
+  }
+  fun receiveConnector() = task("CONNECTOR_RECEIVE") {
+    connectorProposals.value = emptyList()
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/proposals", "GET")
+    val inventory = repository.inventoryFlow.first()
+    val rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+    val candidates = inventory.map { AiCandidate(hydrate(it.card, rules[it.card.id]), it.ownedCount, rules[it.card.id]?.rulesText.orEmpty()) }
+    val rows = response.getJSONArray("proposals")
+    require(rows.length() <= 20)
+    var rejected = 0
+    val accepted = (0 until rows.length()).mapNotNull { i ->
+      try {
+        val row = rows.getJSONObject(i)
+        require(row.getString("revision") == response.getString("revision"))
+        val proposal = AiValidator.parse(row.getJSONObject("deck").toString(), candidates)
+        com.example.domain.DeckChat.parse(org.json.JSONObject().put("message", "Propuesta del conector").put("proposal", row.getJSONObject("deck")).toString(), candidates)
+        proposal
+      } catch (_: Exception) { rejected++; null }
+    }
+    connectorProposals.value = accepted
+    message.value = "${accepted.size} propuestas válidas para revisar" + if (rejected > 0) ". $rejected rechazadas por cartas, cantidades o estructura." else "."
+  }
+  fun deleteConnectorData() = task("CONNECTOR_DELETE") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    pocketConnector.request(config.endpoint, config.apiKey, "/app/data", "DELETE")
+    connectorProposals.value = emptyList()
+    message.value = "Copia de colección y propuestas eliminadas del servidor."
+  }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
   val profiles = MutableStateFlow(AiProfiles())
