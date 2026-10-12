@@ -202,7 +202,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexiones IA", "Cartas sin conexión", "Conector de chat")
+  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexiones IA", "Cartas sin conexión", "Rotom AI · Conector")
   val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Diseños, colores, colección, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español", "Comparte tu colección y recibe propuestas")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
     Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz)
