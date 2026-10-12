@@ -167,6 +167,68 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     connectorCommands.value = emptyList()
     message.value = "Copia de colección y propuestas eliminadas del servidor."
   }
+  private val chatGptPlanRepository = ChatGptPlanRepository(application)
+  val chatGptPlanAccount = MutableStateFlow<ChatGptPlanAccount?>(null)
+  val chatGptPlanModels = MutableStateFlow<List<ChatGptModel>>(emptyList())
+  val selectedChatGptPlanModel = MutableStateFlow("")
+  fun connectChatGptPlan(activity: android.app.Activity) = task("CHATGPT_SIGN_IN") {
+    val account = chatGptPlanRepository.signIn(activity)
+    chatGptPlanAccount.value = account
+    chatGptPlanModels.value = emptyList()
+    selectedChatGptPlanModel.value = ""
+    message.value = "ChatGPT conectado en este teléfono como ${account.email.ifBlank { "tu cuenta" }}. Elige un modelo antes de consultar."
+  }
+  fun discoverChatGptPlanModels() = task("CHATGPT_MODELS") {
+    chatGptPlanModels.value = emptyList()
+    val found = chatGptPlanRepository.models()
+    chatGptPlanModels.value = found
+    if (selectedChatGptPlanModel.value !in found.map { it.slug })
+      selectedChatGptPlanModel.value = found.firstOrNull()?.slug.orEmpty()
+    message.value = if (found.isEmpty()) "Tu cuenta no muestra modelos disponibles para esta app."
+      else "${found.size} modelos disponibles en tu cuenta ChatGPT. El modelo elegido puede consumir sus límites de uso."
+  }
+  fun selectChatGptPlanModel(model: String) {
+    if (chatGptPlanModels.value.any { it.slug == model }) selectedChatGptPlanModel.value = model
+  }
+  fun disconnectChatGptPlan() = task("CHATGPT_SIGN_OUT") {
+    val hadAccount = chatGptPlanAccount.value != null
+    try {
+      chatGptPlanRepository.signOut()
+      message.value = "Cuenta ChatGPT desconectada. Los tokens se eliminaron de este teléfono."
+    } finally {
+      chatGptPlanAccount.value = null
+      chatGptPlanModels.value = emptyList()
+      selectedChatGptPlanModel.value = ""
+    }
+    if (!hadAccount) message.value = "No hay una cuenta ChatGPT conectada."
+  }
+  fun askChatGptPlan(action: AiDeckAction, target: GeneratedDeck?, model: String) = task("CHATGPT_PLAN_REQUEST") {
+    proposal.value = null
+    try {
+      require(chatGptPlanAccount.value?.canUsePlan == true) { "Conecta ChatGPT y autoriza el uso del plan." }
+      require(action.canUse(target?.totalCardCount)) { "Abre un mazo adecuado para esta acción." }
+      require(model == selectedChatGptPlanModel.value && model.isNotBlank()) { "Elige un modelo de ChatGPT." }
+      val (candidates, requestedTarget) = assistantContext(action == AiDeckAction.COMPLETE, target, "es")
+      val reference = if (action == AiDeckAction.IMPROVE) target!!.cards else null
+      val prompt = ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget, reference)
+      val result = chatGptPlanRepository.request(model, prompt)
+      val current = repository.inventoryFlow.first().associateBy { it.card.id }
+      val available = candidates.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }
+      proposal.value = withContext(Dispatchers.Default) {
+        AiValidator.parse(ExternalAiExchange.response(result), available, requestedTarget)
+      }
+      message.value = "Mazo validado con tu colección actual. Revisa la propuesta antes de guardarla."
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) {
+      val safe = e.message?.takeIf { it.startsWith("ChatGPT") || it.startsWith("La consulta de ChatGPT") ||
+        it.startsWith("La respuesta de ChatGPT") || it.startsWith("El plan ChatGPT") ||
+        it.startsWith("Conecta tu cuenta") || it.startsWith("Elige un modelo") ||
+        it.startsWith("Necesitas al menos") || it.startsWith("Cartas obligatorias fuera") ||
+        it.startsWith("El borrador contiene") || it.startsWith("La propuesta") }
+      message.value = safe ?: "No se pudo completar la consulta con ChatGPT. Tu colección y mazo se conservan."
+      ErrorLogManager.event("CHATGPT_PLAN_REQUEST", "category=${com.example.data.ai.AiFailure.category(e)}", e)
+    }
+  }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
   val profiles = MutableStateFlow(AiProfiles())
@@ -364,6 +426,8 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }
       catch (_: Exception) { message.value = "No se pudieron leer las conexiones IA. El archivo guardado se conserva; reinicia la app para intentar recuperarlo." }
       finally { connectionReady.value = true }
+      try { chatGptPlanAccount.value = chatGptPlanRepository.account() }
+      catch (_: Exception) { message.value = "No se pudo leer la conexión de ChatGPT. Los datos cifrados se conservan." }
     }
   }
   val proposal = MutableStateFlow<AiProposal?>(null)
