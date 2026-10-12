@@ -65,13 +65,28 @@ private data class OAuthTokens(
 private class ChatGptPlanStore(context: Context) {
   private val app = context.applicationContext
   private val file = AtomicFile(File(app.noBackupFilesDir, "chatgpt-plan.enc"))
-  private val prefs = app.getSharedPreferences("chatgpt-plan-host", Context.MODE_PRIVATE)
+  private val hostFile = AtomicFile(File(app.noBackupFilesDir, "chatgpt-plan-host-id"))
+  private val clientFile = AtomicFile(File(app.noBackupFilesDir, "chatgpt-plan-client-id"))
 
   @Synchronized fun hostId(): String {
-    prefs.getString("host_id", null)?.let { return it }
+    if (hostFile.baseFile.exists()) return hostFile.openRead().use {
+      it.readBytesBounded(256).toString(Charsets.UTF_8).also { value -> require(value.startsWith("urn:uuid:")) }
+    }
     val created = "urn:uuid:${UUID.randomUUID()}"
-    check(prefs.edit().putString("host_id", created).commit()) { "No se pudo preparar el identificador local." }
+    val output = hostFile.startWrite()
+    try { output.write(created.toByteArray(Charsets.UTF_8)); hostFile.finishWrite(output) }
+    catch (e: Exception) { hostFile.failWrite(output); throw e }
     return created
+  }
+
+  @Synchronized fun registeredClientId(): String? =
+    if (clientFile.baseFile.exists()) clientFile.openRead().use { it.readBytesBounded(512).toString(Charsets.UTF_8) } else null
+
+  @Synchronized fun rememberClientId(clientId: String) {
+    require(clientId.startsWith("oaiapp_") && clientId.length <= 512)
+    val output = clientFile.startWrite()
+    try { output.write(clientId.toByteArray(Charsets.UTF_8)); clientFile.finishWrite(output) }
+    catch (e: Exception) { clientFile.failWrite(output); throw e }
   }
 
   @Synchronized fun read(): ChatGptPlanAccount? {
@@ -115,6 +130,7 @@ private class ChatGptPlanStore(context: Context) {
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, key())
     val encrypted = cipher.doFinal(json)
+    rememberClientId(account.clientId)
     val output = file.startWrite()
     try {
       output.write(cipher.iv.size)
@@ -171,7 +187,8 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     val challenge = Base64.getUrlEncoder().withoutPadding()
       .encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
     val existing = store.read()
-    val requestedClientId = existing?.clientId ?: "dynamic_agent_client"
+    val knownClientId = existing?.clientId ?: store.registeredClientId()
+    val requestedClientId = knownClientId ?: "dynamic_agent_client"
     val authorization = Uri.parse("https://auth.openai.com/api/accounts/authorize").buildUpon()
       .appendQueryParameter("client_id", requestedClientId)
       .appendQueryParameter("response_type", "code")
@@ -184,8 +201,8 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .appendQueryParameter("code_challenge", challenge)
       .appendQueryParameter("ext_agent_host_id", store.hostId())
       .apply {
-        if (existing == null) appendQueryParameter("agent_name_hint", "Rotom AI TCG Pocket")
-        else {
+        if (knownClientId == null) appendQueryParameter("agent_name_hint", "Rotom AI TCG Pocket")
+        else if (existing != null) {
           appendQueryParameter("id_token_hint", existing.idToken)
           if (existing.email.isNotBlank()) appendQueryParameter("login_hint", existing.email)
         }
@@ -218,10 +235,10 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
         uri.getQueryParameter("error")?.let { error("Inicio de sesión cancelado o rechazado.") }
         val code = uri.getQueryParameter("code") ?: error("OpenAI no devolvió un código de autorización.")
         val returnedClient = uri.getQueryParameter("client_id")
-        val clientId = existing?.clientId ?: returnedClient
+        val clientId = knownClientId ?: returnedClient
           ?: error("No se completó el registro de Rotom en OpenAI.")
         require(clientId != "dynamic_agent_client")
-        if (existing != null && returnedClient != null) require(returnedClient == existing.clientId)
+        if (knownClientId != null && returnedClient != null) require(returnedClient == knownClientId)
         code to clientId
       }
       exchangeCode(callback.first, callback.second, verifier, redirect, nonce)
