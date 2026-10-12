@@ -77,7 +77,7 @@ private class ChatGptPlanStore(context: Context) {
   @Synchronized fun read(): ChatGptPlanAccount? {
     if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return null
     val raw = file.openRead().use { input ->
-      val data = input.readBytes()
+      val data = input.readBytesBounded(100_000)
       require(data.size in 30..100_000) { "El archivo de ChatGPT no es válido." }
       val ivSize = data[0].toInt() and 255
       require(ivSize == 12)
@@ -262,7 +262,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     fun getStringClaim(name: String): String? = values[name] as? String
   }
 
-  private suspend fun validateIdToken(idToken: String, clientId: String, nonce: String): ValidatedIdentity {
+  private suspend fun validateIdToken(idToken: String, clientId: String, nonce: String?): ValidatedIdentity {
     val signed = SignedJWT.parse(idToken)
     val algorithm = signed.header.algorithm
     require(algorithm == JWSAlgorithm.RS256 || algorithm == JWSAlgorithm.ES256) { "Algoritmo de identidad no admitido." }
@@ -280,7 +280,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     val claims = signed.jwtClaimsSet
     require(claims.issuer == "https://auth.openai.com") { "Emisor de identidad no válido." }
     require(claims.audience.contains(clientId)) { "La identidad no corresponde al registro seleccionado." }
-    require(claims.getStringClaim("nonce") == nonce) { "La respuesta de inicio de sesión no corresponde a esta solicitud." }
+    if (nonce != null) require(claims.getStringClaim("nonce") == nonce) { "La respuesta de inicio de sesión no corresponde a esta solicitud." }
     require(claims.expirationTime != null && claims.expirationTime.time > System.currentTimeMillis()) { "El token de identidad expiró." }
     return ValidatedIdentity(claims.claims)
   }
@@ -317,7 +317,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .add("resource", "https://api.openai.com/v1")
       .build()
     val rotated = tokenRequest(form)
-    val claims = validateIdToken(rotated.idToken, saved.clientId, saved.idTokenNonceOrEmpty())
+    val claims = validateIdToken(rotated.idToken, saved.clientId, null)
     val updated = saved.copy(
       accessToken = rotated.accessToken,
       refreshToken = rotated.refreshToken,
@@ -418,7 +418,4 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
 
   private fun randomToken(bytes: Int): String = ByteArray(bytes).also(SecureRandom()::nextBytes)
     .let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
-
-  private fun ChatGptPlanAccount.idTokenNonceOrEmpty(): String =
-    SignedJWT.parse(idToken).jwtClaimsSet.getStringClaim("nonce") ?: ""
 }
