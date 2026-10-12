@@ -1,4 +1,4 @@
-name: Pocket Atlas connector checks
+name: Rotom AI TCG Pocket connector checks
 on:
   pull_request:
     paths:
