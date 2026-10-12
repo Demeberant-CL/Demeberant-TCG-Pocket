@@ -84,3 +84,35 @@ test('open authorization form survives restart and failed forms renew without gr
  const renewed=await post('missing');assert.equal(renewed.status,403);const retry=(await renewed.text()).match(/name="csrf" value="([^"]+)"/)[1];
  const wrong=await post(retry,'wrong');assert.equal(wrong.status,401);const valid=(await wrong.text()).match(/name="csrf" value="([^"]+)"/)[1];assert.equal((await post(valid)).status,302);
 });
+
+test('remote command queue is scoped and requires Android acknowledgment',async t=>{
+ const call=await fixture(t),s=await sync(call);
+ const {tokens}=await authorize(call,'pocket:read pocket:control');
+ const {tokens:read}=await authorize(call,'pocket:read');
+ const denied=await rpc(call,read.access_token,'queue_app_command',{revision:s.revision,action:'inspect_errors'});
+ assert.equal(denied.result.isError,true);
+ const stale=await rpc(call,tokens.access_token,'queue_app_command',{revision:'outdated',action:'inspect_errors'});
+ assert.equal(stale.result.isError,true);
+ const queued=await rpc(call,tokens.access_token,'queue_app_command',{revision:s.revision,action:'inspect_errors'});
+ const command=JSON.parse(queued.result.content[0].text);
+ assert.equal(command.status,'pending');
+ const pending=await(await call('/app/commands',{headers:appHeaders})).json();
+ assert.equal(pending.commands.length,1);
+ assert.equal((await call('/app/commands')).status,401);
+ const ack=await call('/app/commands/result',{method:'POST',headers:appHeaders,body:JSON.stringify({id:command.id,status:'completed',message:'Inspected'})});
+ assert.equal(ack.status,200);
+ const status=await rpc(call,tokens.access_token,'command_status',{id:command.id});
+ assert.equal(JSON.parse(status.result.content[0].text).status,'completed');
+ const again=await call('/app/commands/result',{method:'POST',headers:appHeaders,body:JSON.stringify({id:command.id,status:'completed',message:'Replay'})});
+ assert.equal(again.status,400);
+});
+test('diagnostics are sanitized and proposals survive resync',async t=>{
+ const call=await fixture(t),s=await sync(call),{tokens}=await authorize(call);
+ await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(s.revision));
+ await sync(call);
+ const inbox=await(await call('/app/proposals',{headers:appHeaders})).json();
+ assert.equal(inbox.proposals.length,1);
+ assert.equal((await call('/app/diagnostics',{method:'PUT',headers:appHeaders,body:JSON.stringify({version:'1.0',errors:['Sync failed']})})).status,200);
+ const report=await rpc(call,tokens.access_token,'app_diagnostics');
+ assert.deepEqual(JSON.parse(report.result.content[0].text).diagnostics.errors,['Sync failed']);
+});
