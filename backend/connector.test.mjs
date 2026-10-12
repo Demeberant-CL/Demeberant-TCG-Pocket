@@ -84,3 +84,26 @@ test('open authorization form survives restart and failed forms renew without gr
  const renewed=await post('missing');assert.equal(renewed.status,403);const retry=(await renewed.text()).match(/name="csrf" value="([^"]+)"/)[1];
  const wrong=await post(retry,'wrong');assert.equal(wrong.status,401);const valid=(await wrong.text()).match(/name="csrf" value="([^"]+)"/)[1];assert.equal((await post(valid)).status,302);
 });
+
+test('OAuth access and refresh survive a server restart with encrypted storage',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-auth-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json'),first=await fixture(t,file);await sync(first);
+ const {tokens,params}=await authorize(first);const second=await fixture(t,file);
+ const summary=await rpc(second,tokens.access_token,'collection_summary');
+ assert.equal(JSON.parse(summary.result.content[0].text).copies,20);
+ const refresh=new URLSearchParams({grant_type:'refresh_token',refresh_token:tokens.refresh_token,client_id:params.get('client_id'),resource:publicUrl+'/mcp'});
+ const renewed=await second('/token',{method:'POST',body:refresh});assert.equal(renewed.status,200);
+ const next=await renewed.json();assert.ok(next.access_token);
+ const third=await fixture(t,file);assert.equal((await third('/token',{method:'POST',body:refresh})).status,400);
+ const {readFileSync}=await import('node:fs');const stored=readFileSync(file+'.oauth','utf8');
+ for(const secret of [ownerSecret,deviceToken,tokens.access_token,tokens.refresh_token,next.access_token])assert.ok(!stored.includes(secret));
+});
+test('OAuth tokens expire and encrypted storage is bound to its owner and URL',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-expiry-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json');let now=Date.now();const first=await fixture(t,file,{clock:()=>now});await sync(first);
+ const {tokens}=await authorize(first);now+=3600001;
+ const second=await fixture(t,file,{clock:()=>now});
+ assert.equal((await second('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token},body:'{}'})).status,401);
+ for(const extras of [{ownerSecret:'another-owner'.repeat(4)},{publicUrl:'https://another.example'}])
+  assert.throws(()=>createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile:file,...extras}),/OAuth storage cannot be read/);
+});
