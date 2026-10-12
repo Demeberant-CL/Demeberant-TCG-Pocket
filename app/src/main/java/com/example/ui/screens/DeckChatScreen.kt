@@ -29,6 +29,8 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   val retryAvailable by model.deckChatRetryAvailable.collectAsStateWithLifecycle()
   val connection by model.connection.collectAsStateWithLifecycle()
   val ready by model.connectionReady.collectAsStateWithLifecycle()
+  val inventory by main.inventoryList.collectAsStateWithLifecycle()
+  var criteria by remember { mutableStateOf(DeckCriteria()) }
   val current = deck ?: return
   var input by rememberSaveable(creating, initialAction) { mutableStateOf(when(initialAction) {
     "complete" -> "Completa este mazo conservando mis cartas disponibles."
@@ -65,6 +67,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
         DeckChoice("Energía", energy, listOf("" to "Todas") + DeckCodec.energyNames.map { it to it }) { energy = it }
         DeckChoice("Estilo", style, listOf("Equilibrado", "Agresivo", "Control").map { it to it }) { style = it }
       }
+      item { DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted()) { criteria = it } }
       items(messages) { row ->
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor =
           if (row.user) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface)) {
@@ -98,7 +101,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
         Button(enabled = ready && !busy && input.isNotBlank() && connection.apiKey.isNotBlank(), onClick = {
           val text = input
           model.sendDeckChat(current, if (creating) "$text\nEstilo: $style" else text,
-            if (creating) "create" else initialAction, if (creating) energy else "")
+            if (creating) "create" else initialAction, if (creating) energy else "", criteria = criteria)
           // Keep the instructions available after errors and cancellation.
         }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
           Text(if (creating && messages.isEmpty()) "Generar propuesta" else "Enviar")
@@ -149,7 +152,7 @@ private fun DeckProposalReview(main: TcgViewModel, model: AdvancedViewModel, sug
         Text("Motivo y estrategia", style = MaterialTheme.typography.titleMedium)
         Text(proposed.strategy)
         Text("Energías: ${suggestion.base.energyTypes.joinToString().ifBlank { "Sin elegir" }} → ${proposed.energyTypes.joinToString()}")
-        Text("20 cartas · máximo dos copias por nombre · colección comprobada", style = MaterialTheme.typography.bodySmall)
+        Text(if (suggestion.criteria.ownedOnly) "Colección comprobada" else "Catálogo · faltan ${proposed.cards.sumOf { (it.count - (owned[it.card.id] ?: 0)).coerceAtLeast(0) }} copias en tu colección", style = MaterialTheme.typography.bodySmall)
         if (!valid) Text("El mazo o las copias disponibles cambió. Consulta de nuevo.", color = MaterialTheme.colorScheme.error)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
       } } }

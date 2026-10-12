@@ -55,7 +55,7 @@ object ErrorLogManager {
     }
   }
   fun event(tag: String, message: String, error: Throwable? = null) {
-    val safe = redact(message) + if (error == null) "" else "\n" + safeTrace(error)
+    val safe = "version=${com.example.BuildConfig.VERSION_NAME} " + redact(message) + if (error == null) "" else "\n" + safeTrace(error)
     try { writer.execute { write(tag, safe) } }
     catch (_: java.util.concurrent.RejectedExecutionException) { dropped.incrementAndGet() }
   }

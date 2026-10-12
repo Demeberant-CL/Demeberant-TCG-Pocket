@@ -69,11 +69,6 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
           } else { failed = true; loading = false }
         })
     }
-    if (limitedResolution && !loading && !failed && highResolution) {
-      Surface(Modifier.align(Alignment.BottomCenter), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
-        Text("Resolución limitada · consulta el texto de efectos", Modifier.padding(6.dp), style = MaterialTheme.typography.labelSmall)
-      }
-    }
     if (loading && !failed) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
   }
 }

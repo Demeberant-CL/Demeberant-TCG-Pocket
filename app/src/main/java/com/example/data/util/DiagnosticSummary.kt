@@ -14,6 +14,7 @@ object DiagnosticSummary {
 
   fun create(lines: Sequence<String>, version: String, androidVersion: Int, dropped: Long = 0): String {
     var first = ""; var last = ""; var events = 0; var httpOk = 0; var roomRoutine = 0; var failures = 0
+    var versioned = 0; var currentEvents = 0
     var pending: Failure? = null
     val groups = linkedMapOf<String, Failure>()
     fun finish() {
@@ -29,6 +30,8 @@ object DiagnosticSummary {
       val match = header.find(line)
       if (match != null) {
         finish(); events++
+        val eventVersion = Regex("""\bversion=([A-Za-z0-9._-]+)""").find(line)?.groupValues?.get(1)
+        if (eventVersion != null) { versioned++; if (eventVersion == version) currentEvents++ }
         val timestamp = match.groupValues[1]; val tag = match.groupValues[2]
         if (first.isBlank()) first = timestamp
         last = timestamp
@@ -52,6 +55,7 @@ object DiagnosticSummary {
             pending?.type = category + (status?.let { " · HTTP $it" } ?: "")
           }
         }
+        pending?.let { failure -> failure.type += " · " + (eventVersion?.let { "v$it" } ?: "histórico sin versión") }
       } else pending?.let { value ->
         if (exception.matches(line) && !value.exceptionSeen) {
           value.type = if (value.type == "Sin detalle privado") line else "${value.type} · $line"
@@ -65,6 +69,7 @@ object DiagnosticSummary {
     return buildString {
       appendLine("DIAGNÓSTICO BREVE · Pokémon TCG Pocket")
       appendLine("App: $safeVersion · Android API: $androidVersion")
+      appendLine("Eventos con versión actual: $currentEvents · otras versiones: ${versioned - currentEvents} · sin versión identificable: ${events - versioned}")
       appendLine("Periodo UTC: ${first.ifBlank { "sin registros" }} → ${last.ifBlank { "sin registros" }}")
       appendLine("Eventos conservados (histórico, puede incluir versiones anteriores): $events · HTTP correctos: $httpOk · fallos registrados: $failures")
       if (dropped > 0) appendLine("Eventos omitidos por saturación en esta sesión: $dropped")

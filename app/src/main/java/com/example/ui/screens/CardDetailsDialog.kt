@@ -38,7 +38,7 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
   onSave: (Int) -> Unit = {}, onWishlist: () -> Unit = {}, readOnly: Boolean = false) {
   val context = LocalContext.current
   val focusManager = LocalFocusManager.current
-  val imageHeight = (LocalConfiguration.current.screenHeightDp * 0.65f).coerceIn(280f, 620f).dp
+  val imageHeight = (LocalConfiguration.current.screenHeightDp * 0.32f).coerceIn(150f, 280f).dp
   var zoomed by remember(item.card.id) { mutableStateOf(false) }
   var local by remember(item.card.id) { mutableStateOf<com.example.domain.CombatData?>(null) }
   var quantity by rememberSaveable(item.card.id, item.ownedCount) { mutableStateOf(item.ownedCount.toString()) }
@@ -53,7 +53,7 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
     local = withContext(Dispatchers.IO) { runCatching { com.example.data.repository.LocalCombatRepository.card(context, item.card.id, language) }.getOrNull() }
     try { details = withContext(Dispatchers.IO) { CardDetailsClient.load(context, item.card.id, language) } }
     catch (e: CancellationException) { throw e }
-    catch (e: Exception) { error = "No se pudieron actualizar los detalles. Los datos locales disponibles se muestran debajo." }
+    catch (e: Exception) { error = "No se pudieron actualizar los detalles." }
     finally { loading = false }
   }
   if (zoomed) CardImageZoom(item.card.id, item.card.name, language) { zoomed = false }
@@ -68,7 +68,7 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
       verticalArrangement = Arrangement.spacedBy(10.dp)) {
       com.example.ui.components.PocketCardImage(id = item.card.id, name = item.card.name, language = language,
         highResolution = true, modifier = Modifier.fillMaxWidth().height(imageHeight).clickable { zoomed = true })
-      OutlinedButton(onClick = { zoomed = true }, modifier = Modifier.fillMaxWidth()) { Text("Ampliar imagen · zoom con dos dedos") }
+      OutlinedButton(onClick = { zoomed = true }, modifier = Modifier.fillMaxWidth()) { Text("Ampliar") }
       Text("Texto de la carta", style = MaterialTheme.typography.titleLarge)
       Text("${item.card.id} · ${item.card.rarity.displayName}")
       Text(item.card.packNames.joinToString(", ").ifBlank { "Sin datos de sobre" })
@@ -87,7 +87,7 @@ fun CardDetailsDialog(item: CardWithInventory, language: String, onDismiss: () -
         }
       }
       if (details == null) local?.let { value ->
-        Text("Datos incluidos en la app · algunos textos pueden estar en inglés", style = MaterialTheme.typography.labelMedium)
+
         value.hp?.let { Text("PS: $it") }
         value.retreat?.let { Text("Retirada: $it") }
         if (value.text.isNotBlank()) Text(value.text)
@@ -139,7 +139,6 @@ private fun CardImageZoom(id: String, name: String, language: String, onDismiss:
           com.example.ui.components.PocketCardImage(id, name, language = language, highResolution = true,
             modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y))
         }
-        Text("Pellizca para ampliar · doble toque para acercar", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall)
       }
     }
   }

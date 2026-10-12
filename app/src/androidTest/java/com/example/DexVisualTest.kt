@@ -222,7 +222,7 @@ class DexVisualTest {
         compose.onAllNodesWithText("Leer carta").onFirst().performClick()
         compose.onNodeWithTag("card_reader").assertIsDisplayed()
         capture("carta-lectura")
-        compose.onNodeWithText("Ampliar imagen · zoom con dos dedos").performScrollTo().performClick()
+        compose.onNodeWithText("Ampliar").performScrollTo().performClick()
         compose.onNodeWithText("Restablecer zoom").assertIsDisplayed()
         capture("carta-ampliada")
         compose.onNodeWithText("Volver a la carta").performClick()

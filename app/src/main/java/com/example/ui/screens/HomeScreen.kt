@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +35,8 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val snapshot by advanced.metaSnapshot.collectAsStateWithLifecycle()
   val message by main.csvStatusMessage.collectAsStateWithLifecycle()
   val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
+  var reading by remember { mutableStateOf<com.example.data.repository.CardWithInventory?>(null) }
+  reading?.let { entry -> CardDetailsDialog(entry, "es", { reading = null }, { main.setQuantity(entry.card.id, it) }, { main.toggleWishlist(entry.card.id) }) }
   var chooseAvatar by remember { mutableStateOf(false) }
   var chooseDesign by remember { mutableStateOf(false) }
   val advice = remember(inventory, decks, prefs.trade) { TradeAdvisor.analyze(inventory, decks, prefs.trade) }
@@ -44,7 +47,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val expansions = remember(inventory, prefs.trade.expansion) {
     inventory.filter { !it.card.id.startsWith("PROMO") }.groupBy { it.card.id.substringBeforeLast('-') }
       .entries.sortedWith(compareByDescending<Map.Entry<String, List<com.example.data.repository.CardWithInventory>>> { it.key == prefs.trade.expansion }
-        .thenByDescending { group -> group.value.count { it.ownedCount > 0 }.toFloat() / group.value.size })
+        .thenBy { group -> group.value.all { it.ownedCount > 0 } }.thenByDescending { group -> group.value.count { it.ownedCount > 0 }.toFloat() / group.value.size })
   }
   val deckAvailability = remember(decks, owned) { decks.mapNotNull { saved ->
     runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()?.let { refs ->
@@ -54,11 +57,13 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   val target = decks.firstOrNull { it.cardListSerialized == prefs.trade.targetDeck }
   val style = prefs.visualStyle
   val album = style == VisualStyle.ALBUM
-  val showcase = inventory.filter { it.ownedCount > 0 }.take(6)
-  LazyColumn(modifier.fillMaxSize().testTag("home_list"), contentPadding = PaddingValues(if (style == VisualStyle.COMPACT) 12.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (style == VisualStyle.COMPACT) 6.dp else 16.dp)) {
+  val showcase = remember(inventory) { inventory.filter { it.ownedCount > 0 }.sortedWith(compareByDescending<com.example.data.repository.CardWithInventory> { it.isWishlist }.thenByDescending { it.card.isEx }.thenBy { it.card.id }).take(6) }
+  val homeState = rememberLazyListState()
+  LaunchedEffect(style) { homeState.scrollToItem(0) }
+  LazyColumn(modifier.fillMaxSize().testTag("home_list"), state = homeState, contentPadding = PaddingValues(if (style == VisualStyle.COMPACT) 12.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (style == VisualStyle.COMPACT) 6.dp else 16.dp)) {
     item {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        ProfileAvatar(prefs.avatarId, Modifier.size(36.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
+        ProfileAvatar(prefs.avatarId, Modifier.size(48.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
         Column(Modifier.weight(1f)) {
           Text("Pocket Atlas", style = MaterialTheme.typography.titleLarge)
           Text("$distinct cartas · $copies copias · $progress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -73,12 +78,12 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       when (style) {
         VisualStyle.GALLERY -> {
           Text("Tu colección, en primer plano", style = MaterialTheme.typography.displayMedium)
-          Text("Una vitrina con las cartas que ya son tuyas.", style = MaterialTheme.typography.bodyMedium)
+
         }
         VisualStyle.EDITORIAL -> {
           HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
           Text("ATLAS / TU PORTADA", Modifier.padding(top = 12.dp), style = MaterialTheme.typography.labelLarge)
-          Text("Coleccionar.\nConstruir.\nIntercambiar.", style = MaterialTheme.typography.displayLarge)
+          Text("Colección y estrategia", style = MaterialTheme.typography.displayLarge)
         }
         VisualStyle.COMPACT -> {
           Text("Panel rápido", style = MaterialTheme.typography.titleLarge)
@@ -98,7 +103,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     if (style == VisualStyle.GALLERY) item {
       LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(showcase, key = { it.card.id }) { card ->
-          Column(Modifier.width(142.dp).clickable { onCollection(card.card.id.substringBeforeLast('-')) }) {
+          Column(Modifier.width(142.dp).clickable { reading = card }) {
             PocketCardImage(card.card.id, card.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
             Text(card.card.name, style = MaterialTheme.typography.titleSmall)
             Text("${card.ownedCount} copias", style = MaterialTheme.typography.bodySmall)
@@ -185,22 +190,10 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     items(advice.choices.take(if (prefs.visualStyle == VisualStyle.DECISIONS) 2 else 1), key = { "trade_${it.request.card.id}" }) {
       TradeChoiceCard(it, compact = prefs.visualStyle != VisualStyle.DECISIONS, onOpen = onTrade)
     }
-    item {
+    if (style == VisualStyle.ALBUM) item {
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = onCreate, modifier = Modifier.weight(1f)) { Text("Crear mazo") }
         OutlinedButton(onClick = { onCollection(null) }, modifier = Modifier.weight(1f)) { Text("Colección") }
-      }
-    }
-    if (deckAvailability.isNotEmpty()) {
-      item { Text("Mazos y cartas disponibles", style = MaterialTheme.typography.titleMedium) }
-      items(deckAvailability.take(2), key = { "ready_${it.first.id}" }) { (saved, missing) ->
-        OutlinedCard(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(saved.name, style = MaterialTheme.typography.titleMedium)
-            Text(if (missing == 0) "Tienes todas las cartas de esta lista" else "Faltan $missing copias para completar esta lista", style = MaterialTheme.typography.bodySmall)
-            Text("${saved.totalCards}/20 cartas · revisar mazo ›", style = MaterialTheme.typography.labelMedium)
-          }
-        }
       }
     }
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
@@ -219,7 +212,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
     }
     if (prefs.visualStyle == VisualStyle.DECISIONS || prefs.visualStyle == VisualStyle.COMPACT) {
       items(decks.take(3), key = { "recent_${it.id}" }) { saved ->
-        TextButton(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) { Text("${saved.name} · ${saved.totalCards}/20 ›") }
+        TextButton(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) { Text("${saved.name} · ${saved.totalCards}/20 · " + (deckAvailability.firstOrNull { it.first.id == saved.id }?.second?.let { if (it == 0) "Disponible" else "Faltan $it copias" } ?: "Revisar") + " ›") }
       }
     } else item {
       LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -234,7 +227,6 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       }
     }
     item {
-      TextButton(onClick = onTools, modifier = Modifier.fillMaxWidth()) { Text("Abrir herramientas del juego") }
       HorizontalDivider()
       TextButton(onClick = onMeta, modifier = Modifier.fillMaxWidth()) { Text("Ver meta y actualizar") }
       Text(snapshot?.let { "Muestra de ${it.tournaments} torneos · ${it.players} listas · actualizada ${it.updated.take(10)}" }

@@ -108,4 +108,26 @@ class LocalDeckPlannerTest {
     assertEquals(p,LocalDeckPlanner.recommend(pool.reversed(),options=PlannerOptions(type="Agua")))
     assertTrue(p.size in 1..3)
   }
+
+  @Test fun expansionCatalogAndMandatoryRestrictionsAreRespected() {
+    val basic = card(1)
+    val trainer = card(2, "Trainer", "Entrenador")
+    val outside = card(3).copy(id = "A2-003")
+    val inventory = listOf(owned(basic,0),owned(trainer,0),owned(outside,2))
+    val criteria = DeckCriteria(setOf("A1"), setOf(basic.id), setOf(trainer.id), ownedOnly=false)
+    val plans = LocalDeckPlanner.recommend(inventory, options=PlannerOptions(type="Agua", criteria=criteria))
+    assertTrue(plans.all { p -> p.deck.cards.all { it.card.id.startsWith("A1-") && it.card.id != trainer.id } })
+    assertTrue(plans.all { it.deck.cards.any { e -> e.card.id == basic.id } })
+    assertTrue(plans.all { !it.ownedOnly })
+    assertTrue(runCatching { criteria.copy(ownedOnly=true).pool(inventory) }.isFailure)
+    assertTrue(runCatching { criteria.copy(excluded=setOf(basic.id)).pool(inventory) }.isFailure)
+  }
+
+  @Test fun requiredVariantsKeepTheirExactIds() {
+    val first=card(1,"Same"); val second=card(2,"Same")
+    val pool=listOf(owned(first),owned(second))+(3..15).map { owned(card(it,type="Entrenador")) }
+    val plans=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua", criteria=DeckCriteria(required=setOf(first.id,second.id))))
+    assertTrue(plans.all { it.deck.cards.map { e -> e.card.id }.containsAll(setOf(first.id,second.id)) })
+    assertTrue(plans.all { it.deck.cards.filter { e -> e.card.rulesName=="Same" }.sumOf { e -> e.count }==2 })
+  }
 }

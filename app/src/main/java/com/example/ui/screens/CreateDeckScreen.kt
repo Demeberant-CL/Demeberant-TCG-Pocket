@@ -22,8 +22,8 @@ fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit,
     item { Text("Crear mazo", style = MaterialTheme.typography.headlineLarge)
       Text("Elige cómo empezar. Después podrás revisar, editar y guardar en el mismo editor.", style = MaterialTheme.typography.bodyMedium) }
     item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("Con mis cartas", style = MaterialTheme.typography.titleLarge)
-      Text("Con tus cartas · Sin conexión ni cuotas", style = MaterialTheme.typography.labelMedium)
+      Text("Constructor local", style = MaterialTheme.typography.titleLarge)
+      Text("Elige colección o catálogo, expansiones y cartas.", style = MaterialTheme.typography.labelMedium)
       Button(onClick = onLocal, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Crear propuestas") }
     } } }
     item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

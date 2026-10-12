@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 data class DeckChatMessage(val user: Boolean, val text: String)
 data class DeckChatReply(val text: String, val proposal: AiProposal?)
-data class DeckChatSuggestion(val base: GeneratedDeck, val proposal: AiProposal)
+data class DeckChatSuggestion(val base: GeneratedDeck, val proposal: AiProposal, val criteria: DeckCriteria = DeckCriteria())
 data class DeckCardChange(val id: String, val count: Int)
 
 object DeckChat {
@@ -35,13 +35,14 @@ object DeckChat {
   fun requireApplicable(suggestion: DeckChatSuggestion, current: GeneratedDeck?, owned: Map<String, Int>) {
     require(current == suggestion.base) { "El mazo cambió. Consulta de nuevo antes de aplicar." }
     val proposed = suggestion.proposal.deck
-    AiValidator.requireAvailable(proposed, owned)
+    suggestion.criteria.validate(proposed)
+    if (suggestion.criteria.ownedOnly) AiValidator.requireAvailable(proposed, owned)
     require(DeckBuilderEngine.validate(proposed.cards).isEmpty())
     require(proposed.energyTypes.size in 1..3 && proposed.energyTypes.distinct() == proposed.energyTypes &&
       proposed.energyTypes.all { it in DeckCodec.energyNames })
   }
-  fun prompt(deck: GeneratedDeck, candidates: List<AiCandidate>, history: List<DeckChatMessage>, action: String): String {
-    val data = JSONObject().put("action", action).put("deck", JSONObject().put("name", deck.name)
+  fun prompt(deck: GeneratedDeck, candidates: List<AiCandidate>, history: List<DeckChatMessage>, action: String, criteria: DeckCriteria = DeckCriteria()): String {
+    val data = JSONObject().put("action", action).put("criteria", JSONObject().put("expansions", JSONArray(criteria.expansions.toList())).put("required", JSONArray(criteria.required.toList())).put("excluded", JSONArray(criteria.excluded.toList())).put("ownedOnly", criteria.ownedOnly)).put("deck", JSONObject().put("name", deck.name)
       .put("notes", deck.strategy.take(2000)).put("energies", JSONArray(deck.energyTypes))
       .put("cards", JSONArray(deck.cards.map { JSONObject().put("id", it.card.id).put("name", it.card.rulesName)
         .put("count", it.count).put("stage", it.card.stage).put("evolvesFrom", it.card.evolvesFrom) })))
@@ -56,7 +57,9 @@ object DeckChat {
       Para completar un borrador conserva sus cartas disponibles; para mejorar respeta las restricciones del usuario.
       Una propuesta usa SOLO IDs de available, cantidades <= quantity, exactamente 20 cartas, hasta dos por nombre,
       al menos un Pokémon básico y preevoluciones necesarias. No selecciones cartas de categoría o tipo desconocidos.
-      Si no puedes construir un mazo válido, explica qué falta y devuelve proposal=null.
+      Respeta criteria: usa solo las expansiones indicadas si la lista no está vacía, incluye required y no uses excluded.
+      available representa copias poseídas en Mi colección o límite de dos copias en Catálogo.
+      Si no puedes construir un mazo válido, identifica la restricción concreta, las preevoluciones o copias faltantes; no afirmes que una carta no existe si solo falta en available. Devuelve proposal=null y sugiere qué criterio revisar sin cambiarlo.
       Dentro de proposal, replacements debe ser SIEMPRE []: los cambios se calculan comparando ambas listas.
       No omitas count en ninguna carta.
       Describe las razones de los cambios y las limitaciones de los efectos desconocidos. No afirmes que ya aplicaste cambios.

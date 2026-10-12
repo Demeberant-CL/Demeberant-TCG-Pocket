@@ -12,9 +12,9 @@ data class CombatAttack(val cost: List<String>?, val damage: String, val effect:
 data class CombatData(val hp: Int? = null, val retreat: Int? = null,
   val attacks: List<CombatAttack> = emptyList(), val text: String = "")
 enum class DeckStyle(val label: String) { BALANCED("Equilibrado"), FAST("Rápido"), RESILIENT("Resistente") }
-data class PlannerOptions(val type: String? = null, val style: DeckStyle = DeckStyle.BALANCED, val anchorId: String? = null)
+data class PlannerOptions(val type: String? = null, val style: DeckStyle = DeckStyle.BALANCED, val anchorId: String? = null, val criteria: DeckCriteria = DeckCriteria(), val variant: Int = 0)
 data class DeckPlan(val deck: GeneratedDeck, val score: Int, val basics: Int, val trainers: Int,
-  val knownCopies: Int, val reasons: List<String>, val cautions: List<String>)
+  val knownCopies: Int, val reasons: List<String>, val cautions: List<String>, val ownedOnly: Boolean = true)
 
 object LocalDeckPlanner {
   private fun name(value: String) = value.trim().lowercase(Locale.ROOT)
@@ -31,10 +31,10 @@ object LocalDeckPlanner {
   private fun usable(attack: CombatAttack, palette: List<String>): Boolean = attack.cost?.all {
     energy(it)?.let { e -> e == "Incoloro" || e in palette } == true
   } == true
-  private fun compatible(card: PokemonCard, palette: List<String>, data: CombatData?): Boolean {
+  private fun compatible(card: PokemonCard, palette: List<String>, data: CombatData?, classified: Set<CardRole>): Boolean {
     if (trainer(card)) {
       val text = RoleClassifier.normalize(data?.text.orEmpty())
-      if (CardRole.ENERGY in roles(data)) {
+      if (CardRole.ENERGY in classified) {
         val pairs = listOf("Agua" to "water", "Fuego" to "fire", "Planta" to "grass", "Rayo" to "lightning",
           "Psíquico" to "psychic", "Lucha" to "fighting", "Oscuridad" to "darkness", "Metal" to "metal")
         val symbols = mapOf("g" to "Planta", "r" to "Fuego", "w" to "Agua", "l" to "Rayo",
@@ -52,7 +52,7 @@ object LocalDeckPlanner {
     return if (known.isNotEmpty()) known.any { usable(it, palette) }
     else card.type in palette || card.type == "Incoloro"
   }
-  private fun strength(card: PokemonCard, data: CombatData?, palette: List<String>, style: DeckStyle): Double {
+  private fun strength(card: PokemonCard, data: CombatData?, palette: List<String>, style: DeckStyle, classified: Set<CardRole>): Double {
     if (trainer(card)) return 4.0
     val delay = when (card.stage) { "1" -> 1; "2" -> 2; else -> 0 }
     val attacks = data?.attacks.orEmpty().filter { usable(it, palette) }
@@ -68,7 +68,7 @@ object LocalDeckPlanner {
       damage / (1.0 + cost + delay * tempo) / 4.0 - cost * tempo
     } ?: ((card.attackDamage.toDoubleOrNull() ?: 0.0) / 20.0 - 2.0)
     val hp = (data?.hp ?: card.hp).coerceAtLeast(0)
-    val support = roles(data)
+    val support = classified
     return attackScore + hp / (if (style == DeckStyle.RESILIENT) 24.0 else 45.0) +
       (if (CardRole.ENERGY in support) 4.0 else 0.0) +
       (if (CardRole.DRAW in support || CardRole.SEARCH in support) 2.5 else 0.0) -
@@ -79,9 +79,9 @@ object LocalDeckPlanner {
   fun recommend(inventory: List<CardWithInventory>, data: Map<String, CombatData> = emptyMap(),
     options: PlannerOptions = PlannerOptions()): List<DeckPlan> {
     require(options.type == null || options.type in DeckCodec.energyNames) { "Elige una energía válida." }
-    val owned = inventory.filter { it.ownedCount > 0 && it.card.type != "Sin verificar" }
+    val owned = options.criteria.pool(inventory).filter { it.ownedCount > 0 && it.card.type != "Sin verificar" }
       .distinctBy { it.card.id }.sortedBy { it.card.id }
-    require(owned.any { basic(it.card) }) { "No tienes Pokémon básicos con datos verificados." }
+    require(owned.any { basic(it.card) }) { "No hay Pokémon básicos disponibles con estos criterios. Revisa las expansiones o usa Catálogo." }
     val anchor = options.anchorId?.let { id -> owned.firstOrNull { it.card.id == id }
       ?: throw IllegalArgumentException("La carta principal no está en tu colección.") }
     require(anchor == null || !trainer(anchor.card)) { "La carta principal debe ser un Pokémon." }
@@ -109,9 +109,10 @@ object LocalDeckPlanner {
     val normalizedNames = mutableMapOf<String, String>()
     fun name(value: String): String = normalizedNames.getOrPut(value) { value.trim().lowercase(Locale.ROOT) }
     val candidates = mutableListOf<DeckPlan>()
+    val mandatory = options.criteria.required + listOfNotNull(options.anchorId)
     for (palette in palettes) {
-      val pool = owned.filter { compatible(it.card, palette, data[it.card.id]) }
-      val rating = pool.associate { it.card.id to strength(it.card, data[it.card.id], palette, options.style) }
+      val pool = owned.filter { compatible(it.card, palette, data[it.card.id], roleMap[it.card.id].orEmpty()) }
+      val rating = pool.associate { it.card.id to strength(it.card, data[it.card.id], palette, options.style, roleMap[it.card.id].orEmpty()) }
       val costs = pool.associate { item -> item.card.id to data[item.card.id]?.attacks.orEmpty()
         .filter { usable(it, palette) }.map { it.cost!!.size } }
       val unknownAttackIds = pool.filter { costs[it.card.id].isNullOrEmpty() }.map { it.card.id }.toSet()
@@ -133,15 +134,15 @@ object LocalDeckPlanner {
       else pool.filter { !trainer(it.card) && chain(it.card) != null }
         .sortedWith(compareByDescending<CardWithInventory> {
           rating.getValue(it.card.id) + if (it.card.stage != "basic") 2.0 else 0.0
-        }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(16)
+        }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(8)
       val supportPool = pool.filter { !trainer(it.card) && chain(it.card) != null }
         .sortedWith(compareByDescending<CardWithInventory> { rating.getValue(it.card.id) }
-          .thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(36)
+          .thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(16)
       val trainerPool = pool.filter { trainer(it.card) }.sortedWith(compareByDescending<CardWithInventory> {
         roleMap[it.card.id].orEmpty().sumOf { role -> when(role) {
           CardRole.DRAW, CardRole.SEARCH -> 5; CardRole.ENERGY -> 4; CardRole.SWITCH -> 3; else -> 2
         } }
-      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(40)
+      }.thenBy { it.card.id }).distinctBy { name(it.card.rulesName) }.take(24)
       for (hero in anchors) {
         val lineage = chain(hero.card) ?: continue
         val entries = linkedMapOf<String, DeckCardEntry>()
@@ -157,13 +158,31 @@ object LocalDeckPlanner {
             if (remaining <= 0) break
           }
         }
+        var impossible = false
+        mandatory.forEach { id ->
+          val requiredCard = pool.firstOrNull { it.card.id == id }
+          val family = requiredCard?.let { chain(it.card) }
+          if (family == null) impossible = true else {
+            family.forEach { key -> if (count(key) == 0) addName(key, 1) }
+            if (id !in entries) {
+              val key = name(requiredCard!!.card.rulesName)
+              entries.keys.filter { it !in mandatory && name(entries.getValue(it).card.rulesName) == key }.toList().forEach { entries.remove(it) }
+              entries[id] = DeckCardEntry(requiredCard.card, 1)
+            }
+          }
+        }
+        if (impossible || total() > 20) continue
+        val protectedNames = lineage.toSet() + mandatory.mapNotNull { id -> pool.firstOrNull { it.card.id == id }?.card?.let { name(it.rulesName) } }
         val coreCopies = lineage.minOf { key -> minOf(2, byName[key].orEmpty().sumOf { it.ownedCount }) }
-        lineage.forEach { addName(it, coreCopies) }
+        lineage.forEach { addName(it, (coreCopies - count(it)).coerceAtLeast(0)) }
         if (!entries.values.any { basic(it.card) }) {
           pool.firstOrNull { basic(it.card) }?.let { addName(name(it.card.rulesName), 1) } ?: continue
         }
         val consistencyCache = mutableMapOf<List<Int>, Double>()
+        val scoreCache = mutableMapOf<String, Double>()
         fun score(rows: Collection<DeckCardEntry>): Double {
+          val signature = rows.sortedBy { it.card.id }.joinToString { "${it.card.id}:${it.count}" }
+          scoreCache[signature]?.let { return it }
           val pokemon = rows.filter { !trainer(it.card) }
           val tc = rows.filter { trainer(it.card) }.sumOf { it.count }
           val bc = pokemon.filter { basic(it.card) }.sumOf { it.count }
@@ -207,6 +226,7 @@ object LocalDeckPlanner {
             val specified = namedTargets[entry.card.id].orEmpty()
             if (specified.isNotEmpty() && pokemon.none { name(it.card.rulesName) in specified }) value -= 14.0 * entry.count
           }
+          if (scoreCache.size < 2048) scoreCache[signature] = value
           return value
         }
         // Whole evolution packages compete with each trainer addition. Never fill by catalog order.
@@ -242,12 +262,12 @@ object LocalDeckPlanner {
         }
         // Improve all non-core slots, including support Pokémon, rather than trainers alone.
         // A candidate must preserve the selected evolution core and every other evolution dependency.
-        for (pass in 0 until 4) {
+        for (pass in 0 until 2) {
           if (total() == 20) {
             var bestScore = score(entries.values)
             var bestRows: LinkedHashMap<String, DeckCardEntry>? = null
             val replacements = (trainerPool.take(12) + supportPool.take(12)).distinctBy { it.card.id }
-            entries.values.filter { name(it.card.rulesName) !in lineage }.forEach { remove ->
+            entries.values.filter { name(it.card.rulesName) !in protectedNames }.forEach { remove ->
               replacements.forEach { add ->
                 val key = name(add.card.rulesName)
                 if (add.card.id != remove.card.id && count(key) < 2 &&
@@ -306,23 +326,29 @@ object LocalDeckPlanner {
           "$basics básicos · $tc entrenadores · ${known}/${rows.sumOf { it.count }} cartas con datos de combate",
           consistency,
           "Comparación local por ritmo, soporte, evoluciones y energías; no estima victorias.") + playPlan
+        if (!entries.keys.containsAll(mandatory)) continue
         val provisional = GeneratedDeck(hero.card.rulesName, "Constructor local", "", rows, rows.sumOf { it.count }, warnings, palette)
         val strategy = "GUÍA LOCAL\n" + DeckPlayGuide.generate(provisional, data, hero.card.id) + "\n\n" + consistency
         candidates.add(DeckPlan(GeneratedDeck("${hero.card.rulesName} · ${options.style.label}", "Constructor local",
-          strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions))
+          strategy, rows, rows.sumOf { it.count }, warnings, palette), score(rows).roundToInt(), basics, tc, known, reasons, cautions, options.criteria.ownedOnly))
       }
     }
     require(candidates.isNotEmpty()) { "No hay líneas completas compatibles. Prueba otra energía o carta principal." }
     val sorted = candidates.sortedWith(compareByDescending<DeckPlan> { it.deck.totalCardCount == 20 }
       .thenByDescending { it.score }.thenBy { it.deck.name }.thenBy { it.deck.energyTypes.joinToString() })
+    val eligible = sorted.filter { runCatching { options.criteria.validate(it.deck) }.isSuccess }
+    require(eligible.isNotEmpty()) { "No se pudo cumplir la combinación de cartas, expansiones y energía. Revisa preevoluciones y cartas obligatorias." }
+    val top = eligible.take(12)
+    val offset = Math.floorMod(options.variant, top.size)
+    val ordered = top.drop(offset) + top.take(offset) + eligible.drop(12)
     val selected = mutableListOf<DeckPlan>()
-    sorted.forEach { plan ->
+    ordered.forEach { plan ->
       val names = plan.deck.cards.map { name(it.card.rulesName) }.toSet()
       if (selected.size < 3 && selected.none { prior ->
           val old = prior.deck.cards.map { name(it.card.rulesName) }.toSet()
-          names.intersect(old).size.toDouble() / names.union(old).size.coerceAtLeast(1) > 0.85
+          names.intersect(old).size.toDouble() / names.union(old).size.coerceAtLeast(1) > 0.75
         }) selected.add(plan)
     }
-    return selected.ifEmpty { listOf(sorted.first()) }
+    return selected.ifEmpty { listOf(eligible.first()) }
   }
 }

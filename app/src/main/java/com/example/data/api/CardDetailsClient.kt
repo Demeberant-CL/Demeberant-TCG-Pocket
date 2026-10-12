@@ -15,6 +15,8 @@ import org.json.JSONObject
 data class CardDetails(val hp: Int?, val category: String, val stage: String, val description: String,
   val attacks: List<String>, val retreat: Int?, val source: String, val element: String = "", val abilityText: String = "", val evolvesFrom: String = "")
 
+private class DetailsUnavailable(val status: Int) : java.io.IOException("Detalles no disponibles (HTTP $status).")
+
 object CardDetailsClient {
   fun load(context: Context, id: String, language: String, client: okhttp3.OkHttpClient = PocketHttp.detailsClient, baseUrl: String = "https://api.tcgdex.net/v2/"): CardDetails {
     val canonical = CardId.normalize(id)
@@ -69,7 +71,11 @@ object CardDetailsClient {
         val request = Request.Builder().url("${baseUrl.trimEnd('/')}/$candidate/cards/$apiId").build()
         client.newCall(request).execute().use { response ->
           if (response.code == 404 && index < candidates.lastIndex) return@use
-          require(response.isSuccessful) { "Detalles no disponibles (HTTP ${response.code})." }
+          if (!response.isSuccessful) {
+            if (response.code in 500..599 && cached != null) { persist(cached); return cached }
+            if (response.code in 500..599 && index < candidates.lastIndex) return@use
+            throw DetailsUnavailable(response.code)
+          }
           val body = response.body ?: error("Respuesta vacía.")
           val text = body.byteStream().use { it.readBytesBounded(256_000).toString(Charsets.UTF_8) }
           val annotated = JSONObject(text).put("_pocketLanguage", candidate).toString()
@@ -83,6 +89,15 @@ object CardDetailsClient {
     } catch (e: Exception) {
       com.example.data.util.ErrorLogManager.event("DETAILS", "Details unavailable; cache=${cached != null}", e)
       if (cached != null) { persist(cached); return cached }
+      if (e is java.io.IOException) {
+        val local = runBlocking(kotlinx.coroutines.Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.card(context, canonical, lang) }
+        if (local != null) {
+          val card = com.example.data.repository.CardCatalog.ALL_CARDS.firstOrNull { it.id == canonical }
+          return CardDetails(local.hp, card?.category.orEmpty(), card?.stage.orEmpty(), local.text,
+            local.attacks.map { attack -> listOf(attack.name, attack.damage, attack.cost?.joinToString(prefix = "Coste: ") ?: "Coste: sin datos", attack.effect).filter(String::isNotBlank).joinToString(" · ") },
+            local.retreat, "Datos locales", card?.type.orEmpty(), evolvesFrom = card?.evolvesFrom.orEmpty())
+        }
+      }
       throw e
     }
   }

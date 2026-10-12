@@ -333,7 +333,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
         val started = android.os.SystemClock.elapsedRealtime()
         val plans = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts, options) }
-        ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size}")
+        ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size} pool=${inventory.size} expansions=${options.criteria.expansions.size} required=${options.criteria.required.size} excluded=${options.criteria.excluded.size} ownedOnly=${options.criteria.ownedOnly} variant=${options.variant}")
         _localDeckPlans.value = plans
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
@@ -347,7 +347,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       initialization.await()
       val owned = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
       val deck = plan.deck
-      require(deck.cards.all { it.count in 1..2 && it.count <= (owned[it.card.id] ?: 0) })
+      require(deck.cards.all { it.count in 1..2 && (!plan.ownedOnly || it.count <= (owned[it.card.id] ?: 0)) })
       require(deck.cards.sumOf { it.count } <= 20)
       require(DeckBuilderEngine.validate(deck.cards).none { !it.startsWith("Mazo incompleto:") })
       editingDeckId = 0; _automaticEnergies.value = false; _generatedDeck.value = deck
