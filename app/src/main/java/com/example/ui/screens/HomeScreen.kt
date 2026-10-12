@@ -99,7 +99,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
       LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(showcase, key = { it.card.id }) { card ->
           Column(Modifier.width(142.dp).clickable { onCollection(card.card.id.substringBeforeLast('-')) }) {
-            PocketCardImage(card.card.id, card.card.name, highResolution = true, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
+            PocketCardImage(card.card.id, card.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
             Text(card.card.name, style = MaterialTheme.typography.titleSmall)
             Text("${card.ownedCount} copias", style = MaterialTheme.typography.bodySmall)
           }
@@ -120,7 +120,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
           TextButton(onClick = onCreate) { Text("Construir un mazo →") }
         }
         showcase.firstOrNull()?.let { card ->
-          PocketCardImage(card.card.id, card.card.name, highResolution = true, modifier = Modifier.weight(1f).aspectRatio(0.716f))
+          PocketCardImage(card.card.id, card.card.name, modifier = Modifier.weight(1f).aspectRatio(0.716f))
         }
       }
     }
@@ -152,7 +152,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
               Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(group.key, style = MaterialTheme.typography.headlineLarge)
                 val cover = group.value.firstOrNull { it.ownedCount == 0 } ?: group.value.first()
-                PocketCardImage(cover.card.id, cover.card.name, highResolution = true, modifier = Modifier.fillMaxWidth().aspectRatio(0.9f))
+                PocketCardImage(cover.card.id, cover.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.9f))
                 Text("$count/${group.value.size}", style = MaterialTheme.typography.titleMedium)
                 LinearProgressIndicator(progress = { count.toFloat() / group.value.size }, modifier = Modifier.fillMaxWidth())
                 Text("${group.value.size - count} faltantes", style = MaterialTheme.typography.bodySmall)

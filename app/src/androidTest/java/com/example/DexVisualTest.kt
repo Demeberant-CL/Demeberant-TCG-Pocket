@@ -103,7 +103,7 @@ class DexVisualTest {
       compose.waitForIdle()
       capture(name)
       if (index == 1) {
-        compose.onAllNodesWithContentDescription("Ajustes").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("Ajustes", useUnmergedTree = true).assertCountEquals(1)
         compose.onNodeWithText("Vista").performClick()
         compose.onNodeWithText("Lista").performClick()
         capture("coleccion-lista")
