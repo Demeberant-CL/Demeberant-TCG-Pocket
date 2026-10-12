@@ -10,11 +10,11 @@ import com.example.domain.DeckCriteria
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DeckCriteriaFields(expansions: List<String>, enabled: Boolean = true, onChange: (DeckCriteria) -> Unit) {
-  var ownedOnly by rememberSaveable { mutableStateOf(true) }
-  var chosen by rememberSaveable { mutableStateOf(listOf<String>()) }
-  var required by rememberSaveable { mutableStateOf("") }
-  var excluded by rememberSaveable { mutableStateOf("") }
+fun DeckCriteriaFields(expansions: List<String>, enabled: Boolean = true, initial: DeckCriteria = DeckCriteria(), onChange: (DeckCriteria) -> Unit) {
+  var ownedOnly by rememberSaveable { mutableStateOf(initial.ownedOnly) }
+  var chosen by rememberSaveable { mutableStateOf(initial.expansions.toList()) }
+  var required by rememberSaveable { mutableStateOf(initial.required.joinToString(", ")) }
+  var excluded by rememberSaveable { mutableStateOf(initial.excluded.joinToString(", ")) }
   var expanded by rememberSaveable { mutableStateOf(false) }
   var error by remember { mutableStateOf<String?>(null) }
   LaunchedEffect(ownedOnly, chosen, required, excluded) {

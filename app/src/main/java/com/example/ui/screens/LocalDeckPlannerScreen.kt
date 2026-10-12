@@ -59,7 +59,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
       }
     }
     item {
-      DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted(), enabled = !busy) { criteria = it; variant = 0 }
+      DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted(), enabled = !busy, initial = criteria) { criteria = it; variant = 0 }
       OutlinedTextField(enabled = !busy, value = query, onValueChange = { query = it; anchorId = null }, modifier = Modifier.fillMaxWidth(),
         label = { Text("Pokémon principal (opcional)") }, singleLine = true)
       anchor?.let { Text("Elegido: ${it.name} · ${it.id}", style = MaterialTheme.typography.labelMedium) }

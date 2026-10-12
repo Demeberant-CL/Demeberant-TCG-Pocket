@@ -146,7 +146,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     deckChatSuggestion.value = null
     deckChatStatus.value = null
   }
-  fun discardDeckChatSuggestion() { deckChatSuggestion.value = null }
+  fun discardDeckChatSuggestion() { deckChatSuggestion.value = null; pendingChat = null; deckChatRetryAvailable.value = false; deckChatStatus.value = null }
   fun retryDeckChat(deck: GeneratedDeck) {
     val request = pendingChat ?: return
     if (request.deck != deck) { deckChatStatus.value = "El mazo cambió. Envía una nueva consulta."; return }
