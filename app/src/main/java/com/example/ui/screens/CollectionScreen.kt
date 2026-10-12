@@ -265,7 +265,7 @@ fun CollectionScreen(
     // -------------------------------------------------------------
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       if (visualStyle == com.example.data.preferences.VisualStyle.EDITORIAL) {
-        HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
+        androidx.compose.material3.HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
         Text("01 / CATÁLOGO", style = MaterialTheme.typography.labelLarge)
       }
       if (visualStyle == com.example.data.preferences.VisualStyle.ALBUM) Text("ÁLBUM · ${expansionFilter ?: "TODAS LAS EXPANSIONES"}", style = MaterialTheme.typography.labelLarge)

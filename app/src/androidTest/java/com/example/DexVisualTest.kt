@@ -84,6 +84,16 @@ class DexVisualTest {
     compose.runOnIdle { homeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
     compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
 
+    compose.onNodeWithTag("home_list").performScrollToIndex(0)
+    compose.onNodeWithText("Diseño").performClick()
+    capture("selector-disenos")
+    compose.onNodeWithTag("design_picker").performScrollToNode(hasText("Compacto"))
+    compose.onNodeWithText("Compacto").performClick()
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.COMPACT }
+    compose.onNodeWithText("Panel rápido").assertIsDisplayed()
+    compose.runOnIdle { homeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
+
     compose.onNodeWithTag("home_list").performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
@@ -133,7 +143,7 @@ class DexVisualTest {
         compose.onNodeWithText("Cerrar").performClick()
         compose.onNodeWithText("← Ajustes").performClick()
         compose.onNodeWithTag("nav_item_4").performClick()
-        for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
+        for ((label, file) in listOf("Sobres" to "sobres", "Intercambios" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
           compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
           compose.onNodeWithText(label).performClick()
           compose.waitForIdle()

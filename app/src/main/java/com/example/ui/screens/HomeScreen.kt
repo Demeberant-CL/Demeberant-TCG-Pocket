@@ -244,7 +244,7 @@ fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifi
   if (chooseDesign) AlertDialog(onDismissRequest = { chooseDesign = false },
     title = { Text("Elige tu pantalla de inicio") },
     text = {
-      LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      LazyColumn(Modifier.testTag("design_picker"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(VisualStyle.entries.toList()) { option ->
           OutlinedCard(onClick = { main.setVisualStyle(option); chooseDesign = false }, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -285,7 +285,7 @@ private fun HomeQuickRow(title: String, detail: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DesignMiniature(style: VisualStyle) {
+internal fun DesignMiniature(style: VisualStyle) {
   @Composable fun Block(modifier: Modifier) {
     Surface(modifier, color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {}
   }
