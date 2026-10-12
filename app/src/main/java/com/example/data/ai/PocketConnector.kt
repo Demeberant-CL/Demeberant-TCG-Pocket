@@ -24,7 +24,7 @@ class PocketConnector {
   }
   suspend fun request(endpoint: String, token: String, path: String, method: String, payload: JSONObject? = null): JSONObject = withContext(Dispatchers.IO) {
     validate(endpoint, token)
-    require(path in listOf("/app/snapshot", "/app/proposals", "/app/data"))
+    require(path in listOf("/app/snapshot", "/app/proposals", "/app/data", "/app/commands", "/app/commands/result", "/app/diagnostics"))
     val body = payload?.toString()?.toRequestBody("application/json".toMediaType())
     require(body == null || body.contentLength() <= 8_000_000) { "La colección supera el límite del conector." }
     val request = Request.Builder().url(endpoint.toHttpUrl().resolve(path)!!).header("Authorization", "Bearer $token")
