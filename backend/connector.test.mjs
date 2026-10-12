@@ -20,6 +20,28 @@ const appHeaders={Authorization:'Bearer '+deviceToken,'Content-Type':'applicatio
 async function sync(call){return(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(snapshot)})).json();}
 async function rpc(call,token,name,args={}){return(await call('/mcp',{method:'POST',headers:{Authorization:'Bearer '+token,Accept:'application/json, text/event-stream','Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})})).json();}
 const proposal=revision=>({revision,name:'Test deck',strategy:'Test',energies:['Planta'],cards:snapshot.cards.map(c=>({id:c.id,count:2})),replacements:[]});
+test('OAuth access and rotating refresh survive restart without storing plaintext credentials',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-auth-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json'),first=await fixture(t,file);await sync(first);
+ const {tokens,params}=await authorize(first);const second=await fixture(t,file);
+ const summary=await rpc(second,tokens.access_token,'collection_summary');
+ assert.equal(JSON.parse(summary.result.content[0].text).copies,20);
+ const refresh=new URLSearchParams({grant_type:'refresh_token',refresh_token:tokens.refresh_token,client_id:params.get('client_id'),resource:publicUrl+'/mcp'});
+ const renewed=await second('/token',{method:'POST',body:refresh});assert.equal(renewed.status,200);
+ const next=await renewed.json();assert.ok(next.access_token);
+ const third=await fixture(t,file);assert.equal((await third('/token',{method:'POST',body:refresh})).status,400);
+ const {readFileSync}=await import('node:fs');const stored=readFileSync(file+'.oauth','utf8');
+ for(const secret of [ownerSecret,deviceToken,tokens.access_token,tokens.refresh_token,next.access_token])assert.ok(!stored.includes(secret));
+});
+test('restored OAuth tokens expire and encrypted grants reject another owner key or issuer',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'rotom-expiry-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const file=join(dir,'state.json');let now=Date.now();const first=await fixture(t,file,{clock:()=>now});await sync(first);
+ const {tokens}=await authorize(first);now+=3600001;
+ const second=await fixture(t,file,{clock:()=>now});
+ assert.equal((await second('/mcp',{method:'POST',headers:{Authorization:'Bearer '+tokens.access_token},body:'{}'})).status,401);
+ for(const extras of [{ownerSecret:'another-owner'.repeat(4)},{publicUrl:'https://another.example'}])
+  assert.throws(()=>createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile:file,...extras}),/OAuth storage cannot be read/);
+});
 test('OAuth + MCP reads + proposal receipt, staleness and deletion',async t=>{
  const call=await fixture(t);assert.equal((await call('/.well-known/openid-configuration')).status,404);assert.equal((await call('/app/proposals')).status,401);assert.equal((await call('/mcp')).status,401);
  const s=await sync(call),{tokens,params}=await authorize(call);assert.ok(tokens.access_token);assert.equal((await call('/token',{method:'POST',body:params})).status,400);
@@ -156,3 +178,4 @@ test('evolution proposals require a verified basic and their parent',async t=>{
  const synced=await(await call('/app/snapshot',{method:'PUT',headers:appHeaders,body:JSON.stringify(valid)})).json();
  assert.equal((await rpc(call,tokens.access_token,'submit_deck_proposal',proposal(synced.revision))).result.isError,undefined);
 });
+
