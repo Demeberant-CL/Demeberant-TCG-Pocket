@@ -136,12 +136,14 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           Checkbox(checked = useChatGptPlan, enabled = !busy, onCheckedChange = { useChatGptPlan = it })
           Text("Usar mi plan ChatGPT en vez de una clave API")
         }
-        if (useChatGptPlan && planModels.isEmpty()) {
+        Text(if (planModel.isBlank()) "Todavía no has elegido un modelo ChatGPT."
+          else "Modelo seleccionado: ${planModels.firstOrNull { it.slug == planModel }?.displayName ?: planModel}",
+          style = MaterialTheme.typography.labelLarge)
+        if (planModels.isEmpty()) {
           OutlinedButton(enabled = !busy, onClick = model::discoverChatGptPlanModels,
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Cargar modelos de ChatGPT") }
-        }
-        if (useChatGptPlan && planModels.isNotEmpty()) {
-          Text("Modelo incluido en tu cuenta", style = MaterialTheme.typography.labelLarge)
+        } else {
+          Text("Toca el modelo que quieres usar:", style = MaterialTheme.typography.bodySmall)
           LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(planModels, key = { it.slug }) { value ->
               FilterChip(selected = value.slug == planModel, enabled = !busy,
