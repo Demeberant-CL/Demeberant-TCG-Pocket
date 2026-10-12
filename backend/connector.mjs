@@ -114,7 +114,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
         if(!same(bearer,deviceToken))return reply(401,{error:'Unauthorized'});
         if(path==='/app/snapshot'&&req.method==='PUT'){
           const snapshot={...validateSnapshot(JSON.parse(await body())),revision:random(),syncedAt:new Date(clock()).toISOString()};
-          persist({...state,snapshot,proposals:state.proposals.filter(p=>p.revision===snapshot.revision)});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
+          persist({...state,snapshot,proposals:state.proposals});return reply(200,{revision:snapshot.revision,syncedAt:snapshot.syncedAt});
         }
         if(path==='/app/commands'&&req.method==='GET')return reply(200,{commands:state.commands.filter(c=>c.status==='pending').map(({id,action,deckId,createdAt})=>({id,action,deckId,createdAt}))});
         if(path==='/app/commands/result'&&req.method==='POST'){
