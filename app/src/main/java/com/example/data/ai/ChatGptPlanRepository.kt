@@ -9,6 +9,7 @@ import android.security.keystore.KeyProperties
 import android.util.AtomicFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,6 +17,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.io.File
+import java.io.InputStream
+import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.URL
@@ -62,6 +65,20 @@ internal object ChatGptPlanProtocol {
     val scopes = scope.split(' ').filter(String::isNotBlank).toSet()
     return "chatgpt.tokens.use.direct" in scopes && "resource.invoke" in scopes
   }
+}
+
+private fun InputStream.readBytesBounded(maxBytes: Int): ByteArray {
+  val output = ByteArrayOutputStream()
+  val buffer = ByteArray(4096)
+  var total = 0
+  while (true) {
+    val count = read(buffer)
+    if (count < 0) break
+    total += count
+    require(total <= maxBytes) { "La respuesta supera el límite permitido." }
+    output.write(buffer, 0, count)
+  }
+  return output.toByteArray()
 }
 
 private data class OAuthTokens(
@@ -122,7 +139,7 @@ private class ChatGptPlanStore(context: Context) {
       expiresAtMillis = json.getLong("expiresAtMillis"),
     )
     require(account.canUsePlan) { "La cuenta no autorizó el uso de su plan ChatGPT." }
-    account
+    return account
   }
 
   @Synchronized fun write(account: ChatGptPlanAccount) {
@@ -298,8 +315,8 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     require(jwks.length <= 500_000) { "Llaves de identidad demasiado grandes." }
     val key = JWKSet.parse(jwks).getKeyByKeyId(signed.header.keyID) ?: error("No se pudo validar la identidad de OpenAI.")
     val verifier = when (key) {
-      is RSAKey -> key.toRSASSAVerifier()
-      is ECKey -> key.toECDSAVerifier()
+      is RSAKey -> RSASSAVerifier(key.toRSAPublicKey())
+      is ECKey -> ECDSAVerifier(key.toECPublicKey())
       else -> error("Tipo de llave de identidad no admitido.")
     }
     require(signed.verify(verifier)) { "La firma de identidad de OpenAI no es válida." }
