@@ -42,6 +42,9 @@ public class ZoneTest {
     }
     @Test public void navigationStaysOnSameProfile() {
         assertTrue(ZoneUrl.belongsTo(URL + "cards/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "#stats", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "stats/", URL));
+        assertFalse(ZoneUrl.belongsTo(URL + "accounts/", URL));
         assertFalse(ZoneUrl.belongsTo("https://www.pokemon-zone.com/players/1234567890123456/", URL));
         assertFalse(ZoneUrl.belongsTo(URL + "?token=private", URL));
         assertFalse(ZoneUrl.belongsTo("https://accounts.google.com/", URL));
