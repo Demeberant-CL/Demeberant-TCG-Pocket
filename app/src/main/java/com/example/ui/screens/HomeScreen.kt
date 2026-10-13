@@ -139,7 +139,7 @@ fun HomeScreen(
           val missing = saved?.let { deck -> deckAvailability.firstOrNull { it.first.id == deck.id }?.second }
           Text(
             when {
-              draft?.cards?.isNotEmpty() == true -> "Borrador: ${draft.name}"
+              draft?.cards?.isNotEmpty() == true -> "Borrador: ${draft?.name.orEmpty()}"
               saved == null -> "Aún no hay mazos guardados"
               else -> "${saved.name} · ${saved.totalCards}/20" + (missing?.let { if (it == 0) " · listo" else " · faltan $it" } ?: "")
             },
