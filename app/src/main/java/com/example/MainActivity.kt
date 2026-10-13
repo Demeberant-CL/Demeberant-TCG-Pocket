@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
       val userPrefs by viewModel.userPreferences.collectAsStateWithLifecycle()
 
       PocketAppTheme(
-        themeMode = userPrefs.themeMode, visualStyle = userPrefs.visualStyle
+        themeMode = userPrefs.themeMode, visualStyle = com.example.data.preferences.VisualStyle.GALLERY
       ) {
         var navigation by rememberSaveable { mutableStateOf(listOf(0)) }
         val selectedTabIndex = navigation.last()
