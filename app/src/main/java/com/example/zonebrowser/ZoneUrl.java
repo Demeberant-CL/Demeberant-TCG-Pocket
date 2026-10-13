@@ -31,9 +31,16 @@ public final class ZoneUrl {
         try {
             URI uri = URI.create(url);
             String id = friendId(profileUrl);
-            return id != null && isOrigin(uri) && uri.getRawQuery() == null
-                && uri.getRawFragment() == null
-                && (uri.getPath().equals("/players/" + id + "/") || uri.getPath().equals("/players/" + id + "/cards/"));
+            if (id == null || !isOrigin(uri) || uri.getRawQuery() != null) return false;
+            String base = "/players/" + id + "/";
+            String path = uri.getPath();
+            boolean allowedPath = path.equals(base) || path.equals(base + "cards/")
+                || path.equals(base + "stats/") || path.equals(base + "sets/")
+                || path.equals(base + "decks/") || path.equals(base + "what-to-open/")
+                || path.equals(base + "play-sets/") || path.equals(base + "binders/")
+                || path.equals(base + "display-boards/");
+            String fragment = uri.getRawFragment();
+            return allowedPath && (fragment == null || fragment.matches("[A-Za-z0-9_-]{1,80}"));
         } catch (IllegalArgumentException | NullPointerException e) { return false; }
     }
 
