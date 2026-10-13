@@ -105,7 +105,7 @@ private fun okhttp3.Response.toChatGptPlanFailure(): ChatGptPlanHttpFailure {
     "subscription_sharing_usage_unavailable" -> "OpenAI no pudo comprobar el uso del plan. Inténtalo más tarde."
     "subscription_sharing_unsupported_capability", "subscription_sharing_route_not_supported" ->
       "Esta solicitud contiene una opción o ruta que el acceso del plan no admite."
-    else -> when (statusCode) {
+    else -> when (status) {
       401 -> "ChatGPT no aceptó la autorización. Revisa la cuenta y vuelve a conectar."
       403 -> "ChatGPT bloqueó esta solicitud por permisos o región."
       429 -> "Se alcanzó un límite de solicitudes."
@@ -114,11 +114,11 @@ private fun okhttp3.Response.toChatGptPlanFailure(): ChatGptPlanHttpFailure {
     }
   }
   val diagnostic = buildList {
-    add("HTTP $statusCode")
+    add("HTTP $status")
     code?.let { add("código $it") }
     requestId?.let { add("ID $it") }
   }.joinToString(" · ")
-  return ChatGptPlanHttpFailure(statusCode, code, requestId,
+  return ChatGptPlanHttpFailure(status, code, requestId,
     listOf(reason, diagnostic, detail).filterNotNull().joinToString(" — "))
 }
 
