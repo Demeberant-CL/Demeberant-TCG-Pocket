@@ -41,7 +41,7 @@ class DexVisualTest {
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2),
           com.example.data.repository.DeckCardEntry(partner,2)),listOf(card.type))))
     }
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("Rotom AI TCG Pocket").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("TCG Lab").fetchSemanticsNodes().isNotEmpty() }
     val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
     compose.waitUntil(20_000) { connectionsModel.connectionReady.value && !connectionsModel.busy.value }
     compose.runOnIdle { connectionsModel.saveConnection(com.example.data.ai.AiConnection(apiKey="fixture-only", id="fixture-gemini", label="Gemini prueba")) }
