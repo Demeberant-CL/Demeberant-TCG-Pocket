@@ -131,7 +131,7 @@ fun HomeScreen(
       OutlinedCard(onClick = onZoneSync, modifier = Modifier.weight(1f).fillMaxHeight()) {
         Column(Modifier.fillMaxSize().padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
           Text("Misiones", style = MaterialTheme.typography.titleSmall)
-          Text("Sincroniza Pokémon Zone para actualizar el progreso.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+          Text("Lee los datos visibles de perfil y misiones en Pokémon Zone.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
       }
       OutlinedCard(onClick = onDecks, modifier = Modifier.weight(1f).fillMaxHeight()) {
