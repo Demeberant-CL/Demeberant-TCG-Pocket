@@ -2,14 +2,13 @@ package com.example.ui.screens
 
 import com.example.ui.components.PocketCardImage
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.util.DeckCodec
@@ -61,161 +60,136 @@ fun HomeScreen(
     CardDetailsDialog(entry, "es", { reading = null }, { main.setQuantity(entry.card.id, it) }, { main.toggleWishlist(entry.card.id) })
   }
 
-  LazyColumn(
-    modifier.fillMaxSize().testTag("home_list"),
-    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+  val compact = LocalConfiguration.current.screenHeightDp < 720
+  val gap = if (compact) 5.dp else 8.dp
+  val sidePadding = if (compact) 10.dp else 16.dp
+  val imageHeight = if (compact) 68.dp else 94.dp
+
+  Column(
+    modifier.fillMaxSize().padding(horizontal = sidePadding, vertical = if (compact) 5.dp else 10.dp)
+      .testTag("home_list"),
+    verticalArrangement = Arrangement.spacedBy(gap),
   ) {
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-          Text("TCG Lab", style = MaterialTheme.typography.headlineMedium)
-          Text("Pokémon TCG Pocket", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        TextButton(onClick = onSettings) { Text("Ajustes") }
+    Row(
+      Modifier.fillMaxWidth().height(if (compact) 42.dp else 50.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(Modifier.weight(1f)) {
+        Text("TCG Lab", style = MaterialTheme.typography.titleLarge, maxLines = 1)
+        Text("Pokémon TCG Pocket", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
+      TextButton(onClick = onSettings, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("Ajustes") }
     }
 
-    item {
-      Card(Modifier.fillMaxWidth()) {
-        Row(
-          Modifier.fillMaxWidth().padding(14.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-          Column(Modifier.weight(1f)) {
-            Text("Pokémon Zone", style = MaterialTheme.typography.titleMedium)
-            Text("Importa o actualiza la colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(Modifier.fillMaxWidth().height(if (compact) 76.dp else 88.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
+      OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.weight(1.25f).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp), verticalArrangement = Arrangement.SpaceBetween) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text("$progress%", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
           }
-          Button(onClick = onZoneSync) { Text("Sincronizar") }
-        }
-      }
-    }
-
-    item {
-      OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Row(verticalAlignment = Alignment.Bottom) {
-            Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-            Text("$progress%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-          }
-          Text("$distinct de ${inventory.size} cartas distintas · $totalCards copias", style = MaterialTheme.typography.bodyMedium)
+          Text("$distinct/${inventory.size} distintas · $totalCards copias", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
           LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
-          Text("Abrir colección  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        }
+      }
+      OutlinedCard(onClick = onZoneSync, modifier = Modifier.weight(1f).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp), verticalArrangement = Arrangement.SpaceBetween) {
+          Text("Pokémon Zone", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+          Text("Actualizar colección y misiones", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+          Text("Sincronizar  ›", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         }
       }
     }
 
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Cartas destacadas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = { onCollection(null) }) { Text("Ver todas") }
-      }
+    Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+      Text("Cartas destacadas", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+      TextButton(onClick = { onCollection(null) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("Ver todas") }
     }
-    if (showcase.isNotEmpty()) item {
-      LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(showcase, key = { it.card.id }) { entry ->
-          OutlinedCard(onClick = { reading = entry }, modifier = Modifier.width(128.dp)) {
-            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-              PocketCardImage(entry.card.id, entry.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
-              Text(entry.card.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-              Text("${entry.ownedCount} copias", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    Row(Modifier.fillMaxWidth().height(imageHeight + if (compact) 38.dp else 42.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
+      if (showcase.isEmpty()) {
+        OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxSize()) {
+          Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.CenterStart) {
+            Text("Aún no hay cartas. Importa o registra la colección para verlas aquí.", style = MaterialTheme.typography.bodySmall)
+          }
+        }
+      } else {
+        showcase.forEach { entry ->
+          OutlinedCard(onClick = { reading = entry }, modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Column(Modifier.fillMaxSize().padding(5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+              PocketCardImage(entry.card.id, entry.card.name, modifier = Modifier.fillMaxWidth().height(imageHeight))
+              Text(entry.card.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+              Text("${entry.ownedCount} copias", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
           }
         }
       }
-    } else item {
-      OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
-        Text("La colección está vacía. Importa datos o registra cartas para comenzar.", Modifier.padding(14.dp))
-      }
     }
 
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Misiones", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = onZoneSync) { Text("Sincronizar") }
-      }
-      OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Progreso de misiones", style = MaterialTheme.typography.titleSmall)
-          Text("Se mostrará cuando Pokémon Zone lo incluya en los datos disponibles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(Modifier.fillMaxWidth().height(if (compact) 75.dp else 86.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
+      OutlinedCard(onClick = onZoneSync, modifier = Modifier.weight(1f).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+          Text("Misiones", style = MaterialTheme.typography.titleSmall)
+          Text("Sincroniza Pokémon Zone para actualizar el progreso.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
       }
-    }
-
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Mazos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = onDecks) { Text("Ver todos") }
-      }
-      if (decks.isEmpty()) {
-        OutlinedCard(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(14.dp)) {
-            Text("Todavía no hay mazos guardados.", style = MaterialTheme.typography.titleSmall)
-            Text("Crear un mazo con las cartas disponibles  ›", color = MaterialTheme.colorScheme.primary)
-          }
-        }
-      }
-    }
-    items(decks.take(2), key = { "tcg_lab_deck_${it.id}" }) { saved ->
-      val missing = deckAvailability.firstOrNull { it.first.id == saved.id }?.second
-      OutlinedCard(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-          Column(Modifier.weight(1f)) {
-            Text(saved.name, style = MaterialTheme.typography.titleSmall)
-            Text("${saved.totalCards}/20 cartas · " + (missing?.let { if (it == 0) "completo en colección" else "faltan $it copias" } ?: "revisar colección"),
-              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-          }
-          Text("›", color = MaterialTheme.colorScheme.primary)
-        }
-      }
-    }
-
-    item {
-      OutlinedButton(onClick = onTools, modifier = Modifier.fillMaxWidth()) {
-        Text("Herramientas del juego")
-      }
-    }
-
-    item {
-      Card(
-        Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-      ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("ChatGPT", style = MaterialTheme.typography.titleLarge)
+      OutlinedCard(onClick = onDecks, modifier = Modifier.weight(1f).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(9.dp), verticalArrangement = Arrangement.SpaceBetween) {
+          Text("Mazos · ${decks.size}", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+          val saved = decks.firstOrNull()
+          val missing = saved?.let { deck -> deckAvailability.firstOrNull { it.first.id == deck.id }?.second }
           Text(
-            if (chatGptConnected) "Analiza cartas disponibles y propone mazos de 20 cartas."
-            else "Conecta ChatGPT para analizar la colección y crear mazos.",
-            style = MaterialTheme.typography.bodyMedium,
-          )
-          Button(
-            onClick = {
-              if (chatGptConnected) {
-                advanced.setChatGptPlanPreferred(true)
-                onCreate()
-              } else onAiSettings()
+            when {
+              draft?.cards?.isNotEmpty() == true -> "Borrador: ${draft.name}"
+              saved == null -> "Aún no hay mazos guardados"
+              else -> "${saved.name} · ${saved.totalCards}/20" + (missing?.let { if (it == 0) " · listo" else " · faltan $it" } ?: "")
             },
-            modifier = Modifier.fillMaxWidth(),
-          ) {
-            Text(if (chatGptConnected) "Crear mazo con ChatGPT" else "Conectar ChatGPT")
-          }
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
         }
       }
     }
 
-    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck ->
-      item {
-        OutlinedButton(onClick = onEditor, modifier = Modifier.fillMaxWidth()) {
-          Text("Continuar ${deck.name} · ${deck.totalCardCount}/20")
+    Card(Modifier.fillMaxWidth().height(if (compact) 76.dp else 88.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+      Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+          Text("ChatGPT", style = MaterialTheme.typography.titleSmall)
+          Text(
+            if (chatGptConnected) "Analiza la colección y crea un mazo de 20 cartas."
+            else "Conecta ChatGPT para crear mazos con tu colección.",
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
         }
+        Spacer(Modifier.width(8.dp))
+        Button(
+          onClick = {
+            if (chatGptConnected) {
+              advanced.setChatGptPlanPreferred(true)
+              onCreate()
+            } else onAiSettings()
+          },
+          contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        ) { Text(if (chatGptConnected) "Crear mazo" else "Conectar", maxLines = 1) }
       }
     }
 
-    message?.let { status ->
-      item {
-        Text(status, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
+    Row(Modifier.fillMaxWidth().weight(1f, fill = true), verticalAlignment = Alignment.CenterVertically) {
+      OutlinedButton(onClick = onTools, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+        Text("Herramientas del juego", maxLines = 1, overflow = TextOverflow.Ellipsis)
+      }
+      if (draft?.cards?.isNotEmpty() == true) {
+        TextButton(onClick = onEditor, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) { Text("Continuar mazo", maxLines = 1) }
+      } else if (message != null) {
+        TextButton(onClick = main::clearCsvStatusMessage, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) {
+          Text(message!!, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+      } else {
+        TextButton(onClick = onCreate, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) { Text("Nuevo mazo", maxLines = 1) }
       }
     }
   }
