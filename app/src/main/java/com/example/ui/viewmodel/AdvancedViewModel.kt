@@ -167,6 +167,93 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     connectorCommands.value = emptyList()
     message.value = "Copia de colección y propuestas eliminadas del servidor."
   }
+  private val chatGptPlanRepository = ChatGptPlanRepository(application)
+  val chatGptPlanAccount = MutableStateFlow<ChatGptPlanAccount?>(null)
+  val chatGptPlanModels = MutableStateFlow<List<ChatGptModel>>(emptyList())
+  private val chatGptPreferences = application.getSharedPreferences("rotom-chatgpt-settings", Application.MODE_PRIVATE)
+  val selectedChatGptPlanModel = MutableStateFlow(chatGptPreferences.getString("selected-model", "").orEmpty())
+  val chatGptPlanPreferred = MutableStateFlow(chatGptPreferences.getBoolean("use-plan", false))
+  fun setChatGptPlanPreferred(preferred: Boolean) {
+    chatGptPreferences.edit().putBoolean("use-plan", preferred).apply()
+    chatGptPlanPreferred.value = preferred
+  }
+  private suspend fun loadChatGptPlanModels(): List<ChatGptModel> {
+    val found = chatGptPlanRepository.models()
+    chatGptPlanModels.value = found
+    if (selectedChatGptPlanModel.value !in found.map { it.slug }) {
+      val first = found.firstOrNull()?.slug.orEmpty()
+      selectedChatGptPlanModel.value = first
+      chatGptPreferences.edit().putString("selected-model", first).apply()
+    }
+    return found
+  }
+  fun connectChatGptPlan(activity: android.app.Activity) = task("CHATGPT_SIGN_IN") {
+    val account = chatGptPlanRepository.signIn(activity)
+    chatGptPlanAccount.value = account
+    chatGptPlanModels.value = emptyList()
+    message.value = "Cuenta ChatGPT conectada. Cargando modelos disponibles…"
+    try {
+      val found = loadChatGptPlanModels()
+      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para Rotom."
+        else "ChatGPT conectado como ${account.email.ifBlank { "tu cuenta" }}. Modelo listo: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
+    } catch (e: CancellationException) { throw e }
+    catch (_: Exception) {
+      message.value = "ChatGPT quedó conectado. No se cargaron los modelos; vuelve a intentarlo desde el selector."
+    }
+  }
+  fun discoverChatGptPlanModels() = task("CHATGPT_MODELS") {
+    chatGptPlanModels.value = emptyList()
+    val found = loadChatGptPlanModels()
+    message.value = if (found.isEmpty()) "Tu cuenta no muestra modelos disponibles para esta app."
+      else "${found.size} modelos disponibles en tu cuenta ChatGPT. Modelo seleccionado: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
+  }
+  fun selectChatGptPlanModel(model: String) {
+    if (chatGptPlanModels.value.any { it.slug == model }) {
+      selectedChatGptPlanModel.value = model
+      chatGptPreferences.edit().putString("selected-model", model).apply()
+    }
+  }
+  fun disconnectChatGptPlan() = task("CHATGPT_SIGN_OUT") {
+    val hadAccount = chatGptPlanAccount.value != null
+    try {
+      chatGptPlanRepository.signOut()
+      message.value = "Cuenta ChatGPT desconectada. Los tokens se eliminaron de este teléfono."
+    } finally {
+      chatGptPlanAccount.value = null
+      chatGptPlanModels.value = emptyList()
+      selectedChatGptPlanModel.value = ""
+      chatGptPreferences.edit().remove("selected-model").apply()
+      setChatGptPlanPreferred(false)
+    }
+    if (!hadAccount) message.value = "No hay una cuenta ChatGPT conectada."
+  }
+  fun askChatGptPlan(action: AiDeckAction, target: GeneratedDeck?, model: String) = task("CHATGPT_PLAN_REQUEST") {
+    proposal.value = null
+    try {
+      require(chatGptPlanAccount.value?.canUsePlan == true) { "Conecta ChatGPT y autoriza el uso del plan." }
+      require(action.canUse(target?.totalCardCount)) { "Abre un mazo adecuado para esta acción." }
+      require(model == selectedChatGptPlanModel.value && model.isNotBlank()) { "Elige un modelo de ChatGPT." }
+      val (candidates, requestedTarget) = assistantContext(action == AiDeckAction.COMPLETE, target, "es")
+      val reference = if (action == AiDeckAction.IMPROVE) target!!.cards else null
+      val prompt = ExternalAiExchange.prompt(meta, goal, candidates, requestedTarget, reference)
+      val result = chatGptPlanRepository.request(model, prompt)
+      val current = repository.inventoryFlow.first().associateBy { it.card.id }
+      val available = candidates.map { it.copy(owned = current[it.card.id]?.ownedCount ?: 0) }
+      proposal.value = withContext(Dispatchers.Default) {
+        AiValidator.parse(ExternalAiExchange.response(result), available, requestedTarget)
+      }
+      message.value = "Mazo validado con tu colección actual. Revisa la propuesta antes de guardarla."
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) {
+      val safe = e.message?.takeIf { it.startsWith("ChatGPT") || it.startsWith("La consulta de ChatGPT") ||
+        it.startsWith("La respuesta de ChatGPT") || it.startsWith("El plan ChatGPT") ||
+        it.startsWith("Conecta tu cuenta") || it.startsWith("Elige un modelo") ||
+        it.startsWith("Necesitas al menos") || it.startsWith("Cartas obligatorias fuera") ||
+        it.startsWith("El borrador contiene") || it.startsWith("La propuesta") }
+      message.value = safe ?: "No se pudo completar la consulta con ChatGPT. Tu colección y mazo se conservan."
+      ErrorLogManager.event("CHATGPT_PLAN_REQUEST", "category=${com.example.data.ai.AiFailure.category(e)}", e)
+    }
+  }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
   val profiles = MutableStateFlow(AiProfiles())
@@ -239,7 +326,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
   val deckChatStatus = MutableStateFlow<String?>(null)
   val deckChatRetryAvailable = MutableStateFlow(false)
-  private data class PendingChat(val deck: GeneratedDeck, val text: String, val action: String, val element: String, val criteria: DeckCriteria)
+  private data class PendingChat(
+    val deck: GeneratedDeck,
+    val text: String,
+    val action: String,
+    val element: String,
+    val criteria: DeckCriteria,
+    val useChatGptPlan: Boolean,
+    val chatGptModel: String,
+  )
   private var pendingChat: PendingChat? = null
   private var deckChatBase: GeneratedDeck? = null
   private var deckChatSession = 0L
@@ -258,14 +353,24 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   fun retryDeckChat(deck: GeneratedDeck) {
     val request = pendingChat ?: return
     if (request.deck != deck) { deckChatStatus.value = "El mazo cambió. Envía una nueva consulta."; return }
-    sendDeckChat(request.deck, request.text, request.action, request.element, retry = true, criteria = request.criteria)
+    sendDeckChat(request.deck, request.text, request.action, request.element, retry = true, criteria = request.criteria,
+      useChatGptPlan = request.useChatGptPlan, chatGptModel = request.chatGptModel)
   }
-  fun sendDeckChat(deck: GeneratedDeck, text: String, action: String = "chat", element: String = "", retry: Boolean = false, criteria: DeckCriteria = DeckCriteria()) {
+  fun sendDeckChat(
+    deck: GeneratedDeck,
+    text: String,
+    action: String = "chat",
+    element: String = "",
+    retry: Boolean = false,
+    criteria: DeckCriteria = DeckCriteria(),
+    useChatGptPlan: Boolean = chatGptPlanPreferred.value,
+    chatGptModel: String = selectedChatGptPlanModel.value,
+  ) {
     if (busy.value || text.isBlank()) return
     startDeckChat(deck)
     val question = text.trim().take(2000)
     if (!retry) deckChatMessages.value = (deckChatMessages.value + DeckChatMessage(true, question)).takeLast(20)
-    pendingChat = PendingChat(deck, question, action, element, criteria)
+    pendingChat = PendingChat(deck, question, action, element, criteria, useChatGptPlan, chatGptModel)
     deckChatRetryAvailable.value = true
     deckChatSuggestion.value = null
     deckChatStatus.value = null
@@ -274,9 +379,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     task("DECK_CHAT") {
       var stage = "PREPARE"
       val requestId = java.util.UUID.randomUUID().toString().take(8)
-      ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=PREPARE provider=${connection.value.provider.name}")
+      val providerName = if (useChatGptPlan) "CHATGPT_PLAN" else connection.value.provider.name
+      ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=PREPARE provider=$providerName")
       try {
-        require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
+        if (useChatGptPlan) {
+          require(chatGptPlanAccount.value?.canUsePlan == true) { "Conecta ChatGPT y autoriza el uso de tu plan." }
+          require(chatGptModel.isNotBlank()) { "Elige un modelo ChatGPT en Conexiones." }
+        } else {
+          require(connectionReady.value && connection.value.apiKey.isNotBlank()) { "Introduce tu clave API en Conexiones." }
+        }
         val inventory = repository.inventoryFlow.first()
         var rules = db.cardRulesDao().all("es").associateBy { it.cardId }
         val referenceIds = deck.cards.map { it.card.id }.toSet()
@@ -316,10 +427,14 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
           candidates.add(candidate); size += cost
         }
         require(candidates.map { it.card.id }.containsAll(criteria.required)) { "Las cartas obligatorias no caben en la consulta. Reduce los criterios." }
-        deckChatStatus.value = "Consultando ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
+        val requestPrompt = DeckChat.prompt(deck, candidates, history, action, criteria)
+        deckChatStatus.value = if (useChatGptPlan)
+          "Consultando ChatGPT · ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
+        else "Consultando ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
         stage = "REQUEST"
         ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=REQUEST")
-        val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action, criteria)) { status ->
+        val result = if (useChatGptPlan) chatGptPlanRepository.request(chatGptModel, requestPrompt)
+        else connectedAssistant.request(connection.value, requestPrompt) { status ->
           if (deckChatSession == session) deckChatStatus.value = status
         }
         val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
@@ -340,8 +455,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         if (deckChatBase == deck && deckChatSession == session) {
-          val safe = e.message?.takeIf { it.startsWith("Cuota") || it.startsWith("La API") || it.startsWith("Modelo o") ||
-            it.startsWith("Cartas obligatorias fuera") || it.startsWith("El borrador contiene") || it.startsWith("Fuera de los criterios") || it.startsWith("Revisa los códigos") || it.startsWith("Una carta no puede") || it.startsWith("Las cartas obligatorias") || it.startsWith("La propuesta") || it.startsWith("Faltan cartas obligatorias") || it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
+          val safe = (e as? ChatGptPlanHttpFailure)?.message
+            ?: e.message?.takeIf { it.startsWith("ChatGPT") || it.startsWith("La consulta de ChatGPT") ||
+              it.startsWith("La respuesta de ChatGPT") || it.startsWith("Conecta ChatGPT") || it.startsWith("Elige un modelo ChatGPT") ||
+              it.startsWith("Cuota") || it.startsWith("La API") || it.startsWith("Modelo o") ||
+              it.startsWith("Cartas obligatorias fuera") || it.startsWith("El borrador contiene") || it.startsWith("Fuera de los criterios") ||
+              it.startsWith("Revisa los códigos") || it.startsWith("Una carta no puede") || it.startsWith("Las cartas obligatorias") ||
+              it.startsWith("La propuesta") || it.startsWith("Faltan cartas obligatorias") || it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
           deckChatStatus.value = safe ?: "No se obtuvo una respuesta válida. Revisa tu conexión y vuelve a intentarlo. Tu mazo se conserva."
         }
         ErrorLogManager.event("DECK_CHAT", "id=$requestId stage=$stage category=${com.example.data.ai.AiFailure.category(e, stage)} status=${(e as? com.example.data.ai.AiHttpFailure)?.status ?: 0}", e)
@@ -364,6 +484,14 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       try { val saved = connectionStore.loadProfiles(); profiles.value = saved; saved.active?.let { connection.value = it } }
       catch (_: Exception) { message.value = "No se pudieron leer las conexiones IA. El archivo guardado se conserva; reinicia la app para intentar recuperarlo." }
       finally { connectionReady.value = true }
+      try {
+        val account = chatGptPlanRepository.account()
+        chatGptPlanAccount.value = account
+        if (account != null) try { loadChatGptPlanModels() }
+          catch (e: CancellationException) { throw e }
+          catch (_: Exception) { message.value = "ChatGPT está conectado. Abre el selector para volver a cargar sus modelos." }
+      } catch (e: CancellationException) { throw e }
+      catch (_: Exception) { message.value = "No se pudo leer la conexión de ChatGPT. Los datos cifrados se conservan." }
     }
   }
   val proposal = MutableStateFlow<AiProposal?>(null)

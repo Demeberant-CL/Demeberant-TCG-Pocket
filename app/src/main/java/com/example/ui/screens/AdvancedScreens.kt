@@ -44,6 +44,9 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   val connection by model.connection.collectAsStateWithLifecycle()
   val profiles by model.profiles.collectAsStateWithLifecycle()
   val models by model.availableModels.collectAsStateWithLifecycle()
+  val planAccount by model.chatGptPlanAccount.collectAsStateWithLifecycle()
+  val planModels by model.chatGptPlanModels.collectAsStateWithLifecycle()
+  val planModel by model.selectedChatGptPlanModel.collectAsStateWithLifecycle()
   var profileId by remember { mutableStateOf(connection.id) }
   var profileName by remember { mutableStateOf(connection.label) }
   val ready by model.connectionReady.collectAsStateWithLifecycle()
@@ -60,23 +63,30 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   var confirmSend by remember { mutableStateOf(false) }
   var confirmDelete by remember { mutableStateOf(false) }
   var confirmOpen by remember { mutableStateOf(false) }
+  val useChatGptPlan by model.chatGptPlanPreferred.collectAsStateWithLifecycle()
   val context = androidx.compose.ui.platform.LocalContext.current
   LaunchedEffect(connection) {
     profileId = connection.id; profileName = connection.label
     provider = connection.provider; apiKey = connection.apiKey
     modelName = connection.model; url = connection.endpoint
   }
+  LaunchedEffect(planAccount) { if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false) }
   Column(modifier.fillMaxSize()) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      QuickAiSwitch(model)
+      QuickAiSwitch(model, chatGptConnected = planAccount != null, chatGptSelected = useChatGptPlan,
+        onSelectChatGpt = { model.setChatGptPlanPreferred(true) })
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
             if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label, style = MaterialTheme.typography.titleSmall)
-            if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
+            Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
+              else if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,
+              style = MaterialTheme.typography.titleSmall)
+            if (useChatGptPlan && planModel.isNotBlank()) Text(planModel,
+              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
           OutlinedButton(enabled = ready && !busy, onClick = { configure = true }, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
@@ -122,7 +132,26 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }, label = { Text(type.ifBlank { "Todas" }) })
         }
       }
-      Button(enabled = ready && !busy && connection.apiKey.isNotBlank() && action.canUse(deck?.totalCardCount),
+      if (planAccount != null) {
+        Text(if (planModel.isBlank()) "Todavía no has elegido un modelo ChatGPT."
+          else "Modelo seleccionado: ${planModels.firstOrNull { it.slug == planModel }?.displayName ?: planModel}",
+          style = MaterialTheme.typography.labelLarge)
+        if (planModels.isEmpty()) {
+          OutlinedButton(enabled = !busy, onClick = model::discoverChatGptPlanModels,
+            modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Cargar modelos de ChatGPT") }
+        } else {
+          Text("Toca el modelo que quieres usar:", style = MaterialTheme.typography.bodySmall)
+          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(planModels, key = { it.slug }) { value ->
+              FilterChip(selected = value.slug == planModel, enabled = !busy,
+                onClick = { model.selectChatGptPlanModel(value.slug) }, label = { Text(value.displayName) })
+            }
+          }
+        }
+      }
+      val canAsk = if (useChatGptPlan) planAccount?.canUsePlan == true && planModel.isNotBlank()
+        else connection.apiKey.isNotBlank()
+      Button(enabled = ready && !busy && canAsk && action.canUse(deck?.totalCardCount),
         onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("${action.label} con IA") }
 
       AdvancedStatus(model)
@@ -166,7 +195,33 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           OutlinedButton(enabled = !busy, onClick = {
             profileId = java.util.UUID.randomUUID().toString(); profileName = provider.label
             modelName = provider.defaultModel; url = ""; apiKey = ""; model.availableModels.value = emptyList()
-          }, shape = MaterialTheme.shapes.medium) { Text("Añadir proveedor") }
+          }, shape = MaterialTheme.shapes.medium) { Text("Añadir proveedor API") }
+          Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              Text("Plan ChatGPT · sin clave API", style = MaterialTheme.typography.titleSmall)
+              if (planAccount == null) {
+                Text("Conecta tu cuenta desde este teléfono. Las consultas se envían directamente a OpenAI y usan los límites de tu plan.")
+                OutlinedButton(enabled = !busy, onClick = {
+                  (context as? android.app.Activity)?.let(model::connectChatGptPlan)
+                    ?: run { model.message.value = "Abre Rotom en el teléfono para iniciar sesión con ChatGPT." }
+                }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar con ChatGPT") }
+              } else {
+                Text("Conectado como ${planAccount?.email?.ifBlank { "cuenta ChatGPT" } ?: "cuenta ChatGPT"}. Credenciales cifradas en este teléfono.")
+                OutlinedButton(enabled = !busy, onClick = model::discoverChatGptPlanModels,
+                  modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Buscar modelos disponibles") }
+                if (planModels.isNotEmpty()) {
+                  Text("Elige el modelo que usará Rotom:")
+                  LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(planModels, key = { it.slug }) { value ->
+                      FilterChip(selected = value.slug == planModel, enabled = !busy,
+                        onClick = { model.selectChatGptPlanModel(value.slug) }, label = { Text(value.displayName) })
+                    }
+                  }
+                }
+                TextButton(enabled = !busy, onClick = model::disconnectChatGptPlan) { Text("Desconectar ChatGPT") }
+              }
+            }
+          }
           OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
           FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           com.example.data.ai.AiProvider.entries.forEach { value ->
@@ -187,7 +242,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }
           Text(if (provider == com.example.data.ai.AiProvider.GEMINI)
             "Gemini tiene cuotas gratuitas según modelo y cuenta. Si activaste facturación, puede cobrar. En el nivel gratuito Google puede usar el contenido para mejorar sus productos."
-            else if (provider == com.example.data.ai.AiProvider.OPENAI) "ChatGPT Plus no incluye crédito API. Revisa los límites y costes de tu cuenta."
+            else if (provider == com.example.data.ai.AiProvider.OPENAI) "OpenAI API se factura por separado. Tu plan ChatGPT Plus o Pro no incluye uso de API."
             else "La disponibilidad, cuota y coste dependen del modelo y de tu cuenta. Revisa tu proveedor antes de consultar.")
           Text("La clave se cifra en este teléfono y no se incluye en diagnósticos ni respaldos. No uses una clave compartida para todos los usuarios.")
           if (provider.keysUrl.isNotBlank()) TextButton(onClick = {
@@ -218,9 +273,15 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     text = { Text("Elimina solo esta conexión y su clave guardada. Las demás conexiones y tus mazos se conservan.") },
     confirmButton = { TextButton(onClick = { model.removeConnection(); confirmDelete = false }) { Text("Eliminar") } },
     dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") } })
-  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false }, title = { Text("${action.label} · ${connection.provider.label}") },
-    text = { Text("${action.description}\n\nModelo: ${connection.model}. Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
-    confirmButton = { TextButton(onClick = { model.askConnected(action, deck); confirmSend = false }) { Text("Consultar") } },
+  if (confirmSend) AlertDialog(onDismissRequest = { confirmSend = false },
+    title = { Text(if (useChatGptPlan) "${action.label} · plan ChatGPT" else "${action.label} · ${connection.provider.label}") },
+    text = { Text(if (useChatGptPlan)
+      "${action.description}\n\nModelo: ${planModel}. Se enviarán a OpenAI las cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán diagnósticos. La consulta usa el plan y los límites de tu cuenta ChatGPT."
+      else "${action.description}\n\nModelo: ${connection.model}. Se enviarán cartas disponibles, cantidades, efectos conocidos y tu objetivo. Si corresponde, también la lista del mazo abierto. No se enviarán nombre de perfil, Friend ID ni diagnósticos. Puede consumir cuota o crédito según tu cuenta. No se cambiará a otro proveedor si falla.") },
+    confirmButton = { TextButton(onClick = {
+      if (useChatGptPlan) model.askChatGptPlan(action, deck, planModel) else model.askConnected(action, deck)
+      confirmSend = false
+    }) { Text("Consultar") } },
     dismissButton = { TextButton(onClick = { confirmSend = false }) { Text("Cancelar") } })
   if (confirmOpen) AlertDialog(onDismissRequest = { confirmOpen = false }, title = { Text("Usar este mazo") },
     text = { Text("Reemplaza el borrador abierto; conserva mazos guardados y colección.") },

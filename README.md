@@ -53,7 +53,7 @@ El versionCode aumenta con el número de ejecución para admitir actualizaciones
 - Imágenes y detalles requieren conexión y disponibilidad de TCGdex. El resto de Android
   trabaja con datos locales; la web necesita cargar sus archivos al abrirse.
 - Las plantillas A1 y sus etiquetas históricas no son el meta actual. Hay un enlace a torneos.
-- Las conexiones IA requieren una clave propia; las pruebas de CI usan respuestas simuladas, sin consultas pagadas.
+- Las conexiones de proveedores API requieren una clave propia. Android también admite iniciar sesión con ChatGPT para usar el plan elegible; CI usa respuestas simuladas y no hace consultas pagadas.
 - No se incorporan tasas de apertura no verificadas. La calculadora no modela la garantía
   de Pokémon básico en la mano inicial, habilidades ni efectos.
 - La web compilada se entrega como artefacto; no se despliega ni se fusiona en main automáticamente.
@@ -63,8 +63,8 @@ Fuentes y licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ## Módulo avanzado: IA, sandbox, efectos y diagnóstico
 
 En Análisis hay tres nuevas secciones: IA, Sandbox y Efectos.
-IA conecta directamente a Gemini, OpenAI o una API compatible con Chat Completions.
-Configura tu propia clave y modelo, indica tu objetivo y pulsa Crear con mi IA.
+IA conecta directamente a Gemini, OpenAI API o una API compatible con Chat Completions mediante claves propias; también permite iniciar sesión con ChatGPT para usar el plan elegible, sin clave API.
+Elige la conexión, indica tu objetivo y pulsa Crear con mi IA.
 Para sustituir faltantes, abre un mazo de 20 cartas y usa Completar mazo.
 La respuesta se valida contra tu colección y solo se abre como borrador.
 El servidor opcional de `backend/` ofrece la integración MCP independiente para consultar la colección;
@@ -135,11 +135,18 @@ su aceptación real requiere una nueva prueba en el juego.
 
 ## IA conectada (03-10-2026)
 
-Android ofrece Gemini, OpenAI y APIs compatibles con Chat Completions desde el asistente, sin copiar consultas ni pegar JSON. Cada usuario configura su propia clave y modelo; Gemini es la selección inicial, sin garantía de cuota gratuita si habilita facturación. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cada perfil conserva su clave y modelo. Cambiar proveedor prepara otra conexión; guardar un perfil existente lo actualiza sin borrar los demás.
+Android ofrece Gemini, OpenAI API y APIs compatibles con Chat Completions mediante claves propias; además incorpora “Continuar con ChatGPT” para solicitar uso del plan elegible, sin clave API ni backend. La conexión API de OpenAI se factura por separado y no viene incluida en ChatGPT Plus/Pro; Gemini es la selección inicial y su cuota depende del modelo y la cuenta. La conexión se cifra AES-GCM con Android Keystore en noBackupFilesDir y queda fuera de respaldos y diagnósticos. Cada perfil conserva su clave y modelo. Cambiar proveedor prepara otra conexión; guardar un perfil existente lo actualiza sin borrar los demás.
 
 Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de proveedor. Contexto máximo 60 KB y respuesta 4096 tokens / 100 KB. Las propuestas se validan contra las cantidades actuales después de recibir la respuesta. Los errores de cuota, permiso, modelo y truncamiento no importan mazos. No se registran cuerpos, claves ni excepciones privadas de la conexión.
 
 Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.
+
+
+### Usar el plan ChatGPT en Rotom
+
+Desde IA → Conexiones, pulsa **Continuar con ChatGPT** y autoriza Rotom en el navegador. La autorización usa OAuth con PKCE; los tokens quedan cifrados con Android Keystore en archivos excluidos de respaldos. Para una consulta, activa “Usar mi plan ChatGPT”, elige un modelo y confirma el envío. Solo entonces se envían a OpenAI las cartas disponibles, sus cantidades, efectos cargados, el objetivo y, cuando corresponda, el mazo abierto. La solicitud usa Responses API con almacenamiento desactivado y respuesta transmitida. Rotom no accede a tus conversaciones de ChatGPT. El uso queda sujeto a la elegibilidad y límites que OpenAI muestre para tu cuenta; puedes revisar o limitar esta app en los ajustes de uso de ChatGPT.
+
+La autenticación abre el navegador del teléfono y espera el retorno a una dirección loopback local. No se usa un servidor de Rotom para OAuth ni para las consultas. La primera validación automática cubre protocolo PKCE, permisos concedidos y protección de tokens; el inicio de sesión y la autorización final aún requieren una prueba real en un teléfono.
 
 ## Diagnóstico breve para el chat
 

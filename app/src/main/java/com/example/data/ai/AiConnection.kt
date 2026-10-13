@@ -19,7 +19,7 @@ import javax.crypto.spec.GCMParameterSpec
 enum class AiProvider(val label: String, val defaultModel: String,
   val chatEndpoint: String = "", val keysUrl: String = "") {
   GEMINI("Gemini", "gemini-3.8-flash", keysUrl = "https://aistudio.google.com/apikey"),
-  OPENAI("OpenAI (ChatGPT)", "gpt-5-mini", "https://api.openai.com/v1/chat/completions", "https://platform.openai.com/api-keys"),
+  OPENAI("OpenAI API", "gpt-5-mini", "https://api.openai.com/v1/chat/completions", "https://platform.openai.com/api-keys"),
   GROQ("Groq", "", "https://api.groq.com/openai/v1/chat/completions", "https://console.groq.com/keys"),
   OPENROUTER("OpenRouter", "", "https://openrouter.ai/api/v1/chat/completions", "https://openrouter.ai/settings/keys"),
   MISTRAL("Mistral", "", "https://api.mistral.ai/v1/chat/completions", "https://console.mistral.ai/api-keys"),

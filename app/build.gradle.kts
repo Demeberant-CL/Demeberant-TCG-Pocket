@@ -56,6 +56,7 @@ android {
 dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.nimbusds:nimbus-jose-jwt:10.10")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
