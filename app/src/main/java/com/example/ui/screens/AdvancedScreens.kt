@@ -88,7 +88,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
             if (planAccount != null && planModel.isNotBlank()) Text(planModel,
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
-          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
+          OutlinedButton(enabled = ready && !busy, onClick = { configure = true }, shape = MaterialTheme.shapes.medium) { Text("Configurar ChatGPT") }
         }
       }
     }
@@ -174,7 +174,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     }
   }
   }
-  if (configurationOnly && !configure) Button(onClick = { configure = true }) { Text("Conexiones") }
+  if (configurationOnly && !configure) Button(onClick = { configure = true }) { Text("Configurar ChatGPT") }
   if (configure) Dialog(onDismissRequest = { configure = false },
     properties = DialogProperties(usePlatformDefaultWidth = false)) {
     Card(Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 620.dp)) {
