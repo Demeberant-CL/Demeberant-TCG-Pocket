@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
-            if (!(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
+            if (selectedTabIndex != 0 && !(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
             val density = LocalDensity.current
             val displayLabels = if (density.fontScale >= 1.3f) listOf("Inicio", "Cartas", "Mazos", "Juego", "Ajustes") else labels
             val textMeasurer = rememberTextMeasurer()
@@ -159,7 +159,10 @@ class MainActivity : ComponentActivity() {
               onMeta = { metaReturnTab = 0; navigateTo(5) },
               onTrade = { screenStates.removeState(4); moreSection = 2; navigateTo(4) },
               onTools = { screenStates.removeState(4); moreSection = -1; navigateTo(4) },
-              onCollection = { expansion -> viewModel.setExpansionFilter(expansion); screenStates.removeState(1); navigateTo(1) })
+              onCollection = { expansion -> viewModel.setExpansionFilter(expansion); screenStates.removeState(1); navigateTo(1) },
+              onZoneSync = { startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java)) },
+              onAiSettings = { navigateTo(3) },
+              onSettings = { navigateTo(6) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
