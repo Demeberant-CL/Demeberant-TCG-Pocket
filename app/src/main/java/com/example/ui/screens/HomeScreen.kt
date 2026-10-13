@@ -102,13 +102,13 @@ fun HomeScreen(
     }
 
     item {
-      OutlinedCard(Modifier.fillMaxWidth(), onClick = { onCollection(null) }) {
+      OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Row(verticalAlignment = Alignment.Bottom) {
             Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             Text("$progress%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
           }
-          Text("$distinct de \${inventory.size} cartas distintas · $totalCards copias", style = MaterialTheme.typography.bodyMedium)
+          Text("$distinct de ${inventory.size} cartas distintas · $totalCards copias", style = MaterialTheme.typography.bodyMedium)
           LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
           Text("Abrir colección  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         }
@@ -128,13 +128,13 @@ fun HomeScreen(
             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
               PocketCardImage(entry.card.id, entry.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
               Text(entry.card.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-              Text("\${entry.ownedCount} copias", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              Text("${entry.ownedCount} copias", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
           }
         }
       }
     } else item {
-      OutlinedCard(Modifier.fillMaxWidth(), onClick = { onCollection(null) }) {
+      OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
         Text("La colección está vacía. Importa datos o registra cartas para comenzar.", Modifier.padding(14.dp))
       }
     }
@@ -158,7 +158,7 @@ fun HomeScreen(
         TextButton(onClick = onDecks) { Text("Ver todos") }
       }
       if (decks.isEmpty()) {
-        OutlinedCard(Modifier.fillMaxWidth(), onClick = onCreate) {
+        OutlinedCard(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
           Column(Modifier.padding(14.dp)) {
             Text("Todavía no hay mazos guardados.", style = MaterialTheme.typography.titleSmall)
             Text("Crear un mazo con las cartas disponibles  ›", color = MaterialTheme.colorScheme.primary)
@@ -166,13 +166,13 @@ fun HomeScreen(
         }
       }
     }
-    items(decks.take(2), key = { "tcg_lab_deck_\${it.id}" }) { saved ->
+    items(decks.take(2), key = { "tcg_lab_deck_${it.id}" }) { saved ->
       val missing = deckAvailability.firstOrNull { it.first.id == saved.id }?.second
       OutlinedCard(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
           Column(Modifier.weight(1f)) {
             Text(saved.name, style = MaterialTheme.typography.titleSmall)
-            Text("\${saved.totalCards}/20 cartas · " + (missing?.let { if (it == 0) "completo en colección" else "faltan $it copias" } ?: "revisar colección"),
+            Text("${saved.totalCards}/20 cartas · " + (missing?.let { if (it == 0) "completo en colección" else "faltan $it copias" } ?: "revisar colección"),
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
           Text("›", color = MaterialTheme.colorScheme.primary)
@@ -210,7 +210,7 @@ fun HomeScreen(
     draft?.takeIf { it.cards.isNotEmpty() }?.let { deck ->
       item {
         OutlinedButton(onClick = onEditor, modifier = Modifier.fillMaxWidth()) {
-          Text("Continuar \${deck.name} · \${deck.totalCardCount}/20")
+          Text("Continuar ${deck.name} · ${deck.totalCardCount}/20")
         }
       }
     }
