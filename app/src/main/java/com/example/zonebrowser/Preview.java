@@ -22,7 +22,7 @@ public final class Preview {
         output.put("url", input.getString("url"));
         output.put("pageTitle", limited(input.optString("pageTitle"), 180));
         output.put("visibleHeading", limited(input.optString("visibleHeading"), 180));
-        output.put("visibleSummary", limited(input.optString("visibleSummary"), 6000));
+        output.put("visibleSummary", limited(input.optString("visibleSummary"), 40000));
         // No inferimos un nombre de jugador o estadísticas a partir del título de la página.
         JSONArray fields = input.optJSONArray("visibleFields");
         JSONArray cleanFields = new JSONArray();
