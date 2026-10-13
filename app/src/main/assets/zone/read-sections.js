@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const key = '__tcgLabZoneSections';
-  const labels = ['Home', 'Stats', 'Cards', 'Sets', 'Decks', 'What to Open', 'Play Sets', 'Binders', 'Display Boards'];
+  const labels = ['Home', 'Stats', 'Cards', 'Sets', 'Decks', 'What to Open', 'Play Sets', 'Binders', 'Display Boards', 'Missions'];
   const state = {status:'running', index:0, sections:[], startedAt:Date.now()};
   window[key] = state;
   const normalize = value => (value || '').replace(/\s+/g, ' ').replace(/\s*CURRENT\s*$/i, '').trim().toLowerCase();
