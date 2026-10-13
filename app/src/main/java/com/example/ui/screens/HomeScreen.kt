@@ -69,7 +69,7 @@ fun HomeScreen(
   Column(
     modifier.fillMaxSize().padding(horizontal = sidePadding, vertical = if (compact) 5.dp else 10.dp)
       .testTag("home_list"),
-    verticalArrangement = Arrangement.spacedBy(gap),
+    verticalArrangement = Arrangement.SpaceBetween,
   ) {
     Row(
       Modifier.fillMaxWidth().height(if (compact) 42.dp else 50.dp),
