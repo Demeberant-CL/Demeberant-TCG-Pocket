@@ -39,13 +39,13 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
           Text("Mazos", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
-          Button(onClick = onCreate, shape = MaterialTheme.shapes.medium) { Text("+ Crear mazo") }
+          Button(onClick = onCreate, shape = MaterialTheme.shapes.medium) { Text("Diseñar con ChatGPT") }
         }
         if (draft?.cards?.isNotEmpty() == true) OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar borrador · ${draft?.totalCardCount}/20") }
         OutlinedTextField(search, { search = it }, modifier = Modifier.fillMaxWidth(),
           label = { Text("Buscar mazo") }, singleLine = true)
       }
-      if (decks.isEmpty()) Text("Tu próximo mazo empieza aquí. Crea uno con tus cartas, manualmente o con IA.")
+      if (decks.isEmpty()) Text("Tu próximo mazo empieza aquí. Diseña una propuesta con ChatGPT usando tu colección.")
     }
     if (decks.isNotEmpty() && visibleDecks.isEmpty()) item { Text("No hay mazos que coincidan con la búsqueda.") }
     items(visibleDecks, key = { it.id }) { saved ->
