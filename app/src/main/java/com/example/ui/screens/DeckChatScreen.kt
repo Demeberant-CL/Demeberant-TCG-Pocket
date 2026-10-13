@@ -45,6 +45,10 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   var style by rememberSaveable { mutableStateOf("Equilibrado") }
   var reviewing by rememberSaveable { mutableStateOf(false) }
   val listState = rememberLazyListState()
+  LaunchedEffect(planAccount) {
+    if (planAccount != null && !useChatGptPlan) model.setChatGptPlanPreferred(true)
+    else if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false)
+  }
   LaunchedEffect(current) { model.startDeckChat(current); reviewing = false }
   LaunchedEffect(Unit) { com.example.data.util.AppDiagnostics.screen("DECK_CHAT") }
   LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(2 + messages.lastIndex) }
