@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import com.example.ui.components.PocketCardImage
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -77,7 +79,7 @@ fun HomeScreen(
         Text("TCG Lab", style = MaterialTheme.typography.titleLarge, maxLines = 1)
         Text("Pokémon TCG Pocket", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
-      TextButton(onClick = onSettings, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("Ajustes") }
+      IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes") }
     }
 
     Row(Modifier.fillMaxWidth().height(if (compact) 76.dp else 88.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
@@ -177,7 +179,7 @@ fun HomeScreen(
       }
     }
 
-    Row(Modifier.fillMaxWidth().weight(1f, fill = true), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
       OutlinedButton(onClick = onTools, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
         Text("Herramientas del juego", maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
@@ -188,7 +190,7 @@ fun HomeScreen(
           Text(message!!, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
       } else {
-        TextButton(onClick = onCreate, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) { Text("Nuevo mazo", maxLines = 1) }
+        TextButton(onClick = onCreate, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) { Text("Pedir a ChatGPT", maxLines = 1) }
       }
     }
   }
