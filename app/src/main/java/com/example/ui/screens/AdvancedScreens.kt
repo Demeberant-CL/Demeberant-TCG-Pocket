@@ -77,7 +77,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   Column(modifier.fillMaxSize()) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
+      Text("ChatGPT", style = MaterialTheme.typography.titleLarge)
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
@@ -150,7 +150,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
       }
       val canAsk = planAccount?.canUsePlan == true && planModel.isNotBlank()
       Button(enabled = ready && !busy && canAsk && action.canUse(deck?.totalCardCount),
-        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("${action.label} con IA") }
+        onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("${action.label} con ChatGPT") }
 
       AdvancedStatus(model)
     }
