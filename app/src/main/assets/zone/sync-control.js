@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   if (location.protocol !== 'https:' || !['www.pokemon-zone.com', 'pokemon-zone.com'].includes(location.hostname)
-      || !/^\/players\/\d{10,20}\/$/.test(location.pathname) || location.search || location.hash) return 'blocked';
+      || !/^\/players\/\d{10,20}\/$/.test(location.pathname) || location.search) return 'blocked';
   const probe = window.__pocketZoneSyncProbe;
   if (!probe) return 'waiting';
   if (!window.__pocketZoneAutoSync) {
