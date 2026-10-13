@@ -24,7 +24,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -307,7 +306,7 @@ public final class ZoneSyncActivity extends Activity {
                 loaded = !pageFailed && ZoneUrl.belongsTo(pageUrl, profileUrl);
                 trace.add("page_end", pageUrl, 0);
                 readButton.setEnabled(loaded);
-                status.setText(loaded ? "Página cargada. Si muestra «Loading», espera antes de leer." : "Página de cuenta. Puedes interactuar con el sitio; Leer se habilita solo en tu perfil.");
+                status.setText(loaded ? "Perfil abierto. Puedes leer los datos visibles o sincronizar la colección." : "Cuenta abierta. Inicia sesión y vuelve al perfil para leer sus datos.");
                 handler.removeCallbacks(probeLoop);
                 if (trace.isRecording()) handler.post(probeLoop);
                 if (syncBrowser == view && syncPhase == 1 && syncProfile.equals(pageUrl) && loaded) {
@@ -353,13 +352,15 @@ public final class ZoneSyncActivity extends Activity {
         android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
         stage.addView(browser, new android.widget.FrameLayout.LayoutParams(-1, -1));
         LinearLayout cover = column(); cover.setGravity(android.view.Gravity.CENTER);
-        cover.setClickable(true); cover.setFocusable(true);
-        cover.addView(label("Actualizando tu colección…", 23));
+        cover.setBackgroundColor(0xF2F1ECE4);
+        cover.setClickable(false); cover.setFocusable(false);
+        cover.addView(label("Actualizando tu colección…", 20));
         cover.addView(new android.widget.ProgressBar(this));
-        cover.addView(label("El recorrido trabaja automáticamente. Puedes cancelar con el botón de arriba.", 16));
-        cover.addView(label("No necesitas bajar por las cartas ni guardar un archivo JSON.", 16));
+        cover.addView(label("La página de Pokémon Zone permanece visible. Puedes cancelar arriba.", 15));
         progressOverlay = cover; cover.setVisibility(View.INVISIBLE);
-        stage.addView(cover, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.FrameLayout.LayoutParams overlayParams = new android.widget.FrameLayout.LayoutParams(
+                -1, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.BOTTOM);
+        stage.addView(cover, overlayParams);
         content.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
         setRoot(content);
         browser.loadUrl(url);
@@ -389,6 +390,7 @@ public final class ZoneSyncActivity extends Activity {
         if (accountButton != null) accountButton.setEnabled(!running && !importing);
         if (closeButton != null) closeButton.setEnabled(!running && !importing);
         if (cancelButton != null) cancelButton.setEnabled(running && !importing);
+        if (readButton != null) readButton.setEnabled(!running && !importing && loaded);
     }
 
     private void importFinishedScan(JSONObject value) {
@@ -632,6 +634,7 @@ public final class ZoneSyncActivity extends Activity {
                     }
                     clean.put("readAt", Instant.now().toString());
                     preview = clean;
+                    savePreviewSnapshot();
                     trace.add("read_result", source.getUrl(), 0);
                     status.setText("Vista previa lista. No se ha importado nada.");
                     showPreview();
