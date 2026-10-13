@@ -195,7 +195,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     message.value = "Cuenta ChatGPT conectada. Cargando modelos disponibles…"
     try {
       val found = loadChatGptPlanModels()
-      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para Rotom."
+      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para TCG Lab."
         else "ChatGPT conectado como ${account.email.ifBlank { "tu cuenta" }}. Modelo listo: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
     } catch (e: CancellationException) { throw e }
     catch (_: Exception) {
