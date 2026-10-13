@@ -183,6 +183,9 @@ public final class ZoneSyncActivity extends Activity {
         }));
         content.addView(label("La primera conexión puede requerir el acceso con contraseña de Pokémon Zone y la vinculación de Nintendo. Google en un navegador externo no comparte su sesión con el visor.", 15));
         content.addView(label("Después se sincroniza, recorre y guarda desde un solo botón. Solo cambian las cantidades de esta app.", 15));
+        if (preview != null) content.addView(button("Ver perfil, misiones y última lectura", () -> {
+            try { showPreview(); } catch (Exception e) { message("No se pudo abrir la vista previa guardada."); }
+        }));
         content.addView(button("Volver a la app", this::finish));
         setRoot(scroll);
     }
@@ -664,11 +667,17 @@ public final class ZoneSyncActivity extends Activity {
         content.addView(label("Encabezado visible: " + current.optString("visibleHeading", ""), 17));
         content.addView(label("Título de página: " + current.optString("pageTitle"), 14));
         content.addView(label("Leído: " + current.optString("readAt"), 13));
-        content.addView(label("Datos visibles, sin interpretar como estadísticas del jugador", 16));
+        content.addView(label("Perfil · datos que Pokémon Zone muestra en pantalla", 16));
         JSONArray fields = current.getJSONArray("visibleFields");
         for (int i = 0; i < fields.length(); i++) {
             JSONObject field = fields.getJSONObject(i);
             content.addView(label(field.getString("label") + ": " + field.getString("value"), 15));
+        }
+        JSONArray missions = current.optJSONArray("visibleMissions");
+        content.addView(label("Misiones y progreso visibles: " + (missions == null ? 0 : missions.length()), 16));
+        if (missions != null) for (int i = 0; i < Math.min(missions.length(), 30); i++) {
+            String mission = missions.optString(i);
+            if (!mission.isEmpty()) content.addView(label("• " + mission, 14));
         }
         JSONArray cards = current.getJSONArray("visibleCards");
         content.addView(label("Filas de cartas cargadas: " + cards.length() + " · Colección incompleta", 16));
@@ -681,7 +690,7 @@ public final class ZoneSyncActivity extends Activity {
         summary.setTextIsSelectable(true); content.addView(summary);
         content.addView(label("Este JSON es de diagnóstico. No es un respaldo compatible para restaurar en TCG Pocket.", 15));
         ScrollView scroll = new ScrollView(this); scroll.addView(content);
-        new AlertDialog.Builder(this).setTitle("Vista previa · Sin importar")
+        new AlertDialog.Builder(this).setTitle("Perfil y misiones · Vista previa")
             .setView(scroll).setNegativeButton("Cerrar", null)
             .setPositiveButton("Guardar JSON", (dialog, which) -> {
                 try {
