@@ -11,14 +11,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Dialog
-import androidx.compose.material3.DialogProperties
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
   private val viewModel: TcgViewModel by viewModels()
   private val advancedViewModel: com.example.ui.viewmodel.AdvancedViewModel by viewModels()
 
+  @OptIn(ExperimentalMaterial3Api::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
@@ -142,81 +145,86 @@ class MainActivity : ComponentActivity() {
           }
         }
 
-        if (selectedPanel != 0) Dialog(
+        if (selectedPanel != 0) ModalBottomSheet(
           onDismissRequest = { returnToHome() },
-          properties = DialogProperties(usePlatformDefaultWidth = false),
+          sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+          modifier = Modifier.fillMaxHeight(0.94f),
+          containerColor = PocketSurface,
         ) {
-          Surface(
-            modifier = Modifier.fillMaxSize().background(PocketSurface),
-            color = PocketSurface,
-          ) {
-            Column(Modifier.fillMaxSize().systemBarsPadding()) {
-              Row(
-                Modifier.fillMaxWidth().background(PocketSurface),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-              ) {
-                TextButton(onClick = { returnToHome() }) { Text("← TCG Lab") }
-                Text(when (selectedPanel) {\n                  1 -> "Colección"\n                  2 -> "Mazos"\n                  3 -> "ChatGPT"\n                  4 -> "Herramientas"\n                  5 -> "Meta"\n                  6 -> "Ajustes"\n                  else -> "TCG Lab"\n                }, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-              }
-              screenStates.SaveableStateProvider(selectedPanel) {
-                val panelModifier = Modifier.weight(1f)
-                when (selectedPanel) {
-                  1 -> CollectionScreen(
-                    viewModel,
-                    panelModifier,
-                    onAiConnections = { navigateTo(3) },
-                    advanced = advancedViewModel,
-                  )
-                  2 -> com.example.ui.screens.DeckMenuScreen(
-                    viewModel,
-                    advancedViewModel,
-                    panelModifier,
-                    onAskAi = { navigateTo(3) },
-                    editorRequest = deckEditorRequest,
-                  )
-                  3 -> com.example.ui.screens.AIAssistantScreen(
+          Column(Modifier.fillMaxWidth().fillMaxHeight().systemBarsPadding()) {
+            Row(
+              Modifier.fillMaxWidth().background(PocketSurface),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              TextButton(onClick = { returnToHome() }) { Text("← TCG Lab") }
+              Text(when (selectedPanel) {
+                1 -> "Colección"
+                2 -> "Mazos"
+                3 -> "ChatGPT"
+                4 -> "Herramientas"
+                5 -> "Meta"
+                6 -> "Ajustes"
+                else -> "TCG Lab"
+              }, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            screenStates.SaveableStateProvider(selectedPanel) {
+              val panelModifier = Modifier.weight(1f)
+              when (selectedPanel) {
+                1 -> CollectionScreen(
+                  viewModel,
+                  panelModifier,
+                  onAiConnections = { navigateTo(3) },
+                  advanced = advancedViewModel,
+                )
+                2 -> com.example.ui.screens.DeckMenuScreen(
+                  viewModel,
+                  advancedViewModel,
+                  panelModifier,
+                  onAskAi = { navigateTo(3) },
+                  editorRequest = deckEditorRequest,
+                )
+                3 -> com.example.ui.screens.AIAssistantScreen(
+                  viewModel,
+                  advancedViewModel,
+                  {
+                    deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1
+                    navigateTo(2)
+                  },
+                  panelModifier,
+                  initialConfigure = true,
+                  configurationOnly = true,
+                )
+                5 -> Column(panelModifier.fillMaxSize()) {
+                  TextButton(onClick = { navigateTo(metaReturnTab) }) {
+                    Text(if (metaReturnTab == 4) "← Herramientas del juego" else "← TCG Lab")
+                  }
+                  com.example.ui.screens.LiveMetaScreen(
                     viewModel,
                     advancedViewModel,
                     {
                       deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1
                       navigateTo(2)
                     },
-                    panelModifier,
-                    initialConfigure = true,
-                    configurationOnly = true,
-                  )
-                  5 -> Column(panelModifier.fillMaxSize()) {
-                    TextButton(onClick = { navigateTo(metaReturnTab) }) {
-                      Text(if (metaReturnTab == 4) "← Herramientas del juego" else "← TCG Lab")
-                    }
-                    com.example.ui.screens.LiveMetaScreen(
-                      viewModel,
-                      advancedViewModel,
-                      {
-                        deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1
-                        navigateTo(2)
-                      },
-                      Modifier.weight(1f),
-                    )
-                  }
-                  6 -> com.example.ui.screens.MoreScreen(
-                    viewModel,
-                    advancedViewModel,
-                    panelModifier,
-                    settingsMenu = true,
-                  )
-                  else -> com.example.ui.screens.MoreScreen(
-                    viewModel,
-                    advancedViewModel,
-                    panelModifier,
-                    initialSection = moreSection,
-                    onMeta = {
-                      moreSection = -1
-                      metaReturnTab = 4
-                      navigateTo(5)
-                    },
+                    Modifier.weight(1f),
                   )
                 }
+                6 -> com.example.ui.screens.MoreScreen(
+                  viewModel,
+                  advancedViewModel,
+                  panelModifier,
+                  settingsMenu = true,
+                )
+                else -> com.example.ui.screens.MoreScreen(
+                  viewModel,
+                  advancedViewModel,
+                  panelModifier,
+                  initialSection = moreSection,
+                  onMeta = {
+                    moreSection = -1
+                    metaReturnTab = 4
+                    navigateTo(5)
+                  },
+                )
               }
             }
           }
