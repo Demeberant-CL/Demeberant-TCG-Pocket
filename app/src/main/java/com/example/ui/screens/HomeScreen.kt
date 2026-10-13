@@ -25,250 +25,204 @@ import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun HomeScreen(main: TcgViewModel, advanced: AdvancedViewModel, modifier: Modifier = Modifier,
-  onDecks: () -> Unit, onEditor: () -> Unit, onCreate: () -> Unit, onMeta: () -> Unit,
-  onTrade: () -> Unit, onCollection: (String?) -> Unit, onTools: () -> Unit) {
+fun HomeScreen(
+  main: TcgViewModel,
+  advanced: AdvancedViewModel,
+  modifier: Modifier = Modifier,
+  onDecks: () -> Unit,
+  onEditor: () -> Unit,
+  onCreate: () -> Unit,
+  onMeta: () -> Unit,
+  onTrade: () -> Unit,
+  onCollection: (String?) -> Unit,
+  onTools: () -> Unit,
+  onZoneSync: () -> Unit = { onCollection(null) },
+  onAiSettings: () -> Unit = {},
+  onSettings: () -> Unit = {},
+) {
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
   val decks by main.savedDecks.collectAsStateWithLifecycle()
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
-  val prefs by main.userPreferences.collectAsStateWithLifecycle()
-  val snapshot by advanced.metaSnapshot.collectAsStateWithLifecycle()
   val message by main.csvStatusMessage.collectAsStateWithLifecycle()
-  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
-  var reading by remember { mutableStateOf<com.example.data.repository.CardWithInventory?>(null) }
-  reading?.let { entry -> CardDetailsDialog(entry, "es", { reading = null }, { main.setQuantity(entry.card.id, it) }, { main.toggleWishlist(entry.card.id) }) }
-  var chooseAvatar by remember { mutableStateOf(false) }
-  var chooseDesign by remember { mutableStateOf(false) }
-  val advice = remember(inventory, decks, prefs.trade) { TradeAdvisor.analyze(inventory, decks, prefs.trade) }
+  val chatGptAccount by advanced.chatGptPlanAccount.collectAsStateWithLifecycle()
+  val chatGptConnected = chatGptAccount?.canUsePlan == true
   val owned = remember(inventory) { inventory.associate { it.card.id to it.ownedCount } }
   val distinct = remember(inventory) { inventory.count { it.ownedCount > 0 } }
-  val copies = remember(inventory) { inventory.sumOf { it.ownedCount } }
+  val totalCards = remember(inventory) { inventory.sumOf { it.ownedCount } }
   val progress = if (inventory.isEmpty()) 0 else distinct * 100 / inventory.size
-  val expansions = remember(inventory, prefs.trade.expansion) {
-    inventory.filter { !it.card.id.startsWith("PROMO") }.groupBy { it.card.id.substringBeforeLast('-') }
-      .entries.sortedWith(compareByDescending<Map.Entry<String, List<com.example.data.repository.CardWithInventory>>> { it.key == prefs.trade.expansion }
-        .thenBy { group -> group.value.all { it.ownedCount > 0 } }.thenByDescending { group -> group.value.count { it.ownedCount > 0 }.toFloat() / group.value.size })
+  val showcase = remember(inventory) {
+    inventory.filter { it.ownedCount > 0 }
+      .sortedWith(compareByDescending<com.example.data.repository.CardWithInventory> { it.isWishlist }
+        .thenByDescending { it.card.isEx }
+        .thenBy { it.card.id })
+      .take(3)
   }
-  val deckAvailability = remember(decks, owned) { decks.mapNotNull { saved ->
-    runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()?.let { refs ->
-      saved to refs.sumOf { (id, n) -> (n - (owned[id] ?: 0)).coerceAtLeast(0) }
-    }
-  }.sortedBy { it.second } }
-  val target = decks.firstOrNull { it.cardListSerialized == prefs.trade.targetDeck }
-  val style = prefs.visualStyle
-  val album = style == VisualStyle.ALBUM
-  val showcase = remember(inventory) { inventory.filter { it.ownedCount > 0 }.sortedWith(compareByDescending<com.example.data.repository.CardWithInventory> { it.isWishlist }.thenByDescending { it.card.isEx }.thenBy { it.card.id }).take(6) }
-  val homeState = rememberLazyListState()
-  LaunchedEffect(style) { homeState.scrollToItem(0) }
-  val showFirstRunGuide = copies == 0
-  LazyColumn(modifier.fillMaxSize().testTag("home_list"), state = homeState, contentPadding = PaddingValues(if (style == VisualStyle.COMPACT) 12.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (style == VisualStyle.COMPACT) 6.dp else 16.dp)) {
+  val deckAvailability = remember(decks, owned) {
+    decks.mapNotNull { saved ->
+      runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()?.let { refs ->
+        saved to refs.sumOf { (id, count) -> (count - (owned[id] ?: 0)).coerceAtLeast(0) }
+      }
+    }.sortedBy { it.second }
+  }
+  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
+  var reading by remember { mutableStateOf<com.example.data.repository.CardWithInventory?>(null) }
+  reading?.let { entry ->
+    CardDetailsDialog(entry, "es", { reading = null }, { main.setQuantity(entry.card.id, it) }, { main.toggleWishlist(entry.card.id) })
+  }
+
+  LazyColumn(
+    modifier.fillMaxSize().testTag("home_list"),
+    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
     item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        ProfileAvatar(prefs.avatarId, Modifier.size(48.dp).clip(CircleShape).clickable { chooseAvatar = true }, "Cambiar avatar")
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-          Text("Rotom AI TCG Pocket", style = MaterialTheme.typography.titleLarge)
-          Text("$distinct cartas · $copies copias · $progress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text("TCG Lab", style = MaterialTheme.typography.headlineMedium)
+          Text("Pokémon TCG Pocket", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Box {
-          TextButton(onClick = { chooseDesign = true }) { Text("Diseño") }
+        TextButton(onClick = onSettings) { Text("Ajustes") }
+      }
+    }
 
-        }
-      }
-    }
-    if (showFirstRunGuide) item {
-      Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("¿Para qué sirve Rotom AI TCG Pocket?", style = MaterialTheme.typography.titleMedium)
-          Text("Organiza tu colección de cartas y te ayuda a construir y revisar mazos de 20 cartas. También incluye herramientas para practicar y analizar tus opciones.")
-          Text("Para empezar, importa tu archivo CSV en Cartas → Ajustes → Importar CSV. Si no tienes un archivo, puedes registrar tus cartas manualmente desde Cartas.")
-          Button(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Empezar con mi colección")
-          }
-          Text("La app no se conecta a tu cuenta del juego ni hace canjes. Las sugerencias de IA requieren configurar una clave propia en Ajustes → Conexiones IA.",
-            style = MaterialTheme.typography.bodySmall)
-        }
-      }
-    }
     item {
-      when (style) {
-        VisualStyle.GALLERY -> {
-          Text("Tu colección, en primer plano", style = MaterialTheme.typography.displayMedium)
-
-        }
-        VisualStyle.EDITORIAL -> {
-          HorizontalDivider(thickness = 3.dp, color = MaterialTheme.colorScheme.primary)
-          Text("ATLAS / TU PORTADA", Modifier.padding(top = 12.dp), style = MaterialTheme.typography.labelLarge)
-          Text("Colección y estrategia", style = MaterialTheme.typography.displayLarge)
-        }
-        VisualStyle.COMPACT -> {
-          Text("Panel rápido", style = MaterialTheme.typography.titleLarge)
-          Text("$distinct/${inventory.size} cartas · ${decks.size} mazos", style = MaterialTheme.typography.bodySmall)
-        }
-        VisualStyle.DECISIONS -> {
-          Text("¿Qué hacemos hoy?", style = MaterialTheme.typography.displayMedium)
-          Text("Tus objetivos y las acciones para avanzar.", style = MaterialTheme.typography.bodyMedium)
-        }
-        VisualStyle.ALBUM -> {
-          Text("Mi álbum", style = MaterialTheme.typography.displayLarge)
-          Text("$progress% del catálogo en tu colección", style = MaterialTheme.typography.bodyLarge)
-          LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
-        }
-      }
-    }
-    if (style == VisualStyle.GALLERY) item {
-      LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(showcase, key = { it.card.id }) { card ->
-          Column(Modifier.width(142.dp).clickable { reading = card }) {
-            PocketCardImage(card.card.id, card.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
-            Text(card.card.name, style = MaterialTheme.typography.titleSmall)
-            Text("${card.ownedCount} copias", style = MaterialTheme.typography.bodySmall)
+      Card(Modifier.fillMaxWidth()) {
+        Row(
+          Modifier.fillMaxWidth().padding(14.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Column(Modifier.weight(1f)) {
+            Text("Pokémon Zone", style = MaterialTheme.typography.titleMedium)
+            Text("Importa o actualiza la colección", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
-        }
-      }
-      if (showcase.isEmpty()) OutlinedButton(onClick = { onCollection(null) }) { Text("Explorar cartas") }
-      Button(onClick = { onCollection(null) }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Abrir mi colección") }
-    }
-    if (style == VisualStyle.EDITORIAL) item {
-      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Text("01 / COLECCIÓN", style = MaterialTheme.typography.labelLarge)
-          Text("$distinct", style = MaterialTheme.typography.displayLarge)
-          Text("cartas diferentes de ${inventory.size}")
-          TextButton(onClick = { onCollection(null) }) { Text("Explorar →") }
-          HorizontalDivider()
-          Text("02 / ESTRATEGIA", style = MaterialTheme.typography.labelLarge)
-          TextButton(onClick = onCreate) { Text("Construir un mazo →") }
-        }
-        showcase.firstOrNull()?.let { card ->
-          PocketCardImage(card.card.id, card.card.name, modifier = Modifier.weight(1f).aspectRatio(0.716f))
+          Button(onClick = onZoneSync) { Text("Sincronizar") }
         }
       }
     }
-    if (style == VisualStyle.DECISIONS) item {
-      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        HomeActionTile("Intercambiar", "${advice.offers.size} cartas para ofrecer", Modifier.weight(1f), onTrade)
-        HomeActionTile("Construir", "${decks.size} mazos guardados", Modifier.weight(1f), onCreate)
-      }
-      Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        HomeActionTile("Completar", "${inventory.size - distinct} cartas faltantes", Modifier.weight(1f)) { onCollection(null) }
-        HomeActionTile("Jugar", "Práctica, sobres y cálculo", Modifier.weight(1f), onTools)
-      }
-    }
-    if (style == VisualStyle.COMPACT) item {
-      Column {
-        HomeQuickRow("Colección", "$distinct cartas · $progress%", { onCollection(null) })
-        HomeQuickRow("Mazos", "${decks.size} guardados", onDecks)
-        HomeQuickRow("Intercambios", "${advice.offers.size} para ofrecer", onTrade)
-        HomeQuickRow("Herramientas del juego", "Práctica, sobres, probabilidades", onTools)
+
+    item {
+      OutlinedCard(Modifier.fillMaxWidth(), onClick = { onCollection(null) }) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Row(verticalAlignment = Alignment.Bottom) {
+            Text("Colección", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            Text("$progress%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+          }
+          Text("$distinct de \${inventory.size} cartas distintas · $totalCards copias", style = MaterialTheme.typography.bodyMedium)
+          LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
+          Text("Abrir colección  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        }
       }
     }
-    if (album) {
-      item { Text("Expansiones", style = MaterialTheme.typography.titleMedium) }
-      items(expansions.take(6).chunked(2), key = { "exp_${it.first().key}" }) { pair ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          pair.forEach { group ->
-            val count = group.value.count { it.ownedCount > 0 }
-            Card(onClick = { onCollection(group.key) }, modifier = Modifier.weight(1f)) {
-              Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(group.key, style = MaterialTheme.typography.headlineLarge)
-                val cover = group.value.firstOrNull { it.ownedCount == 0 } ?: group.value.first()
-                PocketCardImage(cover.card.id, cover.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.9f))
-                Text("$count/${group.value.size}", style = MaterialTheme.typography.titleMedium)
-                LinearProgressIndicator(progress = { count.toFloat() / group.value.size }, modifier = Modifier.fillMaxWidth())
-                Text("${group.value.size - count} faltantes", style = MaterialTheme.typography.bodySmall)
-              }
+
+    item {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Cartas destacadas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = { onCollection(null) }) { Text("Ver todas") }
+      }
+    }
+    if (showcase.isNotEmpty()) item {
+      LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(showcase, key = { it.card.id }) { entry ->
+          OutlinedCard(onClick = { reading = entry }, modifier = Modifier.width(128.dp)) {
+            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+              PocketCardImage(entry.card.id, entry.card.name, modifier = Modifier.fillMaxWidth().aspectRatio(0.716f))
+              Text(entry.card.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+              Text("\${entry.ownedCount} copias", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
           }
-          if (pair.size == 1) Spacer(Modifier.weight(1f))
         }
-      }
-      item { TextButton(onClick = { onCollection(null) }) { Text("Ver todas las expansiones") } }
-    }
-    item {
-      Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (style == VisualStyle.EDITORIAL || style == VisualStyle.COMPACT) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.primaryContainer)) {
-        Column(Modifier.padding(if (style == VisualStyle.COMPACT) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text("Tu objetivo", style = MaterialTheme.typography.labelLarge)
-          Text(target?.name ?: prefs.trade.targetName.takeIf { it.isNotBlank() } ?: (if (prefs.trade.targetDeck.isNotBlank()) "Mazo objetivo guardado" else null) ?: prefs.trade.expansion.takeIf { it.isNotBlank() }?.let { "Completar $it" } ?: "Elige un mazo o una expansión", style = MaterialTheme.typography.titleLarge)
-          Text(if (prefs.trade.targetDeck.isNotBlank()) "${advice.deckMissing} copias faltantes · tus mazos están protegidos"
-            else "${advice.offers.size} cartas con copias disponibles para ofrecer", style = MaterialTheme.typography.bodySmall)
-          TextButton(onClick = onTrade) { Text("Elegir objetivo e intercambios") }
-        }
-      }
-    }
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Intercambios para ti", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = onTrade) { Text("Ver opciones") }
-      }
-      if (advice.choices.isEmpty()) Text("Protege tus cartas y revisa qué conseguir. Las propuestas aparecerán cuando tengas sobrantes compatibles.", style = MaterialTheme.typography.bodySmall)
-    }
-    items(advice.choices.take(if (prefs.visualStyle == VisualStyle.DECISIONS) 2 else 1), key = { "trade_${it.request.card.id}" }) {
-      TradeChoiceCard(it, compact = prefs.visualStyle != VisualStyle.DECISIONS, onOpen = onTrade)
-    }
-    if (style == VisualStyle.ALBUM) item {
-      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onCreate, modifier = Modifier.weight(1f)) { Text("Crear mazo") }
-        OutlinedButton(onClick = { onCollection(null) }, modifier = Modifier.weight(1f)) { Text("Colección") }
-      }
-    }
-    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item {
-      OutlinedButton(onClick = onEditor, modifier = Modifier.fillMaxWidth()) { Text("Continuar ${deck.name} · ${deck.totalCardCount}/20") }
-    } }
-    message?.let { text -> item {
-      Text(text, style = MaterialTheme.typography.bodySmall)
-      TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
-    } }
-    item {
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Mazos recientes", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = onDecks) { Text("Ver todos") }
-      }
-      if (decks.isEmpty()) Text("Crea tu primer mazo con las cartas de tu colección.")
-    }
-    if (prefs.visualStyle == VisualStyle.DECISIONS || prefs.visualStyle == VisualStyle.COMPACT) {
-      items(decks.take(3), key = { "recent_${it.id}" }) { saved ->
-        TextButton(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) { Text("${saved.name} · ${saved.totalCards}/20 · " + (deckAvailability.firstOrNull { it.first.id == saved.id }?.second?.let { if (it == 0) "Disponible" else "Faltan $it copias" } ?: "Revisar") + " ›") }
       }
     } else item {
-      LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(decks.take(3), key = { it.id }) { saved ->
-          OutlinedCard(onClick = { openSavedDeck(saved) }, modifier = Modifier.width(240.dp)) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-              runCatching { DeckCodec.references(saved.cardListSerialized) }.getOrNull()?.firstOrNull()?.let { DeckThumbnail(it.first, saved.name) }
-              Column(Modifier.weight(1f)) { Text(saved.name, style = MaterialTheme.typography.titleSmall); Text("${saved.totalCards}/20 cartas", style = MaterialTheme.typography.bodySmall) }
-            }
+      OutlinedCard(Modifier.fillMaxWidth(), onClick = { onCollection(null) }) {
+        Text("La colección está vacía. Importa datos o registra cartas para comenzar.", Modifier.padding(14.dp))
+      }
+    }
+
+    item {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Misiones", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = onZoneSync) { Text("Sincronizar") }
+      }
+      OutlinedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("Progreso de misiones", style = MaterialTheme.typography.titleSmall)
+          Text("Se mostrará cuando Pokémon Zone lo incluya en los datos disponibles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+    }
+
+    item {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Mazos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = onDecks) { Text("Ver todos") }
+      }
+      if (decks.isEmpty()) {
+        OutlinedCard(Modifier.fillMaxWidth(), onClick = onCreate) {
+          Column(Modifier.padding(14.dp)) {
+            Text("Todavía no hay mazos guardados.", style = MaterialTheme.typography.titleSmall)
+            Text("Crear un mazo con las cartas disponibles  ›", color = MaterialTheme.colorScheme.primary)
           }
         }
       }
     }
+    items(decks.take(2), key = { "tcg_lab_deck_\${it.id}" }) { saved ->
+      val missing = deckAvailability.firstOrNull { it.first.id == saved.id }?.second
+      OutlinedCard(onClick = { openSavedDeck(saved) }, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+          Column(Modifier.weight(1f)) {
+            Text(saved.name, style = MaterialTheme.typography.titleSmall)
+            Text("\${saved.totalCards}/20 cartas · " + (missing?.let { if (it == 0) "completo en colección" else "faltan $it copias" } ?: "revisar colección"),
+              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+          Text("›", color = MaterialTheme.colorScheme.primary)
+        }
+      }
+    }
+
     item {
-      HorizontalDivider()
-      TextButton(onClick = onMeta, modifier = Modifier.fillMaxWidth()) { Text("Ver meta y actualizar") }
-      Text(snapshot?.let { "Muestra de ${it.tournaments} torneos · ${it.players} listas · actualizada ${it.updated.take(10)}" }
-        ?: "Resultados públicos para comparar mazos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+      ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("ChatGPT", style = MaterialTheme.typography.titleLarge)
+          Text(
+            if (chatGptConnected) "Analiza cartas disponibles y propone mazos de 20 cartas."
+            else "Conecta ChatGPT para analizar la colección y crear mazos.",
+            style = MaterialTheme.typography.bodyMedium,
+          )
+          Button(
+            onClick = {
+              if (chatGptConnected) {
+                advanced.setChatGptPlanPreferred(true)
+                onCreate()
+              } else onAiSettings()
+            },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(if (chatGptConnected) "Crear mazo con ChatGPT" else "Conectar ChatGPT")
+          }
+        }
+      }
+    }
+
+    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck ->
+      item {
+        OutlinedButton(onClick = onEditor, modifier = Modifier.fillMaxWidth()) {
+          Text("Continuar \${deck.name} · \${deck.totalCardCount}/20")
+        }
+      }
+    }
+
+    message?.let { status ->
+      item {
+        Text(status, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
+      }
     }
   }
-  if (chooseDesign) AlertDialog(onDismissRequest = { chooseDesign = false },
-    title = { Text("Elige tu pantalla de inicio") },
-    text = {
-      LazyColumn(Modifier.testTag("design_picker"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(VisualStyle.entries.toList()) { option ->
-          OutlinedCard(onClick = { main.setVisualStyle(option); chooseDesign = false }, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = style == option, onClick = null)
-                Text(option.label, style = MaterialTheme.typography.titleSmall)
-              }
-              DesignMiniature(option)
-              Text(option.description, style = MaterialTheme.typography.bodySmall)
-            }
-          }
-        }
-      }
-    }, confirmButton = { TextButton(onClick = { chooseDesign = false }) { Text("Cerrar") } })
-  if (chooseAvatar) AvatarPickerDialog(prefs.avatarId, onSave = { main.setProfileAvatar(it); chooseAvatar = false }, onClose = { chooseAvatar = false })
 }
-
 @Composable
 private fun HomeActionTile(title: String, detail: String, modifier: Modifier, onClick: () -> Unit) {
   FilledTonalButton(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.large, contentPadding = PaddingValues(16.dp)) {
