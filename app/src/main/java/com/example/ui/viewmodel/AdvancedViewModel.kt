@@ -68,7 +68,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun saveConnector(url: String, key: String) = task("CONNECTOR_CONFIG") {
     PocketConnector.validate(url.trim(), key.trim())
-    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Rotom AI TCG Pocket")
+    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "TCG Lab")
     withContext(Dispatchers.IO) { connectorStore.save(config) }
     connectorConfig.value = config
     connectorProposals.value = emptyList()
