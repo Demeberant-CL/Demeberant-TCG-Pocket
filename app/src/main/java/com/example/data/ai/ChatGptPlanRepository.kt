@@ -99,7 +99,7 @@ private fun okhttp3.Response.toChatGptPlanFailure(): ChatGptPlanHttpFailure {
     ?.replace(Regex("[\\r\\n\\t]+"), " ")?.take(300)
   val code = error?.optString("code")?.takeIf { it.isNotBlank() && it != "null" }
   val requestId = header("x-request-id")?.take(100)
-  val reason = when (code) {
+  val reason = when (this.code) {
     "subscription_sharing_user_not_eligible" -> "La cuenta, el espacio de trabajo o la política no permite usar el plan en esta app."
     "subscription_sharing_usage_limit_exceeded" -> "Se alcanzó el límite de uso del plan para esta app."
     "subscription_sharing_usage_unavailable" -> "OpenAI no pudo comprobar el uso del plan. Inténtalo más tarde."
@@ -114,11 +114,11 @@ private fun okhttp3.Response.toChatGptPlanFailure(): ChatGptPlanHttpFailure {
     }
   }
   val diagnostic = buildList {
-    add("HTTP $code")
+    add("HTTP ${this.code}")
     code?.let { add("código $it") }
     requestId?.let { add("ID $it") }
   }.joinToString(" · ")
-  return ChatGptPlanHttpFailure(code, code, requestId,
+  return ChatGptPlanHttpFailure(this.code, code, requestId,
     listOf(reason, diagnostic, detail).filterNotNull().joinToString(" — "))
 }
 
