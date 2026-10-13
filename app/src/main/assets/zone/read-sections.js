@@ -62,6 +62,8 @@
         state.sections.push({name:label, status:selected && body ? 'read' : selected ? 'empty' : 'unavailable', text:body});
         await wait(180);
       }
+      const current = document.querySelector('[aria-current="page"]')?.innerText || '';
+      if (normalize(current) !== 'home' && await openMenu()) await clickSection('Home');
     } catch (error) {
       state.error = String(error && error.name || 'read_error');
     } finally {
