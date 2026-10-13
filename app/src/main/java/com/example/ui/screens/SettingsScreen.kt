@@ -72,23 +72,6 @@ fun SettingsScreen(
               }
             }
           }
-          Text("Diseño de la app", style = MaterialTheme.typography.titleLarge)
-          Text("Cambia la distribución, las portadas y las formas. Puedes combinar cada diseño con cualquier tema.", style = MaterialTheme.typography.bodySmall)
-          com.example.data.preferences.VisualStyle.entries.forEach { style ->
-            OutlinedCard(onClick = { onVisualStyleChange(style) }, modifier = Modifier.fillMaxWidth(),
-              border = androidx.compose.foundation.BorderStroke(if (visualStyle == style) 2.dp else 1.dp,
-                if (visualStyle == style) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
-              Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = visualStyle == style, onClick = null)
-                Column(Modifier.weight(1f)) {
-                  Text(style.label, style = MaterialTheme.typography.titleMedium)
-                  Text(style.description, style = MaterialTheme.typography.bodySmall)
-                  Spacer(Modifier.height(8.dp))
-                  DesignMiniature(style)
-                }
-              }
-            }
-          }
           content()
           com.example.ui.components.AppVersionLabel(Modifier.padding(vertical = 8.dp))
         }
