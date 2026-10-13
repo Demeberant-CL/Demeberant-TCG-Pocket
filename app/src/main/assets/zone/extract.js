@@ -81,7 +81,7 @@
     visibleHeading: text(root.querySelector('h1'), 180),
     visibleFields: metadata.fields,
     visibleMissions: metadata.missions,
-    visibleSummary: metadata.lines.join('\n').slice(0, 6000),
+    visibleSummary: fast ? '' : metadata.lines.join('\n').slice(0, 6000),
     visibleCards: cards,
     collectionComplete: false
   });
