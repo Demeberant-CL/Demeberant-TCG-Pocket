@@ -9,24 +9,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.Style
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -38,16 +23,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.screens.CollectionScreen
 import com.example.ui.theme.PocketAppTheme
 import com.example.ui.theme.PocketSurface
-import com.example.ui.theme.PocketTextSecondary
 import com.example.ui.viewmodel.TcgViewModel
 
 class MainActivity : ComponentActivity() {
@@ -100,54 +80,20 @@ class MainActivity : ComponentActivity() {
           dismissButton = { androidx.compose.material3.TextButton(onClick = { showExitConfirmation = false }) { Text("Continuar") } }
         )
 
-        val destinations = listOf(0, 1, 2, 4, 6)
-        val labels = listOf("Inicio", "Cartas", "Mazos", "Juego", "Ajustes")
-        val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
-          Icons.Filled.Menu, Icons.Filled.Settings)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
-          bottomBar = {
-            if (selectedTabIndex != 0 && !(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
-            val density = LocalDensity.current
-            val displayLabels = if (density.fontScale >= 1.3f) listOf("Inicio", "Cartas", "Mazos", "Juego", "Ajustes") else labels
-            val textMeasurer = rememberTextMeasurer()
-            val widestLabel = displayLabels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelMedium).size.width }
-            val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 12.dp)
-            val navigationScroll = rememberScrollState()
-            val activeIndex = destinations.indexOf(if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex).coerceAtLeast(0)
-            LaunchedEffect(activeIndex, itemWidth, maxWidth) {
-              val target = with(density) { (itemWidth * activeIndex - (maxWidth - itemWidth) / 2).roundToPx() }
-              navigationScroll.animateScrollTo(target.coerceAtLeast(0))
-            }
-            NavigationBar(containerColor = PocketSurface, modifier = Modifier.horizontalScroll(navigationScroll)
-              .width(itemWidth * labels.size).heightIn(min = (72f + 28f * (density.fontScale - 1f).coerceAtLeast(0f)).dp)
-              .testTag("main_bottom_nav")) {
-              labels.forEachIndexed { position, label ->
-                val index = destinations[position]
-                NavigationBarItem(
-                  selected = selectedTabIndex == index || (selectedTabIndex == 5 && index == metaReturnTab),
-                  onClick = {
-                    if (selectedTabIndex != index) {
-                      if (index == 2) deckEditorRequest = 0
-                      if (index == 4) moreSection = -1
-                      navigateTo(index)
-                    }
-                  },
-                  icon = { Icon(icons[position], contentDescription = label, modifier = Modifier.size(24.dp)) },
-                  label = { Text(displayLabels[position], style = androidx.compose.material3.MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
-                  colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
-                    unselectedIconColor = PocketTextSecondary,
-                    unselectedTextColor = PocketTextSecondary
-                  ),
-                  modifier = Modifier.testTag("nav_item_$index")
-                )
+          topBar = {
+            if (selectedTabIndex != 0) {
+              androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxWidth().background(PocketSurface),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+              ) {
+                androidx.compose.material3.TextButton(onClick = { navigation = listOf(0) }) {
+                  Text("← TCG Lab")
+                }
               }
             }
-            }
-          }
+          },
         ) { innerPadding ->
           val screenModifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
           screenStates.SaveableStateProvider(selectedTabIndex) {
