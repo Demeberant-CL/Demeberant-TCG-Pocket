@@ -54,7 +54,6 @@ fun HomeScreen(
       }
     }.sortedBy { it.second }
   }
-  val openSavedDeck = com.example.ui.components.rememberSavedDeckOpener(main, onEditor)
   var reading by remember { mutableStateOf<com.example.data.repository.CardWithInventory?>(null) }
   reading?.let { entry ->
     CardDetailsDialog(entry, "es", { reading = null }, { main.setQuantity(entry.card.id, it) }, { main.toggleWishlist(entry.card.id) })
@@ -106,7 +105,7 @@ fun HomeScreen(
       TextButton(onClick = { onCollection(null) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("Ver todas") }
     }
 
-    Row(Modifier.fillMaxWidth().height(imageHeight + if (compact) 38.dp else 42.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
+    Row(Modifier.fillMaxWidth().height(imageHeight + if (compact) 50.dp else 58.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
       if (showcase.isEmpty()) {
         OutlinedCard(onClick = { onCollection(null) }, modifier = Modifier.fillMaxSize()) {
           Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.CenterStart) {
