@@ -54,6 +54,7 @@ public final class ZoneSyncActivity extends Activity {
     private int profileCaptureAttempts;
     private boolean sectionReadStarted, sectionReadDone;
     private String profileSectionsSummary = "";
+    private int sectionPageGeneration, sectionInjectedGeneration = -1;
     private String pendingExport;
     private int generation;
     private int syncPhase, syncFlowId;
@@ -308,9 +309,11 @@ public final class ZoneSyncActivity extends Activity {
                 if (checkpointScan != null) checkpointScan.run();
                 cancelScan = null; checkpointScan = null;
                 if (interruptedScan) { syncSucceeded = false; setRunning(false); }
+                sectionPageGeneration++;
                 if (syncPhase != 0) {
+                    boolean sectionNavigation = sectionReadStarted && ZoneUrl.belongsTo(pageUrl, syncProfile);
                     String expected = syncPhase >= 3 ? syncProfile + "cards/" : syncProfile;
-                    if (!expected.equals(pageUrl)) cancelSync("La navegación interrumpió la sincronización.");
+                    if (!sectionNavigation && !expected.equals(pageUrl)) cancelSync("La navegación interrumpió la sincronización.");
                 }
                 if (syncPhase == 0) ScanService.end(ZoneSyncActivity.this);
                 generation++; loaded = false; pageFailed = false; readButton.setEnabled(false);
@@ -326,6 +329,12 @@ public final class ZoneSyncActivity extends Activity {
                 status.setText(loaded ? "Perfil abierto. Puedes leer los datos visibles o sincronizar la colección." : "Cuenta abierta. Inicia sesión y vuelve al perfil para leer sus datos.");
                 handler.removeCallbacks(probeLoop);
                 if (trace.isRecording()) handler.post(probeLoop);
+                if (syncBrowser == view && syncPhase == 2 && sectionReadStarted && !sectionReadDone
+                        && sectionInjectedGeneration != sectionPageGeneration) {
+                    sectionInjectedGeneration = sectionPageGeneration;
+                    try { view.evaluateJavascript(asset("read-sections.js"), null); }
+                    catch (Exception ignored) { }
+                }
                 if (syncBrowser == view && syncPhase == 1 && syncProfile.equals(pageUrl) && loaded) {
                     syncPhase = 2;
                     status.setText("Sincronizando Pokémon Zone… Esperando confirmación.");
@@ -434,6 +443,9 @@ public final class ZoneSyncActivity extends Activity {
         syncPhase = 1; syncEvaluationPending = false; syncFlowId++;
         profileSnapshot = null; profileCaptureDone = false; profileCaptureAttempts = 0;
         sectionReadStarted = false; sectionReadDone = false; profileSectionsSummary = "";
+        sectionPageGeneration = 0; sectionInjectedGeneration = -1;
+        try { browser.evaluateJavascript("try{sessionStorage.removeItem('__tcgLabZoneSectionsState')}catch(e){}", null); }
+        catch (Exception ignored) { }
         syncDeadline = android.os.SystemClock.elapsedRealtime() + 120000;
         final int token = syncFlowId;
         try {
@@ -460,7 +472,7 @@ public final class ZoneSyncActivity extends Activity {
             if (syncPhase == 0 || syncBrowser != browser) return;
             if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en dos minutos. La colección no se ha leído."); return; }
             if (syncPhase == 2 && !syncEvaluationPending) {
-                if (!syncProfile.equals(browser.getUrl())) { cancelSync("La página cambió durante Sync."); return; }
+                if (!ZoneUrl.belongsTo(browser.getUrl(), syncProfile)) { cancelSync("La página cambió durante Sync."); return; }
                 if (!profileCaptureDone) {
                     syncEvaluationPending = true;
                     profileCaptureAttempts++;
@@ -496,6 +508,7 @@ public final class ZoneSyncActivity extends Activity {
                 if (!sectionReadStarted) {
                     sectionReadStarted = true;
                     try {
+                        sectionInjectedGeneration = sectionPageGeneration;
                         syncBrowser.evaluateJavascript(asset("read-sections.js"), result -> {
                             if (syncBrowser == browser && syncPhase == 2 && status != null)
                                 status.setText("Abriendo y leyendo cada sección del perfil…");
