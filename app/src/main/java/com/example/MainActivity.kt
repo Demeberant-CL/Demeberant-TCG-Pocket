@@ -156,7 +156,7 @@ class MainActivity : ComponentActivity() {
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
               ) {
                 TextButton(onClick = { returnToHome() }) { Text("← TCG Lab") }
-                Text("Vista rápida", color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(when (selectedPanel) {\n                  1 -> "Colección"\n                  2 -> "Mazos"\n                  3 -> "ChatGPT"\n                  4 -> "Herramientas"\n                  5 -> "Meta"\n                  6 -> "Ajustes"\n                  else -> "TCG Lab"\n                }, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
               }
               screenStates.SaveableStateProvider(selectedPanel) {
                 val panelModifier = Modifier.weight(1f)
