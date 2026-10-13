@@ -75,18 +75,14 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("Asistente IA", style = MaterialTheme.typography.titleLarge)
-      QuickAiSwitch(model, chatGptConnected = planAccount != null, chatGptSelected = useChatGptPlan,
-        onSelectChatGpt = { model.setChatGptPlanPreferred(true) })
       com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
           Column(Modifier.weight(1f)) {
             if (!ready) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
-              else if (connection.apiKey.isBlank()) "Configura tu conexión IA" else connection.label,
+            Text(if (planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
+              else "Conecta tu cuenta de ChatGPT",
               style = MaterialTheme.typography.titleSmall)
-            if (useChatGptPlan && planModel.isNotBlank()) Text(planModel,
-              style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else if (connection.apiKey.isNotBlank()) Text("${connection.provider.label} · ${connection.model}",
+            if (planAccount != null && planModel.isNotBlank()) Text(planModel,
               style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
           OutlinedButton(enabled = ready && !busy, onClick = { configure = true }, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
@@ -149,8 +145,7 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
           }
         }
       }
-      val canAsk = if (useChatGptPlan) planAccount?.canUsePlan == true && planModel.isNotBlank()
-        else connection.apiKey.isNotBlank()
+      val canAsk = planAccount?.canUsePlan == true && planModel.isNotBlank()
       Button(enabled = ready && !busy && canAsk && action.canUse(deck?.totalCardCount),
         onClick = { confirmSend = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("${action.label} con IA") }
 
@@ -180,91 +175,41 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
   if (configure) Dialog(onDismissRequest = { configure = false },
     properties = DialogProperties(usePlatformDefaultWidth = false)) {
     Card(Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 620.dp)) {
-      LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Conexiones y modelos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text("Conexión ChatGPT", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { configure = false }) { Text("Cerrar") }
           }
-          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(profiles.entries, key = { it.id }) { saved ->
-              FilterChip(selected = saved.id == connection.id, enabled = !busy,
-                onClick = { model.selectConnection(saved.id) }, label = { Text(saved.label) })
-            }
-          }
-          OutlinedButton(enabled = !busy, onClick = {
-            profileId = java.util.UUID.randomUUID().toString(); profileName = provider.label
-            modelName = provider.defaultModel; url = ""; apiKey = ""; model.availableModels.value = emptyList()
-          }, shape = MaterialTheme.shapes.medium) { Text("Añadir proveedor API") }
           Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-              Text("Plan ChatGPT · sin clave API", style = MaterialTheme.typography.titleSmall)
+              Text("Usa ChatGPT con tu cuenta, sin clave API", style = MaterialTheme.typography.titleSmall)
+              Text("Conectas tu cuenta de ChatGPT desde este teléfono. Las consultas usan los límites y el acceso de esa cuenta.")
               if (planAccount == null) {
-                Text("Conecta tu cuenta desde este teléfono. Las consultas se envían directamente a OpenAI y usan los límites de tu plan.")
                 OutlinedButton(enabled = !busy, onClick = {
                   (context as? android.app.Activity)?.let(model::connectChatGptPlan)
-                    ?: run { model.message.value = "Abre Rotom en el teléfono para iniciar sesión con ChatGPT." }
-                }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar con ChatGPT") }
+                    ?: run { model.message.value = "Abre TCG Lab en el teléfono para iniciar sesión con ChatGPT." }
+                }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Conectar ChatGPT") }
               } else {
-                Text("Conectado como ${planAccount?.email?.ifBlank { "cuenta ChatGPT" } ?: "cuenta ChatGPT"}. Credenciales cifradas en este teléfono.")
+                Text("Conectado como ${planAccount?.email?.ifBlank { "cuenta ChatGPT" } ?: "cuenta ChatGPT"}. La sesión se guarda cifrada en este teléfono.")
                 OutlinedButton(enabled = !busy, onClick = model::discoverChatGptPlanModels,
-                  modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Buscar modelos disponibles") }
+                  modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Actualizar modelos") }
                 if (planModels.isNotEmpty()) {
-                  Text("Elige el modelo que usará Rotom:")
+                  Text("Modelo para las consultas:")
                   LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(planModels, key = { it.slug }) { value ->
                       FilterChip(selected = value.slug == planModel, enabled = !busy,
                         onClick = { model.selectChatGptPlanModel(value.slug) }, label = { Text(value.displayName) })
                     }
                   }
+                } else {
+                  Text("Aún no hay modelos cargados. Pulsa “Actualizar modelos”.", style = MaterialTheme.typography.bodySmall)
                 }
                 TextButton(enabled = !busy, onClick = model::disconnectChatGptPlan) { Text("Desconectar ChatGPT") }
               }
             }
           }
-          OutlinedTextField(profileName, { profileName = it.take(60) }, label = { Text("Nombre de conexión") }, modifier = Modifier.fillMaxWidth())
-          FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          com.example.data.ai.AiProvider.entries.forEach { value ->
-            FilterChip(selected = provider == value, enabled = !busy, onClick = {
-              if (provider != value) {
-                provider = value; modelName = value.defaultModel; apiKey = ""; url = ""
-                profileId = java.util.UUID.randomUUID().toString(); profileName = value.label; model.availableModels.value = emptyList()
-              }
-            }, label = { Text(value.label) })
-          }
-          }
-          OutlinedTextField(apiKey, { if (it.length <= 4096) apiKey = it.trim() }, label = { Text("Tu clave API") },
-            visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-          OutlinedTextField(modelName, { if (it.length <= 120) modelName = it.trim() }, label = { Text("Modelo") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-          if (provider == com.example.data.ai.AiProvider.COMPATIBLE) {
-            OutlinedTextField(url, { if (it.length <= 2000) url = it.trim() }, label = { Text("URL HTTPS completa de chat/completions") }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            Text("Solo APIs compatibles con Chat Completions. No todos los proveedores usan este formato; recibirán tus cartas y tu clave.")
-          }
-          Text(if (provider == com.example.data.ai.AiProvider.GEMINI)
-            "Gemini tiene cuotas gratuitas según modelo y cuenta. Si activaste facturación, puede cobrar. En el nivel gratuito Google puede usar el contenido para mejorar sus productos."
-            else if (provider == com.example.data.ai.AiProvider.OPENAI) "OpenAI API se factura por separado. Tu plan ChatGPT Plus o Pro no incluye uso de API."
-            else "La disponibilidad, cuota y coste dependen del modelo y de tu cuenta. Revisa tu proveedor antes de consultar.")
-          Text("La clave se cifra en este teléfono y no se incluye en diagnósticos ni respaldos. No uses una clave compartida para todos los usuarios.")
-          if (provider.keysUrl.isNotBlank()) TextButton(onClick = {
-            val link = provider.keysUrl
-            try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))) }
-            catch (_: Exception) { model.message.value = "Abre la página de claves del proveedor en tu navegador." }
-          }) { Text("Obtener mi clave API") }
-          Button(enabled = !busy && apiKey.isNotBlank() && modelName.isNotBlank() &&
-            (provider != com.example.data.ai.AiProvider.COMPATIBLE || url.isNotBlank()), onClick = {
-              model.saveConnection(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName.ifBlank { provider.label }))
-          }, shape = MaterialTheme.shapes.medium) { Text("Guardar conexión") }
-          OutlinedButton(enabled = !busy && apiKey.isNotBlank(), onClick = {
-            model.discoverModels(com.example.data.ai.AiConnection(provider, modelName, apiKey, url, profileId, profileName))
-          }, shape = MaterialTheme.shapes.medium) { Text("Buscar modelos compatibles") }
-          Text("La lista filtra compatibilidad de texto, no garantiza cuota o acceso. Si tu API no declara capacidades, usa el identificador manual indicado por el proveedor.", style = MaterialTheme.typography.bodySmall)
-          LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(models) { name -> FilterChip(selected = name == modelName, onClick = { modelName = name }, label = { Text(name) }) }
-          }
-          if (profileId == connection.id && profiles.entries.any { it.id == profileId })
-            TextButton(enabled = !busy, onClick = { confirmDelete = true }) { Text("Eliminar esta conexión") }
           AdvancedStatus(model)
-
         }
       }
     }
