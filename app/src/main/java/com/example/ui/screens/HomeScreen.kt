@@ -29,7 +29,6 @@ fun HomeScreen(
   onEditor: () -> Unit,
   onCreate: () -> Unit,
   onMeta: () -> Unit,
-  onTrade: () -> Unit,
   onCollection: (String?) -> Unit,
   onTools: () -> Unit,
   onZoneSync: () -> Unit = { onCollection(null) },
