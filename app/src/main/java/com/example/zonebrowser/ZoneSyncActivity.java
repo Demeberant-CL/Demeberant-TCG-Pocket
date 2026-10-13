@@ -205,6 +205,7 @@ public final class ZoneSyncActivity extends Activity {
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         content.addView(status);
         readButton = button("Leer perfil y misiones", this::readPage);
+        readButton.setEnabled(false);
         syncButton = button("Sincronizar colección", this::syncAndRead);
         accountButton = button("Conectar cuenta", () -> {
             autoStart = false;
@@ -217,6 +218,7 @@ public final class ZoneSyncActivity extends Activity {
             setRunning(false);
         });
         closeButton = button("Volver", () -> { if (!importing) finish(); });
+        cancelButton.setEnabled(false);
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.VERTICAL);
         controls.addView(syncButton);
@@ -315,7 +317,7 @@ public final class ZoneSyncActivity extends Activity {
                 adoptProfile(pageUrl);
                 loaded = !pageFailed && ZoneUrl.belongsTo(pageUrl, profileUrl);
                 trace.add("page_end", pageUrl, 0);
-                readButton.setEnabled(loaded);
+                readButton.setEnabled(loaded && syncPhase == 0 && !importing);
                 status.setText(loaded ? "Perfil abierto. Puedes leer los datos visibles o sincronizar la colección." : "Cuenta abierta. Inicia sesión y vuelve al perfil para leer sus datos.");
                 handler.removeCallbacks(probeLoop);
                 if (trace.isRecording()) handler.post(probeLoop);
