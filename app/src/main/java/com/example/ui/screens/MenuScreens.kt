@@ -46,26 +46,39 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
       appliedEditorRequest = editorRequest
     }
   }
-  BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
+  BackHandler(enabled = section != 0) { section = when (section) { 4, 5 -> 3; else -> 0 } }
   LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
-    if (section == 3) {
-      TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
-    } else if (section == 2 || section == 6) {
-      TextButton(onClick = { section = 3 }) { Text("← Crear mazo") }
+    if (section == 3 || section == 5) {
+      TextButton(onClick = { section = if (section == 5) 3 else 0 }) { Text(if (section == 5) "← Crear con ChatGPT" else "← Mis mazos") }
     }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
       1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onBack = { section = 0 })
-      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, onTemplates = { section = 2 }, onLocal = { section = 6 }, modifier = Modifier.weight(1f))
-      6 -> LocalDeckPlannerScreen(viewModel, { section = 1 }, Modifier.weight(1f))
-      4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
-        { section = 5 }, Modifier.weight(1f), creating = true)
-      5 -> Column(Modifier.weight(1f)) {
-        TextButton(onClick = { section = 4 }) { Text("← Crear con IA") }
-        AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
-      }
-      else -> MetaDeckAnalyzerScreen(viewModel, { name -> viewModel.generateDeck(name); section = 1 }, Modifier.weight(1f))
+      3 -> CreateDeckScreen(
+        main = viewModel,
+        advanced = advanced,
+        onAi = {
+          viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }
+          section = 4
+        },
+        onContinue = {
+          viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }
+          section = 4
+        },
+        onConnect = { section = 5 },
+        modifier = Modifier.weight(1f),
+      )
+      4 -> DeckChatScreen(
+        viewModel,
+        advanced,
+        onBack = { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
+        onConnections = { section = 5 },
+        modifier = Modifier.weight(1f),
+        creating = viewModel.generatedDeck.value?.cards?.isNotEmpty() != true,
+      )
+      5 -> AIAssistantScreen(viewModel, advanced, { section = 3 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
+      else -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
     }
   }
 }
