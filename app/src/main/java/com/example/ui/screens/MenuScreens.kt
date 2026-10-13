@@ -53,7 +53,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0, onDetailChange: (Boolean) -> Unit = {}) {
+fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
   var section by rememberSaveable { mutableIntStateOf(when { editorRequest < 0 -> 3; editorRequest > 0 -> 1; else -> 0 }) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
@@ -63,7 +63,7 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
     }
   }
   BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
-  LaunchedEffect(section) { onDetailChange(section != 0); com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
+  LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
     if (section == 3) {
       TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
@@ -82,99 +82,6 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
         AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
       }
       else -> MetaDeckAnalyzerScreen(viewModel, { name -> viewModel.generateDeck(name); section = 1 }, Modifier.weight(1f))
-    }
-  }
-}
-
-@Composable
-fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
-  val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
-  var section by rememberSaveable { mutableIntStateOf(0) }
-  BackHandler(enabled = section != 0) { section = 0 }
-  var reserveTwo by rememberSaveable { mutableStateOf(true) }
-  var copied by remember { mutableStateOf(false) }
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
-  var peer by remember { mutableStateOf<List<ParsedCsvCard>?>(null) }
-  var comparisonError by remember { mutableStateOf<String?>(null) }
-  val peerPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-    if (uri != null) scope.launch {
-      try {
-        peer = withContext(Dispatchers.IO) {
-          val text = context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
-            ?: error("No se pudo abrir el CSV.")
-          CollectionCsv.parse(text)
-        }
-        comparisonError = null
-      } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { comparisonError = "No se pudo comparar: ${e.localizedMessage}" }
-    }
-  }
-  val reserve = if (reserveTwo) 2 else 1
-  val proposals = remember(inventory, peer, reserve) { peer?.let { TradePlanner.compare(inventory, it, reserve) } ?: emptyList() }
-  val cards = if (section == 0) inventory.filter { it.ownedCount > reserve }
-    else inventory.filter { it.isWishlist }
-  val title = if (section == 0) "Disponibles para ofrecer" else "Cartas que busco"
-  Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Para ofrecer", "Deseos"), section) { section = it; copied = false }
-    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      item {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text("Organiza tus propuestas. Comprueba en el juego si cada carta se puede canjear.",
-          color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-      if (section == 0) item {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          Text("Reservar dos copias", modifier = Modifier.weight(1f).padding(top = 12.dp))
-          Switch(checked = reserveTwo, onCheckedChange = { reserveTwo = it; copied = false })
-        }
-        Text("Se muestran las copias que sobran después de reservar $reserve. No se descuenta ninguna carta.")
-      }
-      item {
-        OutlinedButton(enabled = cards.isNotEmpty(), onClick = {
-          val text = title + "\n" + cards.joinToString("\n") { item ->
-            val quantity = if (section == 0) " x${item.ownedCount - reserve}" else ""
-            "${item.card.id} · ${item.card.name}$quantity"
-          }
-          (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-            .setPrimaryClip(ClipData.newPlainText(title, text))
-          copied = true
-        }, shape = MaterialTheme.shapes.medium) { Text(if (copied) "Lista copiada" else "Copiar lista") }
-      }
-      if (section == 0) item {
-        OutlinedButton(onClick = { peerPicker.launch("*/*") }, shape = MaterialTheme.shapes.medium) { Text("Comparar otro CSV") }
-        comparisonError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        peer?.let { other ->
-          Text("Comparación de ${other.size} registros. El CSV ajeno no se guarda en tu colección.")
-          Text("Se proponen cartas de la misma rareza. Solo se considera faltante del otro usuario una cantidad cero explícita. Comprueba la elegibilidad y coste en el juego.")
-          if (proposals.isEmpty()) Text("No hay propuestas recíprocas con esta reserva.")
-        }
-      }
-      if (section == 0) items(proposals, key = { it.rarity.name }) { proposal ->
-        Card(Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(14.dp)) {
-            Text("Rareza ${proposal.rarity.symbol}", style = MaterialTheme.typography.titleMedium)
-            Text("Puedes ofrecer: " + proposal.offer.take(15).joinToString { "${it.card.id} ${it.card.name}" })
-            Text("Puedes pedir: " + proposal.request.take(15).joinToString { "${it.card.id} ${it.card.name}" })
-            if (proposal.offer.size > 15 || proposal.request.size > 15) Text("Se muestran hasta 15 cartas por lado.")
-          }
-        }
-      }
-      if (cards.isEmpty()) item {
-        Text(if (section == 0) "No tienes copias sobrantes con esta reserva."
-          else "Marca cartas en Deseos desde Colección para verlas aquí.")
-      }
-      items(cards, key = { it.card.id }) { item ->
-        Card(Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(14.dp)) {
-            Text(item.card.name, style = MaterialTheme.typography.titleMedium)
-            Text("${item.card.id} · ${item.card.rarity.displayName}")
-            Text(if (section == 0) "${item.ownedCount - reserve} disponibles · ${item.ownedCount} en colección"
-              else "${item.ownedCount} en colección")
-          }
-        }
-      }
     }
   }
 }
