@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -24,8 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.screens.CollectionScreen
 import com.example.ui.theme.PocketAppTheme
@@ -61,7 +58,6 @@ class MainActivity : ComponentActivity() {
           showExitConfirmation = false
           navigation = com.example.ui.AppNavigation.open(navigation, destination)
         }
-        var deckDetail by rememberSaveable { mutableStateOf(false) }
         var deckEditorRequest by rememberSaveable { mutableIntStateOf(0) }
         var moreSection by rememberSaveable { mutableIntStateOf(-1) }
         var metaReturnTab by rememberSaveable { mutableIntStateOf(0) }
@@ -105,14 +101,13 @@ class MainActivity : ComponentActivity() {
               onEditor = { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) },
               onCreate = { deckEditorRequest = -kotlin.math.abs(deckEditorRequest) - 1; navigateTo(2) },
               onMeta = { metaReturnTab = 0; navigateTo(5) },
-              onTrade = { screenStates.removeState(4); moreSection = 2; navigateTo(4) },
               onTools = { screenStates.removeState(4); moreSection = -1; navigateTo(4) },
               onCollection = { expansion -> viewModel.setExpansionFilter(expansion); screenStates.removeState(1); navigateTo(1) },
               onZoneSync = { startActivity(android.content.Intent(this@MainActivity, com.example.zonebrowser.ZoneSyncActivity::class.java)) },
               onAiSettings = { navigateTo(3) },
               onSettings = { navigateTo(6) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
-            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
+            2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest)
             3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
               androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Herramientas del juego" else "← Inicio") }
