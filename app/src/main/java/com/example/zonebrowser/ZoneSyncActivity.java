@@ -603,7 +603,7 @@ public final class ZoneSyncActivity extends Activity {
                     String profileSummary = profileSnapshot.optString("visibleSummary", "");
                     String cardsSummary = value.optString("visibleSummary", "");
                     String combinedSummary = (profileSummary + "\n" + profileSectionsSummary + "\n" + cardsSummary).trim();
-                    if (!combinedSummary.isEmpty()) value.put("visibleSummary", combinedSummary.substring(0, Math.min(6000, combinedSummary.length())));
+                    if (!combinedSummary.isEmpty()) value.put("visibleSummary", combinedSummary.substring(0, Math.min(40000, combinedSummary.length())));
                     JSONArray profileFields = profileSnapshot.optJSONArray("visibleFields");
                     JSONArray profileMissions = profileSnapshot.optJSONArray("visibleMissions");
                     if (profileFields != null && profileFields.length() > 0) value.put("visibleFields", profileFields);
