@@ -202,10 +202,11 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexiones IA", "Cartas sin conexión", "Rotom AI · Conector")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Diseños, colores, colección, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español", "Comparte tu colección y recibe propuestas")
+  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexión ChatGPT", "Cartas sin conexión")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Tema, colección, respaldos y sincronización", "Vincula ChatGPT y elige un modelo", "Descarga imágenes en español")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport,
+    Icons.Filled.Settings, Icons.Filled.Settings, Icons.Filled.CardGiftcard)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text(if (settingsMenu) "Ajustes" else "Herramientas del juego", style = MaterialTheme.typography.headlineMedium) }
@@ -249,7 +250,6 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
           MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }
           ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = calculation == 1, packsOnly = calculation == 0)
         }
-        11 -> PocketConnectorScreen(main, advanced, Modifier.weight(1f))
         10 -> OfflineImagesScreen(Modifier.weight(1f))
         9 -> AIAssistantScreen(main, advanced, {}, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
         else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))
