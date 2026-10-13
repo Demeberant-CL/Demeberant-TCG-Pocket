@@ -49,6 +49,9 @@ public final class ZoneSyncActivity extends Activity {
     private boolean autoStart, syncSucceeded, importing;
     private String profileUrl;
     private JSONObject preview;
+    private JSONObject profileSnapshot;
+    private boolean profileCaptureDone;
+    private int profileCaptureAttempts;
     private String pendingExport;
     private int generation;
     private int syncPhase, syncFlowId;
@@ -427,6 +430,7 @@ public final class ZoneSyncActivity extends Activity {
         autoStart = false; syncSucceeded = false; setRunning(true);
         syncBrowser = browser; syncProfile = profileUrl;
         syncPhase = 1; syncEvaluationPending = false; syncFlowId++;
+        profileSnapshot = null; profileCaptureDone = false; profileCaptureAttempts = 0;
         syncDeadline = android.os.SystemClock.elapsedRealtime() + 120000;
         final int token = syncFlowId;
         try {
@@ -445,7 +449,7 @@ public final class ZoneSyncActivity extends Activity {
         handler.removeCallbacks(syncPoll); ScanService.end(this);
         syncSucceeded = false; setRunning(false);
         if (status != null) status.setText(reason);
-        trace.add("read_error", null, 0); saveTrace();
+        trace.add("sync_cancel", null, 0); saveTrace();
     }
 
     private final Runnable syncPoll = new Runnable() {
@@ -454,6 +458,38 @@ public final class ZoneSyncActivity extends Activity {
             if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en dos minutos. La colección no se ha leído."); return; }
             if (syncPhase == 2 && !syncEvaluationPending) {
                 if (!syncProfile.equals(browser.getUrl())) { cancelSync("La página cambió durante Sync."); return; }
+                if (!profileCaptureDone) {
+                    syncEvaluationPending = true;
+                    profileCaptureAttempts++;
+                    final int captureToken = syncFlowId;
+                    try {
+                        syncBrowser.evaluateJavascript(asset("extract.js"), result -> {
+                            if (captureToken != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                            boolean retry = false;
+                            try {
+                                Object decoded = result == null ? null : new JSONTokener(result).nextValue();
+                                if (!(decoded instanceof String)) throw new IllegalArgumentException();
+                                String json = (String) decoded;
+                                JSONObject raw = new JSONObject(json);
+                                String error = raw.optString("error");
+                                if ("loading".equals(error) && profileCaptureAttempts < 10) {
+                                    retry = true;
+                                } else {
+                                    if (error.isEmpty()) profileSnapshot = Preview.validate(json, syncProfile);
+                                    profileCaptureDone = true;
+                                }
+                            } catch (Exception ignored) {
+                                profileCaptureDone = true;
+                            }
+                            syncEvaluationPending = false;
+                            if (retry && status != null) status.setText("Leyendo estadísticas visibles del perfil…");
+                        });
+                    } catch (Exception e) {
+                        syncEvaluationPending = false;
+                        profileCaptureDone = true;
+                    }
+                    return;
+                }
                 syncEvaluationPending = true;
                 final int token = syncFlowId;
                 try {
@@ -514,6 +550,16 @@ public final class ZoneSyncActivity extends Activity {
                 if (last == null) return;
                 JSONObject value = new JSONObject(last.toString());
                 value.put("visibleCards", new JSONArray(accumulated.values()));
+                if (profileSnapshot != null) {
+                    String profileSummary = profileSnapshot.optString("visibleSummary", "");
+                    String cardsSummary = value.optString("visibleSummary", "");
+                    String combinedSummary = (profileSummary + "\n" + cardsSummary).trim();
+                    if (!combinedSummary.isEmpty()) value.put("visibleSummary", combinedSummary.substring(0, Math.min(6000, combinedSummary.length())));
+                    JSONArray profileFields = profileSnapshot.optJSONArray("visibleFields");
+                    JSONArray profileMissions = profileSnapshot.optJSONArray("visibleMissions");
+                    if (profileFields != null && profileFields.length() > 0) value.put("visibleFields", profileFields);
+                    if (profileMissions != null && profileMissions.length() > 0) value.put("visibleMissions", profileMissions);
+                }
                 value.put("readAt", Instant.now().toString());
                 value.put("collectionComplete", false);
                 value.put("scanReason", reason); value.put("scanRounds", rounds);
