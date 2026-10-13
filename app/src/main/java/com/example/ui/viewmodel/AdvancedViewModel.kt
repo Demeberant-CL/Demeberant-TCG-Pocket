@@ -190,6 +190,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   fun connectChatGptPlan(activity: android.app.Activity) = task("CHATGPT_SIGN_IN") {
     val account = chatGptPlanRepository.signIn(activity)
     chatGptPlanAccount.value = account
+    setChatGptPlanPreferred(true)
     chatGptPlanModels.value = emptyList()
     message.value = "Cuenta ChatGPT conectada. Cargando modelos disponibles…"
     try {
