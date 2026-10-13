@@ -464,7 +464,7 @@ fun CollectionScreen(
       visualStyle = userPreferences.visualStyle, onVisualStyleChange = viewModel::setVisualStyle,
       onDismiss = { showSettingsDialog = false; if (settingsOnly) onSettingsBack() }
     ) {
-          if (onAiConnections != null) OutlinedButton(onClick = onAiConnections, modifier = Modifier.fillMaxWidth()) { Text("Conexiones IA") }
+          if (onAiConnections != null) OutlinedButton(onClick = onAiConnections, modifier = Modifier.fillMaxWidth()) { Text("Conexión ChatGPT") }
           Text("Colección: importar y exportar", fontWeight = FontWeight.Bold)
           OutlinedButton(onClick = {
             if (!settingsOnly) showSettingsDialog = false
