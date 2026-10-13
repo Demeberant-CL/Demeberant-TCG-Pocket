@@ -36,7 +36,13 @@
       const dialog = document.querySelector('[role="dialog"]');
       if (dialog) option = findExact(label, dialog);
     }
-    if (!option) return false;
+    if (!option) {
+      const close = findExact('Close') || findExact('Cerrar');
+      if (close) close.click();
+      else document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true}));
+      await wait(150);
+      return false;
+    }
     option.click(); await wait(900); return true;
   };
   (async () => {
