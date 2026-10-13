@@ -16,11 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.preferences.VisualStyle
 import com.example.data.util.DeckCodec
-import com.example.data.util.TradeAdvisor
-import com.example.ui.components.AvatarPickerDialog
-import com.example.ui.components.ProfileAvatar
 import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
 
@@ -181,6 +177,12 @@ fun HomeScreen(
     }
 
     item {
+      OutlinedButton(onClick = onTools, modifier = Modifier.fillMaxWidth()) {
+        Text("Herramientas del juego")
+      }
+    }
+
+    item {
       Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -221,53 +223,5 @@ fun HomeScreen(
         TextButton(onClick = main::clearCsvStatusMessage) { Text("Cerrar") }
       }
     }
-  }
-}
-@Composable
-private fun HomeActionTile(title: String, detail: String, modifier: Modifier, onClick: () -> Unit) {
-  FilledTonalButton(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.large, contentPadding = PaddingValues(16.dp)) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text(title, style = MaterialTheme.typography.titleLarge)
-      Text(detail, style = MaterialTheme.typography.bodySmall)
-    }
-  }
-}
-
-@Composable
-private fun HomeQuickRow(title: String, detail: String, onClick: () -> Unit) {
-  Surface(onClick = onClick) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-      Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-      Text(detail, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-      Text(" ›")
-    }
-  }
-  HorizontalDivider()
-}
-
-@Composable
-internal fun DesignMiniature(style: VisualStyle) {
-  @Composable fun Block(modifier: Modifier) {
-    Surface(modifier, color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {}
-  }
-  when (style) {
-    VisualStyle.GALLERY -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(3) { Block(Modifier.weight(1f).height(72.dp)) } }
-    VisualStyle.EDITORIAL -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-      Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("ATLAS", style = MaterialTheme.typography.headlineLarge)
-        HorizontalDivider(thickness = 3.dp)
-        Text("Colección / Estrategia", style = MaterialTheme.typography.labelSmall)
-      }
-      Block(Modifier.width(50.dp).height(72.dp))
-    }
-    VisualStyle.COMPACT -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { repeat(4) { Block(Modifier.fillMaxWidth().height(12.dp)) } }
-    VisualStyle.DECISIONS -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { repeat(2) {
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { repeat(2) { Block(Modifier.weight(1f).height(28.dp)) } }
-    } }
-    VisualStyle.ALBUM -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { repeat(2) {
-      Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Block(Modifier.fillMaxWidth().height(60.dp)); LinearProgressIndicator(progress = { 0.6f }, modifier = Modifier.fillMaxWidth())
-      }
-    } }
   }
 }
