@@ -52,6 +52,8 @@ public final class ZoneSyncActivity extends Activity {
     private JSONObject profileSnapshot;
     private boolean profileCaptureDone;
     private int profileCaptureAttempts;
+    private boolean sectionReadStarted, sectionReadDone;
+    private String profileSectionsSummary = "";
     private String pendingExport;
     private int generation;
     private int syncPhase, syncFlowId;
@@ -431,6 +433,7 @@ public final class ZoneSyncActivity extends Activity {
         syncBrowser = browser; syncProfile = profileUrl;
         syncPhase = 1; syncEvaluationPending = false; syncFlowId++;
         profileSnapshot = null; profileCaptureDone = false; profileCaptureAttempts = 0;
+        sectionReadStarted = false; sectionReadDone = false; profileSectionsSummary = "";
         syncDeadline = android.os.SystemClock.elapsedRealtime() + 120000;
         final int token = syncFlowId;
         try {
@@ -488,6 +491,52 @@ public final class ZoneSyncActivity extends Activity {
                         syncEvaluationPending = false;
                         profileCaptureDone = true;
                     }
+                    return;
+                }
+                if (!sectionReadStarted) {
+                    sectionReadStarted = true;
+                    try {
+                        syncBrowser.evaluateJavascript(asset("read-sections.js"), result -> {
+                            if (syncBrowser == browser && syncPhase == 2 && status != null)
+                                status.setText("Abriendo y leyendo cada sección del perfil…");
+                        });
+                    } catch (Exception e) { sectionReadDone = true; profileSectionsSummary = "Lectura de secciones: no se pudo iniciar."; }
+                    return;
+                }
+                if (!sectionReadDone) {
+                    syncEvaluationPending = true;
+                    final int sectionsToken = syncFlowId;
+                    try {
+                        syncBrowser.evaluateJavascript("JSON.stringify(window.__tcgLabZoneSections || {})", result -> {
+                            if (sectionsToken != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                            syncEvaluationPending = false;
+                            try {
+                                Object decoded = result == null ? null : new JSONTokener(result).nextValue();
+                                JSONObject state = decoded instanceof String ? new JSONObject((String) decoded) : new JSONObject();
+                                JSONArray sections = state.optJSONArray("sections");
+                                if (sections != null) {
+                                    StringBuilder summary = new StringBuilder();
+                                    for (int i = 0; i < sections.length(); i++) {
+                                        JSONObject section = sections.optJSONObject(i);
+                                        if (section == null) continue;
+                                        String name = section.optString("name", "Sección");
+                                        String readStatus = section.optString("status", "unavailable");
+                                        summary.append("[Sección: ").append(name).append(" · ").append(readStatus).append("]\n");
+                                        String body = section.optString("text", "");
+                                        if (!body.isEmpty()) summary.append(body).append("\n");
+                                    }
+                                    profileSectionsSummary = summary.toString().trim();
+                                }
+                                if ("complete".equals(state.optString("status"))) {
+                                    sectionReadDone = true;
+                                    if (status != null) status.setText("Secciones del perfil recorridas. Confirmando Sync…");
+                                } else if (status != null) {
+                                    int index = state.optInt("index", 0) + 1;
+                                    status.setText("Leyendo sección " + index + " de 9…");
+                                }
+                            } catch (Exception ignored) { }
+                        });
+                    } catch (Exception e) { syncEvaluationPending = false; sectionReadDone = true; }
                     return;
                 }
                 syncEvaluationPending = true;
@@ -553,7 +602,7 @@ public final class ZoneSyncActivity extends Activity {
                 if (profileSnapshot != null) {
                     String profileSummary = profileSnapshot.optString("visibleSummary", "");
                     String cardsSummary = value.optString("visibleSummary", "");
-                    String combinedSummary = (profileSummary + "\n" + cardsSummary).trim();
+                    String combinedSummary = (profileSummary + "\n" + profileSectionsSummary + "\n" + cardsSummary).trim();
                     if (!combinedSummary.isEmpty()) value.put("visibleSummary", combinedSummary.substring(0, Math.min(6000, combinedSummary.length())));
                     JSONArray profileFields = profileSnapshot.optJSONArray("visibleFields");
                     JSONArray profileMissions = profileSnapshot.optJSONArray("visibleMissions");
