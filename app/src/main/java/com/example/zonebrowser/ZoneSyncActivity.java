@@ -201,9 +201,7 @@ public final class ZoneSyncActivity extends Activity {
         status = label("Cargando perfil…", 14);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         content.addView(status);
-        readButton = button("Leer", this::readPage); // Internal compatibility; not exposed in the normal flow.
-        HorizontalScrollView controls = new HorizontalScrollView(this);
-        LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); controls.addView(row);
+        readButton = button("Leer perfil y misiones", this::readPage);
         syncButton = button("Sincronizar colección", this::syncAndRead);
         accountButton = button("Conectar cuenta", () -> {
             autoStart = false;
@@ -216,8 +214,17 @@ public final class ZoneSyncActivity extends Activity {
             setRunning(false);
         });
         closeButton = button("Volver", () -> { if (!importing) finish(); });
-        row.addView(syncButton); row.addView(accountButton); row.addView(cancelButton); row.addView(closeButton);
-        row.addView(button("Copiar diagnóstico", () -> {
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.VERTICAL);
+        controls.addView(syncButton);
+        controls.addView(readButton);
+        controls.addView(accountButton);
+        LinearLayout secondary = new LinearLayout(this);
+        secondary.setOrientation(LinearLayout.HORIZONTAL);
+        secondary.addView(cancelButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        secondary.addView(closeButton, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        controls.addView(secondary);
+        controls.addView(button("Copiar diagnóstico", () -> {
             StringBuilder text = new StringBuilder("POCKET ZONE · PRUEBA " + versionName() + "\n");
             text.append(status.getText()).append("\nFase Sync: ").append(syncPhase).append("\n");
             try {
