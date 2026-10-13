@@ -70,7 +70,10 @@ fun AIAssistantScreen(main: TcgViewModel, model: AdvancedViewModel, onOpenDeck: 
     provider = connection.provider; apiKey = connection.apiKey
     modelName = connection.model; url = connection.endpoint
   }
-  LaunchedEffect(planAccount) { if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false) }
+  LaunchedEffect(planAccount) {
+    if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false)
+    else if (planAccount != null && !useChatGptPlan) model.setChatGptPlanPreferred(true)
+  }
   Column(modifier.fillMaxSize()) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp)) {
