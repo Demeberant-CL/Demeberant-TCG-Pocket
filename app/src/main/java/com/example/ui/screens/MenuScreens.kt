@@ -211,7 +211,7 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text(if (settingsMenu) "Ajustes" else "Herramientas del juego", style = MaterialTheme.typography.headlineMedium) }
       item { Text(if (settingsMenu) "Personaliza la app y administra tus datos." else "Todo para coleccionar, construir y practicar.", style = MaterialTheme.typography.bodyMedium) }
-      (if (settingsMenu) listOf("Personalización y datos" to listOf(8), "Servicios y almacenamiento" to listOf(9, 11, 10), "Soporte" to listOf(7))
+      (if (settingsMenu) listOf("Personalización y datos" to listOf(8), "Servicios y almacenamiento" to listOf(9, 10), "Soporte" to listOf(7))
         else listOf("Colección e intercambios" to listOf(2, 1, 5), "Partidas y aprendizaje" to listOf(3, 4, 0), "Competición" to listOf(6))).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
