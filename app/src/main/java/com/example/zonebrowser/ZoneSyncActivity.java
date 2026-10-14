@@ -545,7 +545,7 @@ public final class ZoneSyncActivity extends Activity {
                                     if (status != null) status.setText("Secciones del perfil recorridas. Confirmando Sync…");
                                 } else if (status != null) {
                                     int index = state.optInt("index", 0) + 1;
-                                    status.setText("Leyendo sección " + index + " de 10…");
+                                    status.setText("Leyendo sección " + index + " de 11…");
                                 }
                             } catch (Exception ignored) { }
                         });
