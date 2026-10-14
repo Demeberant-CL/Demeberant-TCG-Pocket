@@ -44,6 +44,11 @@ public class ZoneTest {
         assertTrue(ZoneUrl.belongsTo(URL + "cards/", URL));
         assertTrue(ZoneUrl.belongsTo(URL + "#stats", URL));
         assertTrue(ZoneUrl.belongsTo(URL + "stats/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "tools/what-to-open/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "tools/play-sets/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "theme-collections/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "themed-collections/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "wishlist/", URL));
         assertFalse(ZoneUrl.belongsTo(URL + "accounts/", URL));
         assertFalse(ZoneUrl.belongsTo("https://www.pokemon-zone.com/players/1234567890123456/", URL));
         assertFalse(ZoneUrl.belongsTo(URL + "?token=private", URL));
