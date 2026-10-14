@@ -329,7 +329,7 @@ public final class ZoneSyncActivity extends Activity {
                 status.setText(loaded ? "Perfil abierto. Puedes leer los datos visibles o sincronizar la colección." : "Cuenta abierta. Inicia sesión y vuelve al perfil para leer sus datos.");
                 handler.removeCallbacks(probeLoop);
                 if (trace.isRecording()) handler.post(probeLoop);
-                if (syncBrowser == view && syncPhase == 2 && sectionReadStarted && !sectionReadDone
+                if (syncBrowser == view && syncPhase == 5 && sectionReadStarted && !sectionReadDone
                         && sectionInjectedGeneration != sectionPageGeneration) {
                     sectionInjectedGeneration = sectionPageGeneration;
                     try { view.evaluateJavascript(asset("read-sections.js"), null); }
@@ -447,7 +447,7 @@ public final class ZoneSyncActivity extends Activity {
         try { browser.evaluateJavascript("try{sessionStorage.removeItem('__tcgLabZoneSectionsState')}catch(e){}", null); }
         catch (Exception ignored) { }
         // La lectura secuencial puede recorrer once secciones con hasta 15 s de espera cada una.
-        syncDeadline = android.os.SystemClock.elapsedRealtime() + 4 * 60 * 1000L;
+        syncDeadline = android.os.SystemClock.elapsedRealtime() + 12 * 60 * 1000L;
         final int token = syncFlowId;
         try {
             ScanService.begin(this, () -> {
@@ -471,16 +471,33 @@ public final class ZoneSyncActivity extends Activity {
     private final Runnable syncPoll = new Runnable() {
         @Override public void run() {
             if (syncPhase == 0 || syncBrowser != browser) return;
-            if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en cuatro minutos. La colección no se ha leído."); return; }
+            if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en doce minutos. La colección no se ha leído."); return; }
             if (syncPhase == 2 && !syncEvaluationPending) {
                 if (!ZoneUrl.belongsTo(browser.getUrl(), syncProfile)) { cancelSync("La página cambió durante Sync."); return; }
+                syncEvaluationPending = true;
+                final int token = syncFlowId;
+                try {
+                    syncBrowser.evaluateJavascript(asset("sync-probe.js") + ";" + asset("sync-control.js"), result -> {
+                        if (token != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                        syncEvaluationPending = false;
+                        if ("\"success\"".equals(result)) {
+                            syncSucceeded = true; syncPhase = 5;
+                            status.setText("Sincronización confirmada. Leyendo Pokémon Zone…");
+                        } else if ("\"failed\"".equals(result) || "\"blocked\"".equals(result)) {
+                            cancelSync("Sync no confirmó éxito. La colección no se ha leído.");
+                        }
+                    });
+                } catch (Exception e) { cancelSync("No se pudo comprobar el estado de Sync."); return; }
+            }
+            if (syncPhase == 5 && !syncEvaluationPending) {
+                if (!ZoneUrl.belongsTo(browser.getUrl(), syncProfile)) { cancelSync("La página cambió durante la lectura de secciones."); return; }
                 if (!profileCaptureDone) {
                     syncEvaluationPending = true;
                     profileCaptureAttempts++;
                     final int captureToken = syncFlowId;
                     try {
                         syncBrowser.evaluateJavascript(asset("extract.js"), result -> {
-                            if (captureToken != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                            if (captureToken != syncFlowId || syncPhase != 5 || syncBrowser != browser) return;
                             boolean retry = false;
                             try {
                                 Object decoded = result == null ? null : new JSONTokener(result).nextValue();
@@ -511,7 +528,7 @@ public final class ZoneSyncActivity extends Activity {
                     try {
                         sectionInjectedGeneration = sectionPageGeneration;
                         syncBrowser.evaluateJavascript(asset("read-sections.js"), result -> {
-                            if (syncBrowser == browser && syncPhase == 2 && status != null)
+                            if (syncBrowser == browser && syncPhase == 5 && status != null)
                                 status.setText("Abriendo y leyendo cada sección del perfil…");
                         });
                     } catch (Exception e) { sectionReadDone = true; profileSectionsSummary = "Lectura de secciones: no se pudo iniciar."; }
@@ -522,7 +539,7 @@ public final class ZoneSyncActivity extends Activity {
                     final int sectionsToken = syncFlowId;
                     try {
                         syncBrowser.evaluateJavascript("JSON.stringify(window.__tcgLabZoneSections || {})", result -> {
-                            if (sectionsToken != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
+                            if (sectionsToken != syncFlowId || syncPhase != 5 || syncBrowser != browser) return;
                             syncEvaluationPending = false;
                             try {
                                 Object decoded = result == null ? null : new JSONTokener(result).nextValue();
@@ -543,7 +560,7 @@ public final class ZoneSyncActivity extends Activity {
                                 }
                                 if ("complete".equals(state.optString("status"))) {
                                     sectionReadDone = true;
-                                    if (status != null) status.setText("Secciones del perfil recorridas. Confirmando Sync…");
+                                    if (status != null) status.setText("Sync confirmado. Preparando lectura de cartas…");
                                 } else if (status != null) {
                                     int index = state.optInt("index", 0) + 1;
                                     status.setText("Leyendo sección " + index + " de 11…");
@@ -553,21 +570,11 @@ public final class ZoneSyncActivity extends Activity {
                     } catch (Exception e) { syncEvaluationPending = false; sectionReadDone = true; }
                     return;
                 }
-                syncEvaluationPending = true;
-                final int token = syncFlowId;
-                try {
-                    syncBrowser.evaluateJavascript(asset("sync-probe.js") + ";" + asset("sync-control.js"), result -> {
-                        if (token != syncFlowId || syncPhase != 2 || syncBrowser != browser) return;
-                        syncEvaluationPending = false;
-                        if ("\"success\"".equals(result)) {
-                            syncSucceeded = true; syncPhase = 3;
-                            status.setText("Sincronización confirmada. Abriendo cartas…");
-                            syncBrowser.loadUrl(syncProfile + "cards/");
-                        } else if ("\"failed\"".equals(result) || "\"blocked\"".equals(result)) {
-                            cancelSync("Sync no confirmó éxito. La colección no se ha leído.");
-                        }
-                    });
-                } catch (Exception e) { cancelSync("No se pudo comprobar el estado de Sync."); return; }
+                if (sectionReadDone) {
+                    syncPhase = 3;
+                    status.setText("Secciones actualizadas. Abriendo cartas…");
+                    syncBrowser.loadUrl(syncProfile + "cards/");
+                }
             }
             if (syncPhase == 4 && !syncEvaluationPending) {
                 syncEvaluationPending = true;
