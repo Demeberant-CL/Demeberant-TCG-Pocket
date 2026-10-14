@@ -243,9 +243,9 @@ test('mobile profile reader visits and captures each anchor section independentl
   const names = ['Home','Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'];
   const ids = ['home','stats','cards','sets','decks','what-to-open','play-sets','binders','display-boards','theme-collections','wishlist'];
   const headings = ['Demeberant','Card Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'];
-  const sections = ids.map((id,i) => '<section id="' + id + '"><h2>' + headings[i] + '</h2><p>SECTION_DATA_' + i + '</p></section>').join('');
+  const sections = ids.map((id,i) => '<section id="' + id + '">' + (i === 0 ? '<h1>' : '<h2>') + headings[i] + (i === 0 ? '</h1>' : '</h2>') + '<p>SECTION_DATA_' + i + '</p></section>').join('');
   const links = names.map((name,i) => '<button onclick="location.hash=\'#' + ids[i] + '\';document.querySelector(\'dialog\').close();window.visited.push(\'' + name + '\')">' + name + '</button>').join('');
-  const html = '<button id="go" onclick="document.querySelector(\'dialog\').showModal()">Go to</button><dialog><p>Jump to a section of this player\'s profile.</p>' + links + '<button onclick="this.closest(\'dialog\').close()">Close</button></dialog><main><h1>Demeberant</h1>' + sections + '</main>';
+  const html = '<button id="go" onclick="document.querySelector(\'dialog\').showModal()">Go to</button><dialog><p>Jump to a section of this player\'s profile.</p>' + links + '<button onclick="this.closest(\'dialog\').close()">Close</button></dialog><main>' + sections + '</main>';
   const context = await browser.newContext({ viewport:{width:390,height:844}, deviceScaleFactor:3, isMobile:true, hasTouch:true });
   const page = await context.newPage();
   await page.route('**/*', route => route.fulfill({contentType:'text/html; charset=utf-8',body:html}));
