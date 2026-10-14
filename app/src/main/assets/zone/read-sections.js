@@ -17,7 +17,7 @@
     'Wishlist': /^\/players\/\d+\/wishlist\/?$/
   };
   const headingAliases = {
-    'Home': ['card stats', 'home'],
+    'Home': ['home'],
     'Stats': ['stats', 'card stats'],
     'Cards': ['cards'],
     'Sets': ['sets'],
@@ -47,8 +47,10 @@
   };
   const sectionNode = label => {
     const area = root();
-    let heading = headingElements().find(el => matchesHeading(el, label));
-    if (!heading && label === 'Home') heading = headingElements().find(el => /card stats/.test(normalize(el.innerText)));
+    let heading = label === 'Home'
+      ? headingElements().find(el => el.tagName === 'H1' && area.contains(el))
+      : headingElements().find(el => matchesHeading(el, label));
+    if (!heading && label === 'Home') heading = headingElements().find(el => matchesHeading(el, label));
     let target = heading;
     if (!target && location.hash.length > 1) {
       try { target = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch {}
