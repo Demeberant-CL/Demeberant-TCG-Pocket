@@ -45,11 +45,14 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
   var style by rememberSaveable { mutableStateOf("Equilibrado") }
   var reviewing by rememberSaveable { mutableStateOf(false) }
   val listState = rememberLazyListState()
+  LaunchedEffect(planAccount) {
+    if (planAccount != null && !useChatGptPlan) model.setChatGptPlanPreferred(true)
+    else if (planAccount == null && useChatGptPlan) model.setChatGptPlanPreferred(false)
+  }
   LaunchedEffect(current) { model.startDeckChat(current); reviewing = false }
   LaunchedEffect(Unit) { com.example.data.util.AppDiagnostics.screen("DECK_CHAT") }
   LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(2 + messages.lastIndex) }
-  val canSend = if (useChatGptPlan) planAccount?.canUsePlan == true && planModel.isNotBlank()
-    else ready && connection.apiKey.isNotBlank()
+  val canSend = planAccount?.canUsePlan == true && planModel.isNotBlank()
   BackHandler { if (reviewing) reviewing = false else onBack() }
   if (reviewing && suggestion != null) {
     DeckProposalReview(main, model, suggestion!!, { reviewing = false }, onBack, modifier)
@@ -63,12 +66,12 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
       item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(current.name, style = MaterialTheme.typography.titleMedium)
         Text("${current.totalCardCount}/20 · " + current.energyTypes.joinToString().ifBlank { "Energías por elegir" }, style = MaterialTheme.typography.bodySmall)
-        Text(if (useChatGptPlan && planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
-          else if (connection.apiKey.isBlank()) "Configura tu conexión para conversar" else "${connection.label} · ${connection.model}",
+        Text(if (planAccount != null) "ChatGPT · ${planAccount?.email?.ifBlank { "Conectado" } ?: "Conectado"}"
+          else "ChatGPT no está conectado",
           style = MaterialTheme.typography.bodySmall)
-        QuickAiSwitch(model, chatGptConnected = planAccount != null, chatGptSelected = useChatGptPlan,
-          onSelectChatGpt = { model.setChatGptPlanPreferred(true) })
-        OutlinedButton(enabled = ready && !busy, onClick = onConnections, shape = MaterialTheme.shapes.medium) { Text("Conexiones") }
+        OutlinedButton(enabled = !busy, onClick = onConnections, shape = MaterialTheme.shapes.medium) {
+          Text(if (planAccount == null) "Conectar ChatGPT" else "Ajustes de ChatGPT")
+        }
       } } }
       if (creating && messages.isEmpty()) item {
         Text("Describe el mazo que quieres", style = MaterialTheme.typography.titleMedium)
@@ -104,8 +107,8 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
     }
     Surface {
       Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (useChatGptPlan) Text(
-          if (planModel.isBlank()) "Selecciona un modelo de ChatGPT en Conexiones."
+        if (planAccount != null) Text(
+          if (planModel.isBlank()) "Selecciona un modelo de ChatGPT en Ajustes."
           else "Usando ChatGPT · $planModel. Al enviar, también se comparte el mazo abierto y las cartas de tu colección necesarias para responder.",
           style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(input, { input = it.take(2000) }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("deck_chat_input"),
@@ -116,9 +119,7 @@ fun DeckChatScreen(main: TcgViewModel, model: AdvancedViewModel, onBack: () -> U
             if (creating) "create" else initialAction, if (creating) energy else "", criteria = criteria)
           // Keep the instructions available after errors and cancellation.
         }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-          Text(if (useChatGptPlan) {
-            if (creating && messages.isEmpty()) "Generar con ChatGPT" else "Enviar a ChatGPT"
-          } else if (creating && messages.isEmpty()) "Generar propuesta" else "Enviar")
+          Text(if (creating && messages.isEmpty()) "Generar con ChatGPT" else "Enviar a ChatGPT")
         }
       }
     }

@@ -1,22 +1,8 @@
 package com.example.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import com.example.data.util.CollectionCsv
-import com.example.data.util.TradePlanner
-import com.example.data.util.readBytesBounded
-import com.example.data.repository.ParsedCsvCard
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CardGiftcard
@@ -27,7 +13,6 @@ import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Alignment
 
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +22,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.viewmodel.TcgViewModel
@@ -53,7 +37,7 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 }
 
 @Composable
-fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0, onDetailChange: (Boolean) -> Unit = {}) {
+fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0) {
   var section by rememberSaveable { mutableIntStateOf(when { editorRequest < 0 -> 3; editorRequest > 0 -> 1; else -> 0 }) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
@@ -62,119 +46,39 @@ fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.A
       appliedEditorRequest = editorRequest
     }
   }
-  BackHandler(enabled = section != 0) { section = when (section) { 2, 4, 6 -> 3; 5 -> 4; else -> 0 } }
-  LaunchedEffect(section) { onDetailChange(section != 0); com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
+  BackHandler(enabled = section != 0) { section = when (section) { 4, 5 -> 3; else -> 0 } }
+  LaunchedEffect(section) { com.example.data.util.AppDiagnostics.screen("DECKS_$section") }
   Column(modifier.fillMaxSize()) {
-    if (section == 3) {
-      TextButton(onClick = { section = 0 }) { Text("← Mis mazos") }
-    } else if (section == 2 || section == 6) {
-      TextButton(onClick = { section = 3 }) { Text("← Crear mazo") }
+    if (section == 3 || section == 5) {
+      TextButton(onClick = { section = if (section == 5) 3 else 0 }) { Text(if (section == 5) "← Crear con ChatGPT" else "← Mis mazos") }
     }
     when (section) {
       0 -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
       1 -> ManualDeckScreen(viewModel, advanced, Modifier.weight(1f), onBack = { section = 0 })
-      3 -> CreateDeckScreen(viewModel, onManual = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 1 }, onAi = { viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }; section = 4 }, onContinue = { section = 1 }, onTemplates = { section = 2 }, onLocal = { section = 6 }, modifier = Modifier.weight(1f))
-      6 -> LocalDeckPlannerScreen(viewModel, { section = 1 }, Modifier.weight(1f))
-      4 -> DeckChatScreen(viewModel, advanced, { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
-        { section = 5 }, Modifier.weight(1f), creating = true)
-      5 -> Column(Modifier.weight(1f)) {
-        TextButton(onClick = { section = 4 }) { Text("← Crear con IA") }
-        AIAssistantScreen(viewModel, advanced, { section = 1 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
-      }
-      else -> MetaDeckAnalyzerScreen(viewModel, { name -> viewModel.generateDeck(name); section = 1 }, Modifier.weight(1f))
-    }
-  }
-}
-
-@Composable
-fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
-  val inventory by viewModel.inventoryList.collectAsStateWithLifecycle()
-  var section by rememberSaveable { mutableIntStateOf(0) }
-  BackHandler(enabled = section != 0) { section = 0 }
-  var reserveTwo by rememberSaveable { mutableStateOf(true) }
-  var copied by remember { mutableStateOf(false) }
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
-  var peer by remember { mutableStateOf<List<ParsedCsvCard>?>(null) }
-  var comparisonError by remember { mutableStateOf<String?>(null) }
-  val peerPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-    if (uri != null) scope.launch {
-      try {
-        peer = withContext(Dispatchers.IO) {
-          val text = context.contentResolver.openInputStream(uri)?.use { it.readBytesBounded(8_000_000).toString(Charsets.UTF_8) }
-            ?: error("No se pudo abrir el CSV.")
-          CollectionCsv.parse(text)
-        }
-        comparisonError = null
-      } catch (e: CancellationException) { throw e }
-      catch (e: Exception) { comparisonError = "No se pudo comparar: ${e.localizedMessage}" }
-    }
-  }
-  val reserve = if (reserveTwo) 2 else 1
-  val proposals = remember(inventory, peer, reserve) { peer?.let { TradePlanner.compare(inventory, it, reserve) } ?: emptyList() }
-  val cards = if (section == 0) inventory.filter { it.ownedCount > reserve }
-    else inventory.filter { it.isWishlist }
-  val title = if (section == 0) "Disponibles para ofrecer" else "Cartas que busco"
-  Column(modifier.fillMaxSize()) {
-    MenuChoices(listOf("Para ofrecer", "Deseos"), section) { section = it; copied = false }
-    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      item {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text("Organiza tus propuestas. Comprueba en el juego si cada carta se puede canjear.",
-          color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-      if (section == 0) item {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          Text("Reservar dos copias", modifier = Modifier.weight(1f).padding(top = 12.dp))
-          Switch(checked = reserveTwo, onCheckedChange = { reserveTwo = it; copied = false })
-        }
-        Text("Se muestran las copias que sobran después de reservar $reserve. No se descuenta ninguna carta.")
-      }
-      item {
-        OutlinedButton(enabled = cards.isNotEmpty(), onClick = {
-          val text = title + "\n" + cards.joinToString("\n") { item ->
-            val quantity = if (section == 0) " x${item.ownedCount - reserve}" else ""
-            "${item.card.id} · ${item.card.name}$quantity"
-          }
-          (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-            .setPrimaryClip(ClipData.newPlainText(title, text))
-          copied = true
-        }, shape = MaterialTheme.shapes.medium) { Text(if (copied) "Lista copiada" else "Copiar lista") }
-      }
-      if (section == 0) item {
-        OutlinedButton(onClick = { peerPicker.launch("*/*") }, shape = MaterialTheme.shapes.medium) { Text("Comparar otro CSV") }
-        comparisonError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        peer?.let { other ->
-          Text("Comparación de ${other.size} registros. El CSV ajeno no se guarda en tu colección.")
-          Text("Se proponen cartas de la misma rareza. Solo se considera faltante del otro usuario una cantidad cero explícita. Comprueba la elegibilidad y coste en el juego.")
-          if (proposals.isEmpty()) Text("No hay propuestas recíprocas con esta reserva.")
-        }
-      }
-      if (section == 0) items(proposals, key = { it.rarity.name }) { proposal ->
-        Card(Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(14.dp)) {
-            Text("Rareza ${proposal.rarity.symbol}", style = MaterialTheme.typography.titleMedium)
-            Text("Puedes ofrecer: " + proposal.offer.take(15).joinToString { "${it.card.id} ${it.card.name}" })
-            Text("Puedes pedir: " + proposal.request.take(15).joinToString { "${it.card.id} ${it.card.name}" })
-            if (proposal.offer.size > 15 || proposal.request.size > 15) Text("Se muestran hasta 15 cartas por lado.")
-          }
-        }
-      }
-      if (cards.isEmpty()) item {
-        Text(if (section == 0) "No tienes copias sobrantes con esta reserva."
-          else "Marca cartas en Deseos desde Colección para verlas aquí.")
-      }
-      items(cards, key = { it.card.id }) { item ->
-        Card(Modifier.fillMaxWidth()) {
-          Column(Modifier.padding(14.dp)) {
-            Text(item.card.name, style = MaterialTheme.typography.titleMedium)
-            Text("${item.card.id} · ${item.card.rarity.displayName}")
-            Text(if (section == 0) "${item.ownedCount - reserve} disponibles · ${item.ownedCount} en colección"
-              else "${item.ownedCount} en colección")
-          }
-        }
-      }
+      3 -> CreateDeckScreen(
+        main = viewModel,
+        advanced = advanced,
+        onAi = {
+          viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }
+          section = 4
+        },
+        onContinue = {
+          viewModel.generatedDeck.value?.let { advanced.startDeckChat(it, force = true) }
+          section = 4
+        },
+        onConnect = { section = 5 },
+        modifier = Modifier.weight(1f),
+      )
+      4 -> DeckChatScreen(
+        viewModel,
+        advanced,
+        onBack = { section = if (viewModel.generatedDeck.value?.cards?.isNotEmpty() == true) 1 else 3 },
+        onConnections = { section = 5 },
+        modifier = Modifier.weight(1f),
+        creating = viewModel.generatedDeck.value?.cards?.isNotEmpty() != true,
+      )
+      5 -> AIAssistantScreen(viewModel, advanced, { section = 3 }, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
+      else -> DeckLibraryScreen(viewModel, Modifier.weight(1f), onEdit = { section = 1 }, onCreate = { section = 3 })
     }
   }
 }
@@ -202,15 +106,16 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexiones IA", "Cartas sin conexión", "Rotom AI · Conector")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Diseños, colores, colección, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español", "Comparte tu colección y recibe propuestas")
+  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexión ChatGPT", "Cartas sin conexión")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Tema, colección, respaldos y sincronización", "Vincula ChatGPT y elige un modelo", "Descarga imágenes en español")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport,
+    Icons.Filled.Settings, Icons.Filled.Settings, Icons.Filled.CardGiftcard)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       item { Text(if (settingsMenu) "Ajustes" else "Herramientas del juego", style = MaterialTheme.typography.headlineMedium) }
       item { Text(if (settingsMenu) "Personaliza la app y administra tus datos." else "Todo para coleccionar, construir y practicar.", style = MaterialTheme.typography.bodyMedium) }
-      (if (settingsMenu) listOf("Personalización y datos" to listOf(8), "Servicios y almacenamiento" to listOf(9, 11, 10), "Soporte" to listOf(7))
+      (if (settingsMenu) listOf("Personalización y datos" to listOf(8), "Servicios y almacenamiento" to listOf(9, 10), "Soporte" to listOf(7))
         else listOf("Colección e intercambios" to listOf(2, 1, 5), "Partidas y aprendizaje" to listOf(3, 4, 0), "Competición" to listOf(6))).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
@@ -249,7 +154,6 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
           MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }
           ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = calculation == 1, packsOnly = calculation == 0)
         }
-        11 -> PocketConnectorScreen(main, advanced, Modifier.weight(1f))
         10 -> OfflineImagesScreen(Modifier.weight(1f))
         9 -> AIAssistantScreen(main, advanced, {}, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
         else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))

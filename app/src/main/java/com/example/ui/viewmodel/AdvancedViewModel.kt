@@ -68,7 +68,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   }
   fun saveConnector(url: String, key: String) = task("CONNECTOR_CONFIG") {
     PocketConnector.validate(url.trim(), key.trim())
-    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Rotom AI TCG Pocket")
+    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "TCG Lab")
     withContext(Dispatchers.IO) { connectorStore.save(config) }
     connectorConfig.value = config
     connectorProposals.value = emptyList()
@@ -94,9 +94,56 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val snapshot = org.json.JSONObject().put("format", 1).put("cards", cards).put("decks", decks)
     draft?.let { snapshot.put("draft", org.json.JSONObject().put("id", "draft").put("name", it.name)
       .put("data", com.example.data.util.DeckCodec.encode(it.cards, it.energyTypes))) }
+    // Share the already-saved, validated Zone reading without its player ID or source URL.
+    val zoneFile = java.io.File(getApplication<Application>().filesDir, "zone-preview.json")
+    val zone = runCatching { if (zoneFile.isFile && zoneFile.length() <= 3_000_000L) org.json.JSONObject(zoneFile.readText()) else null }.getOrNull()
+    if (zone != null) {
+      val zoneCards = zone.optJSONArray("visibleCards")
+      val fields = org.json.JSONArray()
+      val sourceFields = zone.optJSONArray("visibleFields")
+      val summary = zone.optString("visibleSummary")
+      if (sourceFields != null) {
+        for (i in 0 until minOf(sourceFields.length(), 30)) {
+          val field = sourceFields.optJSONObject(i) ?: continue
+          val label = field.optString("label")
+          val normalized = label.trim().lowercase(java.util.Locale.ROOT)
+          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) continue
+          fields.put(field)
+        }
+      }
+      // Remove known friend/player IDs from the free-text section summary too.
+      var safeSummary = summary
+      if (sourceFields != null) {
+        for (i in 0 until minOf(sourceFields.length(), 30)) {
+          val field = sourceFields.optJSONObject(i) ?: continue
+          val normalized = field.optString("label").trim().lowercase(java.util.Locale.ROOT)
+          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
+            val privateValue = field.optString("value")
+            if (privateValue.isNotBlank()) safeSummary = safeSummary.replace(privateValue, "[ID oculto]")
+          }
+        }
+      }
+      snapshot.put("zoneData", org.json.JSONObject()
+        .put("readAt", zone.optString("readAt").take(80))
+        .put("heading", zone.optString("visibleHeading").take(500))
+        .put("fields", fields)
+        .put("missions", zone.optJSONArray("visibleMissions") ?: org.json.JSONArray())
+        .put("summary", safeSummary.take(40000))
+        .put("scannedCardCount", zoneCards?.length() ?: 0)
+        .put("collectionComplete", zone.optBoolean("collectionComplete", false)))
+    }
     pocketConnector.request(config.endpoint, config.apiKey, "/app/snapshot", "PUT", snapshot)
+    val diagnosticSent = runCatching {
+      val version = getApplication<Application>().packageManager.getPackageInfo(getApplication<Application>().packageName, 0).versionName ?: "unknown"
+      val report = ErrorLogManager.briefReport(getApplication())
+      val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
+        .put("report", report.take(com.example.data.util.DiagnosticSummary.MAX_CHARS))
+        .put("collectionCards", inventory.size).put("deckCount", repository.savedDecksFlow.first().size)
+      pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
+    }.isSuccess
     connectorProposals.value = emptyList()
-    message.value = "Colección y mazos sincronizados. El chat puede consultar esta copia."
+    message.value = if (diagnosticSent) "Colección, mazos, lectura de Pokémon Zone y diagnóstico sincronizados. ChatGPT ya puede consultarlos."
+      else "Colección, mazos y lectura de Pokémon Zone sincronizados; el informe técnico no se pudo enviar. Reintenta Enviar diagnóstico."
   }
   fun receiveConnector() = task("CONNECTOR_RECEIVE") {
     connectorProposals.value = emptyList()
@@ -132,10 +179,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   fun sendConnectorDiagnostics() = task("CONNECTOR_DIAGNOSTICS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
     val version = getApplication<android.app.Application>().packageManager.getPackageInfo(getApplication<android.app.Application>().packageName, 0).versionName ?: "unknown"
-    // Deliberately exclude logs, tokens, device identifiers and exception traces.
+    // This allowlisted report omits messages, URLs, request bodies, credentials and stack traces.
+    val report = ErrorLogManager.briefReport(getApplication())
+    val inventoryCount = repository.inventoryFlow.first().size
+    val deckCount = repository.savedDecksFlow.first().size
     val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
+      .put("report", report.take(com.example.data.util.DiagnosticSummary.MAX_CHARS))
+      .put("collectionCards", inventoryCount).put("deckCount", deckCount)
     pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
-    message.value = "Estado básico enviado. No se compartieron registros ni datos sensibles."
+    message.value = "Diagnóstico técnico redactado enviado junto con los conteos de colección y mazos."
   }
   fun runSafeConnectorCommands() = task("CONNECTOR_COMMANDS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
@@ -190,11 +242,12 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   fun connectChatGptPlan(activity: android.app.Activity) = task("CHATGPT_SIGN_IN") {
     val account = chatGptPlanRepository.signIn(activity)
     chatGptPlanAccount.value = account
+    setChatGptPlanPreferred(true)
     chatGptPlanModels.value = emptyList()
     message.value = "Cuenta ChatGPT conectada. Cargando modelos disponibles…"
     try {
       val found = loadChatGptPlanModels()
-      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para Rotom."
+      message.value = if (found.isEmpty()) "Cuenta conectada, pero no aparecen modelos disponibles para TCG Lab."
         else "ChatGPT conectado como ${account.email.ifBlank { "tu cuenta" }}. Modelo listo: ${found.first { it.slug == selectedChatGptPlanModel.value }.displayName}."
     } catch (e: CancellationException) { throw e }
     catch (_: Exception) {

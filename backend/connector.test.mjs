@@ -6,7 +6,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createConnectorServer} from './connector.mjs';
 const deviceToken='device'.repeat(8),ownerSecret='owner'.repeat(8),publicUrl='https://pocket.example';
-const snapshot={format:1,cards:Array.from({length:10},(_,i)=>({id:`A1-${String(i+1).padStart(3,'0')}`,name:`Card ${i}`,rulesName:`Card ${i}`,expansion:'A1',owned:2,type:'Planta',category:'pokemon',stage:'basic',evolvesFrom:'',effects:''})),decks:[{id:'1',name:'Saved',data:'{}'}]};
+const zoneSections=['Home','Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'].map(name=>`[Sección: ${name} · read] contenido` ).join('\\n');
+const snapshot={format:1,cards:Array.from({length:10},(_,i)=>({id:`A1-${String(i+1).padStart(3,'0')}`,name:`Card ${i}`,rulesName:`Card ${i}`,expansion:'A1',owned:2,type:'Planta',category:'pokemon',stage:'basic',evolvesFrom:'',effects:''})),decks:[{id:'1',name:'Saved',data:'{}'}],zoneData:{readAt:'2026-10-14T12:00:00.000Z',heading:'Player',fields:[{label:'Level',value:'39'}],missions:['Daily mission'],summary:zoneSections,scannedCardCount:10,collectionComplete:false}};
 async function fixture(t,stateFile,extras={}){const server=createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFile,...extras});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const url=`http://127.0.0.1:${server.address().port}`;return async(path,options={})=>fetch(url+path,options);}
 async function authorize(call,scope='pocket:read pocket:propose',origin){
  const registered=await(await call('/register',{method:'POST',body:JSON.stringify({redirect_uris:['https://chat.example/callback']})})).json();
@@ -134,9 +135,18 @@ test('diagnostics are sanitized and proposals survive resync',async t=>{
  await sync(call);
  const inbox=await(await call('/app/proposals',{headers:appHeaders})).json();
  assert.equal(inbox.proposals.length,1);
- assert.equal((await call('/app/diagnostics',{method:'PUT',headers:appHeaders,body:JSON.stringify({version:'1.0',errors:['Sync failed']})})).status,200);
+ assert.equal((await call('/app/diagnostics',{method:'PUT',headers:appHeaders,body:JSON.stringify({version:'1.0',errors:['Sync failed'],report:'DIAGNÓSTICO BREVE · fallo de lectura',collectionCards:10,deckCount:1})})).status,200);
  const report=await rpc(call,tokens.access_token,'app_diagnostics');
- assert.deepEqual(JSON.parse(report.result.content[0].text).diagnostics.errors,['Sync failed']);
+ const diagnostic=JSON.parse(report.result.content[0].text);
+ assert.deepEqual(diagnostic.diagnostics.errors,['Sync failed']);
+ assert.equal(diagnostic.zoneCoverage.length,11);
+ assert.equal(diagnostic.diagnostics.report,'DIAGNÓSTICO BREVE · fallo de lectura');
+ const overview=JSON.parse((await rpc(call,tokens.access_token,'app_overview')).result.content[0].text);
+ assert.equal(overview.zoneProfile.sections.length,11);
+ const sections=JSON.parse((await rpc(call,tokens.access_token,'read_zone_sections')).result.content[0].text);
+ assert.equal(sections.zoneData.fields[0].value,'39');
+ const diagnosis=JSON.parse((await rpc(call,tokens.access_token,'diagnose_app')).result.content[0].text);
+ assert.ok(diagnosis.issues.some(x=>x.code==='ZONE_CARD_SCAN_PARTIAL'));
 });
 
 test('snapshot refresh rejects stale queued commands',async t=>{

@@ -1,49 +1,94 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.DexPanel
+import com.example.ui.viewmodel.AdvancedViewModel
 import com.example.ui.viewmodel.TcgViewModel
 
 @Composable
-fun CreateDeckScreen(main: TcgViewModel, onManual: () -> Unit, onAi: () -> Unit, onContinue: () -> Unit, onTemplates: () -> Unit = {}, onLocal: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun CreateDeckScreen(
+  main: TcgViewModel,
+  advanced: AdvancedViewModel,
+  onAi: () -> Unit,
+  onContinue: () -> Unit,
+  onConnect: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
   val draft by main.generatedDeck.collectAsStateWithLifecycle()
-  var pending by remember { mutableStateOf<String?>(null) }
-  fun start(mode: String) {
-    if (draft?.cards?.isNotEmpty() == true) pending = mode
-    else { main.newManualDeck(); if (mode == "manual") onManual() else onAi() }
+  val inventory by main.inventoryList.collectAsStateWithLifecycle()
+  val account by advanced.chatGptPlanAccount.collectAsStateWithLifecycle()
+  val connected = account?.canUsePlan == true
+  var confirmNew by remember { mutableStateOf(false) }
+
+  Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Text("Crear un mazo", style = MaterialTheme.typography.headlineMedium)
+    Text("ChatGPT analizará tu colección, propondrá 20 cartas y explicará la estrategia. Revisa la propuesta antes de guardarla.", style = MaterialTheme.typography.bodyMedium)
+
+    DexPanel(Modifier.fillMaxWidth()) {
+      Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Colección disponible", style = MaterialTheme.typography.titleMedium)
+        val available = inventory.count { it.ownedCount > 0 }
+        val copies = inventory.sumOf { it.ownedCount }
+        Text("$available cartas distintas · $copies copias")
+        LinearProgressIndicator(progress = { if (inventory.isEmpty()) 0f else available.toFloat() / inventory.size }, modifier = Modifier.fillMaxWidth())
+        Text(
+          if (connected) "ChatGPT está conectado" + (account?.email?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+          else "Conecta ChatGPT para crear y revisar propuestas.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+
+    DexPanel(Modifier.fillMaxWidth()) {
+      Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Constructor con ChatGPT", style = MaterialTheme.typography.titleLarge)
+        Text("Indica energía, estilo y cartas que quieras priorizar. ChatGPT usa esos criterios junto a las cartas disponibles.", style = MaterialTheme.typography.bodyMedium)
+        Button(
+          onClick = {
+            if (!connected) onConnect()
+            else if (draft?.cards?.isNotEmpty() == true) onContinue()
+            else {
+              main.newManualDeck()
+              onAi()
+            }
+          },
+          modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+          shape = MaterialTheme.shapes.medium,
+        ) {
+          Text(when {
+            !connected -> "Conectar ChatGPT"
+            draft?.cards?.isNotEmpty() == true -> "Continuar con ChatGPT"
+            else -> "Diseñar mazo con ChatGPT"
+          })
+        }
+        if (connected && draft?.cards?.isNotEmpty() == true) {
+          OutlinedButton(onClick = { confirmNew = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+            Text("Empezar otro mazo con ChatGPT")
+          }
+        }
+      }
+    }
+
+    Text("El mazo no cambia hasta que revises y apliques la propuesta de ChatGPT.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   }
-  LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    item { Text("Crear mazo", style = MaterialTheme.typography.headlineLarge)
-      Text("Elige cómo empezar. Después podrás revisar, editar y guardar en el mismo editor.", style = MaterialTheme.typography.bodyMedium) }
-    item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("Constructor local", style = MaterialTheme.typography.titleLarge)
-      Text("Elige colección o catálogo, expansiones y cartas.", style = MaterialTheme.typography.labelMedium)
-      Button(onClick = onLocal, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Crear propuestas") }
-    } } }
-    item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("Elegir cartas", style = MaterialTheme.typography.titleLarge)
-      Text("Empieza vacío y añade tus cartas con filtros.", style = MaterialTheme.typography.bodyMedium)
-      Button(onClick = { start("manual") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Empezar") }
-    } } }
-    item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text("Crear con IA", style = MaterialTheme.typography.titleLarge)
-      OutlinedButton(onClick = { start("ai") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Crear con IA") }
-    } } }
-    item { OutlinedButton(onClick = onTemplates, modifier = Modifier.fillMaxWidth()) { Text("Empezar con una plantilla") } }
-    draft?.takeIf { it.cards.isNotEmpty() }?.let { deck -> item { DexPanel(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
-      Text("Borrador actual", style = MaterialTheme.typography.titleMedium)
-      Text("${deck.name} · ${deck.totalCardCount}/20")
-      TextButton(onClick = onContinue) { Text("Continuar borrador") }
-    } } } }
-  }
-  if (pending != null) AlertDialog(onDismissRequest = { pending = null }, title = { Text("Empezar otro mazo") },
-    text = { Text("El borrador abierto se reemplazará. Puedes volver y guardarlo primero.") },
-    confirmButton = { TextButton(onClick = { val mode = pending; pending = null; main.newManualDeck(); if (mode == "manual") onManual() else onAi() }) { Text("Crear nuevo") } },
-    dismissButton = { TextButton(onClick = { pending = null }) { Text("Volver") } })
+
+  if (confirmNew) AlertDialog(
+    onDismissRequest = { confirmNew = false },
+    title = { Text("Empezar otro mazo") },
+    text = { Text("El borrador actual se reemplazará. Los mazos guardados y la colección se conservarán.") },
+    confirmButton = {
+      TextButton(onClick = {
+        confirmNew = false
+        main.newManualDeck()
+        onAi()
+      }) { Text("Crear nuevo con ChatGPT") }
+    },
+    dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("Cancelar") } },
+  )
 }

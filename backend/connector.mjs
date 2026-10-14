@@ -11,13 +11,22 @@ const tools=[
   {name:'collection_summary',description:'Resumen de la colección sincronizada, fecha y mazos guardados.',inputSchema:object({})},
   {name:'search_cards',description:'Busca cartas del catálogo sincronizado por nombre, código o expansión. Incluye cantidades reales y efectos cuando están disponibles; nunca inventes efectos desconocidos.',inputSchema:object({query:{type:'string',maxLength:120},ownedOnly:{type:'boolean'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:100}},[])},
   {name:'read_deck',description:'Consulta un mazo guardado mediante su ID o el borrador actual (draft).',inputSchema:object({id:{type:'string',maxLength:100}})},
-  {name:'app_diagnostics',description:'Consulta el último informe de diagnóstico enviado por Android, sin datos secretos.',inputSchema:object({})},
+  {name:'app_overview',description:'Vista general de los datos sincronizados desde la app: colección, mazos y cobertura del perfil Pokémon Zone.',inputSchema:object({})},
+  {name:'read_zone_sections',description:'Lee la última captura del perfil Pokémon Zone: campos visibles, misiones y texto de las secciones del perfil. Puede ser parcial.',inputSchema:object({})},
+  {name:'app_diagnostics',description:'Consulta el resumen técnico del dispositivo, la versión, la colección y errores redactados. No contiene credenciales ni trazas personales.',inputSchema:object({})},
+  {name:'diagnose_app',description:'Analiza la sincronización y cobertura disponibles, identifica datos ausentes o parciales y devuelve pasos concretos para corregirlos.',inputSchema:object({})},
   {name:'queue_app_command',description:'Solicita una acción a Android; no se ejecuta hasta que el teléfono la recibe y confirma. Solo consultas de diagnóstico disponibles. Usa revision actual.',inputSchema:object({revision:text,action:{type:'string',enum:['inspect_decks','inspect_collection','inspect_errors']},deckId:{type:'string',maxLength:100},confirmDelete:{type:'boolean'}},['revision','action'])},
   {name:'command_status',description:'Consulta el estado y resultado de una instrucción enviada al teléfono.',inputSchema:object({id:{type:'string',maxLength:100}})},
   {name:'submit_deck_proposal',description:'Envía un mazo de 20 cartas para revisión en Rotom AI TCG Pocket. No modifica la colección ni guarda o reemplaza mazos. Usa IDs y revisión de la colección consultada. Máximo dos copias por nombre y líneas evolutivas completas. replacements debe estar vacío.',inputSchema:object({revision:text,name:{type:'string',maxLength:120},strategy:text,energies:{type:'array',minItems:1,maxItems:3,items:{type:'string',enum:['Planta','Fuego','Agua','Rayo','Psíquico','Lucha','Oscuridad','Metal']}},cards:{type:'array',minItems:10,maxItems:20,items:object({id:{type:'string'},count:{type:'integer',minimum:1,maximum:2}})},replacements:{type:'array',maxItems:0}})}
 ].map(t=>({...t,securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}],_meta:{securitySchemes:[{type:'oauth2',scopes:[t.name==='submit_deck_proposal'?'pocket:propose':t.name==='queue_app_command'?'pocket:control':'pocket:read']}]},annotations:{readOnlyHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),destructiveHint:t.name==='queue_app_command',idempotentHint:!['submit_deck_proposal','queue_app_command'].includes(t.name),openWorldHint:false}}));
 export function validateSnapshot(s){
   if(!s||s.format!==1||!Array.isArray(s.cards)||s.cards.length>10000||!Array.isArray(s.decks)||s.decks.length>1000)throw Error('Invalid snapshot');
+  if(s.zoneData!==undefined){
+    const z=s.zoneData;
+    if(!z||typeof z!=='object'||Array.isArray(z)||typeof z.readAt!=='string'||z.readAt.length>80||typeof z.heading!=='string'||z.heading.length>500||typeof z.summary!=='string'||z.summary.length>50000||!Array.isArray(z.fields)||z.fields.length>30||!Array.isArray(z.missions)||z.missions.length>50||!Number.isInteger(z.scannedCardCount)||z.scannedCardCount<0||z.scannedCardCount>5000||typeof z.collectionComplete!=='boolean')throw Error('Invalid Zone profile');
+    for(const f of z.fields)if(!f||typeof f.label!=='string'||f.label.length>60||typeof f.value!=='string'||f.value.length>120)throw Error('Invalid Zone field');
+    for(const m of z.missions)if(typeof m!=='string'||m.length>240)throw Error('Invalid Zone mission');
+  }
   const ids=new Set();
   for(const c of s.cards){
     if(!c||typeof c.id!=='string'||c.id.length>100||ids.has(c.id)||!Number.isInteger(c.owned)||c.owned<0||c.owned>100000||!['name','rulesName','expansion','type','category','stage','evolvesFrom','effects'].every(k=>typeof c[k]==='string'&&c[k].length<=10000))throw Error('Invalid card');
@@ -158,8 +167,9 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
           persist({...state,commands:state.commands.map(c=>c.id===cmd.id?{...c,status:input.status,message:input.message,finishedAt:new Date(clock()).toISOString()}:c)});return reply(200,{ok:true});
         }
         if(path==='/app/diagnostics'&&req.method==='PUT'){
-          const input=JSON.parse(await body());if(!input||typeof input.version!=='string'||input.version.length>100||!Array.isArray(input.errors)||input.errors.length>50||input.errors.some(e=>typeof e!=='string'||e.length>1000))return reply(400,{error:'Invalid diagnostics'});
-          persist({...state,diagnostics:{version:input.version,errors:input.errors,syncedAt:new Date(clock()).toISOString()}});return reply(200,{ok:true});
+          const input=JSON.parse(await body());
+          if(!input||typeof input.version!=='string'||input.version.length>100||!Array.isArray(input.errors)||input.errors.length>50||input.errors.some(e=>typeof e!=='string'||e.length>1000)||(input.report!==undefined&&(typeof input.report!=='string'||input.report.length>6000))||(input.collectionCards!==undefined&&(!Number.isInteger(input.collectionCards)||input.collectionCards<0||input.collectionCards>10000))||(input.deckCount!==undefined&&(!Number.isInteger(input.deckCount)||input.deckCount<0||input.deckCount>1000)))return reply(400,{error:'Invalid diagnostics'});
+          persist({...state,diagnostics:{version:input.version,errors:input.errors,report:input.report||'',collectionCards:input.collectionCards??null,deckCount:input.deckCount??null,syncedAt:new Date(clock()).toISOString()}});return reply(200,{ok:true});
         }
         if(path==='/app/proposals'&&req.method==='GET')return reply(200,{revision:state.snapshot?.revision,proposals:state.proposals});
         if(path==='/app/data'&&req.method==='DELETE'){persist({snapshot:null,proposals:[],commands:[],diagnostics:null});return reply(200,{deleted:true});}
@@ -174,7 +184,7 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       const rpc=JSON.parse(await body());if(rpc.jsonrpc!=='2.0'||typeof rpc.method!=='string'||(rpc.id!==undefined&&typeof rpc.id!=='string'&&typeof rpc.id!=='number'))return reply(400,{error:'Invalid JSON-RPC'});
       if(rpc.id===undefined){if(rpc.method.startsWith('notifications/'))return reply(202);return reply(400,{error:'Missing ID'});}
       const result=value=>reply(200,{jsonrpc:'2.0',id:rpc.id,result:value});
-      if(rpc.method==='initialize')return result({protocolVersion:['2025-03-26','2025-06-18','2025-11-25'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2025-11-25',capabilities:{tools:{}},serverInfo:{name:'Rotom AI TCG Pocket',version:'1.0.0'},instructions:'Los datos son una copia sincronizada del teléfono. Comprueba syncedAt. Las propuestas necesitan revisión y validación Android; no se aplican automáticamente.'});
+      if(rpc.method==='initialize')return result({protocolVersion:['2025-03-26','2025-06-18','2025-11-25'].includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:'2025-11-25',capabilities:{tools:{}},serverInfo:{name:'Rotom AI TCG Pocket',version:'1.1.0'},instructions:'Los datos son una copia sincronizada manualmente desde Rotom AI TCG Pocket. Comprueba syncedAt y la cobertura de Pokémon Zone; puede haber secciones sin leer. Usa app_overview para ver disponibilidad, read_zone_sections para consultar las secciones y diagnose_app para identificar faltantes. app_diagnostics contiene un resumen redactado del dispositivo. Las propuestas necesitan revisión y validación Android; no se aplican automáticamente.'});
       if(rpc.method==='ping')return result({});
       if(rpc.method==='tools/list')return result({tools});
       if(rpc.method!=='tools/call')return reply(200,{jsonrpc:'2.0',id:rpc.id,error:{code:-32601,message:'Method not found'}});
@@ -183,7 +193,35 @@ export function createConnectorServer({deviceToken,ownerSecret,publicUrl,stateFi
       try{
         if(!tools.some(t=>t.name===name))throw Error('Unknown tool');
         const permission=name==='submit_deck_proposal'?'pocket:propose':name==='queue_app_command'?'pocket:control':'pocket:read';if(!grant.scope.split(' ').includes(permission))throw Error('Insufficient scope');
-        if(name==='app_diagnostics')return toolResult({diagnostics:state.diagnostics||null,syncedAt:s?.syncedAt||null});
+        const zoneCoverage=zone=>{const found=[...String(zone?.summary||'').matchAll(/\[Sección:\s*(Home|Stats|Cards|Sets|Decks|What to Open|Play Sets|Binders|Display Boards|Theme Collections|Wishlist)\s*·\s*(read|timeout|unavailable)\]/g)];return found.map(m=>({section:m[1],status:m[2]}));};
+        if(name==='app_diagnostics')return toolResult({diagnostics:state.diagnostics||null,syncedAt:s?.syncedAt||null,zoneCoverage:zoneCoverage(s?.zoneData)});
+        if(name==='app_overview'){
+          if(!s)return toolResult({available:false,message:'No hay una copia sincronizada. Abre la app, sincroniza el conector e inténtalo de nuevo.'});
+          const z=s.zoneData||null;
+          return toolResult({available:true,revision:s.revision,syncedAt:s.syncedAt,collection:{catalog:s.cards.length,distinct:s.cards.filter(c=>c.owned>0).length,copies:s.cards.reduce((n,c)=>n+c.owned,0),wishlist:s.cards.filter(c=>c.wishlist).length},decks:s.decks.length,draft:!!s.draft,zoneProfile:{available:!!z,readAt:z?.readAt||null,heading:z?.heading||'',fields:z?.fields?.length||0,missions:z?.missions?.length||0,scannedCardCount:z?.scannedCardCount||0,collectionComplete:z?.collectionComplete||false,sections:zoneCoverage(z)}});
+        }
+        if(name==='read_zone_sections'){
+          if(!s?.zoneData)throw Error('No hay perfil Pokémon Zone en la copia. Ejecuta primero Sync y completa la lectura de secciones en la app.');
+          return toolResult({revision:s.revision,syncedAt:s.syncedAt,zoneData:s.zoneData,sectionCoverage:zoneCoverage(s.zoneData)});
+        }
+        if(name==='diagnose_app'){
+          const issues=[];
+          if(!s)issues.push({level:'error',code:'NO_SNAPSHOT',finding:'No existe una copia sincronizada de la app.',action:'En Android, abre el conector y pulsa Sincronizar; luego reintenta aquí.'});
+          if(s){
+            if(!s.zoneData)issues.push({level:'warning',code:'ZONE_PROFILE_MISSING',finding:'La copia contiene colección y mazos, pero no la última lectura de Pokémon Zone.',action:'Abre Pokémon Zone en la app, ejecuta Sincronizar y espera a que termine el recorrido de secciones y cartas.'});
+            else{
+              const coverage=zoneCoverage(s.zoneData),expected=['Home','Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'];
+              const missing=expected.filter(n=>!coverage.some(x=>x.section===n));
+              const partial=coverage.filter(x=>x.status!=='read');
+              if(missing.length)issues.push({level:'warning',code:'ZONE_SECTIONS_MISSING',finding:'No hay resultado para: '+missing.join(', ')+'.',action:'Repite la lectura con la sesión abierta y acceso al perfil.'});
+              if(partial.length)issues.push({level:'warning',code:'ZONE_SECTIONS_PARTIAL',finding:partial.map(x=>x.section+': '+x.status).join('; ')+'.',action:'Confirma que Pokémon Zone cargue cada sección y vuelve a ejecutar la sincronización.'});
+              if(!s.zoneData.collectionComplete)issues.push({level:'info',code:'ZONE_CARD_SCAN_PARTIAL',finding:'La captura de Zone incluye '+s.zoneData.scannedCardCount+' cartas observadas y está marcada como incompleta.',action:'Usa la colección local sincronizada como inventario; no trates el recorrido visual de Zone como colección completa.'});
+            }
+            if(Date.now()-Date.parse(s.syncedAt)>86400000)issues.push({level:'warning',code:'SNAPSHOT_STALE',finding:'La copia del conector tiene más de 24 horas.',action:'Sincroniza desde la app para actualizarla.'});
+          }
+          if(state.diagnostics?.report)issues.push({level:'info',code:'DEVICE_REPORT',finding:'Se adjunta el resumen técnico redactado del dispositivo.',action:'ChatGPT puede interpretar sus fallos recientes junto con la cobertura y los datos.'});
+          return toolResult({diagnosedAt:new Date(clock()).toISOString(),syncedAt:s?.syncedAt||null,appDiagnostics:state.diagnostics||null,issues});
+        }
         if(name==='command_status'){const cmd=state.commands.find(c=>c.id===args.id);if(!cmd)throw Error('Command not found');return toolResult(cmd);}
         if(!s)throw Error('Sin colección: sincroniza desde Rotom AI TCG Pocket.');
         if(name==='queue_app_command'){

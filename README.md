@@ -1,4 +1,4 @@
-# Rotom AI TCG Pocket
+# TCG Lab
 
 Aplicación Android y web para gestionar una colección de Pokémon TCG Pocket.
 
@@ -53,7 +53,7 @@ El versionCode aumenta con el número de ejecución para admitir actualizaciones
 - Imágenes y detalles requieren conexión y disponibilidad de TCGdex. El resto de Android
   trabaja con datos locales; la web necesita cargar sus archivos al abrirse.
 - Las plantillas A1 y sus etiquetas históricas no son el meta actual. Hay un enlace a torneos.
-- Las conexiones de proveedores API requieren una clave propia. Android también admite iniciar sesión con ChatGPT para usar el plan elegible; CI usa respuestas simuladas y no hace consultas pagadas.
+- Android usa ChatGPT como único asistente de IA: se inicia sesión con una cuenta ChatGPT compatible, sin configurar claves API de proveedores. El acceso, modelos y límites dependen de la cuenta conectada; CI usa respuestas simuladas y no hace consultas pagadas.
 - No se incorporan tasas de apertura no verificadas. La calculadora no modela la garantía
   de Pokémon básico en la mano inicial, habilidades ni efectos.
 - La web compilada se entrega como artefacto; no se despliega ni se fusiona en main automáticamente.
@@ -63,8 +63,7 @@ Fuentes y licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ## Módulo avanzado: IA, sandbox, efectos y diagnóstico
 
 En Análisis hay tres nuevas secciones: IA, Sandbox y Efectos.
-IA conecta directamente a Gemini, OpenAI API o una API compatible con Chat Completions mediante claves propias; también permite iniciar sesión con ChatGPT para usar el plan elegible, sin clave API.
-Elige la conexión, indica tu objetivo y pulsa Crear con mi IA.
+La app Android ofrece únicamente ChatGPT. Inicia sesión en Conexión ChatGPT, elige un modelo disponible, indica tu objetivo y solicita una propuesta. No pide claves API.
 Para sustituir faltantes, abre un mazo de 20 cartas y usa Completar mazo.
 La respuesta se valida contra tu colección y solo se abre como borrador.
 El servidor opcional de `backend/` ofrece la integración MCP independiente para consultar la colección;
@@ -142,11 +141,11 @@ Consulta solo tras pulsación y confirmación, sin reintentos ni cambio de prove
 Pendiente: pruebas reales con clave del usuario, límites y disponibilidad de modelos de su cuenta, persistencia de Android Keystore en teléfono. APIs que no usan Gemini generateContent o Chat Completions requieren un adaptador adicional (Claude nativo no incluido). La web conserva sus funciones actuales. No se realizan consultas reales ni pagadas en CI.
 
 
-### Usar el plan ChatGPT en Rotom
+### Usar el plan ChatGPT en TCG Lab
 
-Desde IA → Conexiones, pulsa **Continuar con ChatGPT** y autoriza Rotom en el navegador. La autorización usa OAuth con PKCE; los tokens quedan cifrados con Android Keystore en archivos excluidos de respaldos. Para una consulta, activa “Usar mi plan ChatGPT”, elige un modelo y confirma el envío. Solo entonces se envían a OpenAI las cartas disponibles, sus cantidades, efectos cargados, el objetivo y, cuando corresponda, el mazo abierto. La solicitud usa Responses API con almacenamiento desactivado y respuesta transmitida. Rotom no accede a tus conversaciones de ChatGPT. El uso queda sujeto a la elegibilidad y límites que OpenAI muestre para tu cuenta; puedes revisar o limitar esta app en los ajustes de uso de ChatGPT.
+Desde la app, pulsa **Conectar ChatGPT** y autoriza TCG Lab en el navegador. La autorización usa OAuth con PKCE; los tokens quedan cifrados con Android Keystore en archivos excluidos de respaldos. Al conectar la cuenta, ChatGPT queda seleccionado automáticamente. En Ajustes de ChatGPT puedes elegir un modelo disponible. Antes de cada consulta, la app indica qué datos de cartas y mazo se enviarán y pide confirmación. La solicitud usa Responses API con almacenamiento desactivado y respuesta transmitida. TCG Lab no accede a tus conversaciones de ChatGPT. El uso queda sujeto a la elegibilidad y límites que OpenAI muestre para tu cuenta; puedes revisar o limitar esta app en los ajustes de uso de ChatGPT.
 
-La autenticación abre el navegador del teléfono y espera el retorno a una dirección loopback local. No se usa un servidor de Rotom para OAuth ni para las consultas. La primera validación automática cubre protocolo PKCE, permisos concedidos y protección de tokens; el inicio de sesión y la autorización final aún requieren una prueba real en un teléfono.
+La autenticación abre el navegador del teléfono y espera el retorno a una dirección loopback local. No se usa un servidor de TCG Lab para OAuth ni para las consultas. La primera validación automática cubre protocolo PKCE, permisos concedidos y protección de tokens; el inicio de sesión y la autorización final aún requieren una prueba real en un teléfono.
 
 ## Diagnóstico breve para el chat
 

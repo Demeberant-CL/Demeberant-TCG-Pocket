@@ -13,17 +13,62 @@ import androidx.compose.ui.unit.dp
 data class HelpTopic(val title: String, val steps: List<String>, val note: String)
 object PocketHelp {
   val topics = linkedMapOf(
-    "coleccion" to HelpTopic("Colección y filtros", listOf("Toca el avatar del perfil, elige un entrenador y pulsa Usar avatar. Puedes cambiarlo cuando quieras.", "Importa tu CSV desde Ajustes → Apariencia y datos → Importar CSV.", "Busca un nombre o código. Todas muestra el catálogo; Tengo muestra cantidades mayores que cero; Faltan muestra cero; Deseos muestra tus favoritos.", "Toca una carta para cambiar su cantidad o marcar Deseos. Repetidas muestra más de una copia."), "Los filtros solo cambian lo que ves; no eliminan cartas."),
-    "inicio" to HelpTopic("Tu pantalla de inicio", listOf("Inicio resume cartas registradas, copias y mazos guardados; toca el avatar para cambiarlo.", "Inicio muestra los mazos recientes; toca uno para abrirlo. Continuar editando retoma el borrador abierto.", "La IA se abre desde Crear mazo o el editor. Configura tu proveedor desde Ajustes → Conexiones IA; abrirlo no consulta la API.", "Ver meta y actualizar abre resultados guardados. Solo Actualizar meta descarga datos públicos. También está en Juego."), "La barra principal es Inicio, Cartas, Mazos, Juego y Ajustes. La guía está en Juego y no se consulta IA automáticamente."),
-    "mazos" to HelpTopic("Crear y editar un mazo", listOf("Abre Mazos → + Nuevo mazo. Elige Crear manualmente, Crear con IA o Empezar con una plantilla. Las plantillas son puntos de partida históricos.", "En Cartas → Añadir cartas busca y pulsa +. En Mi mazo usa − y +. El contador debe llegar a 20.", "En Energías revisa la sugerencia por tipo y selecciona de una a tres. En Notas cambia el nombre, escribe tu estrategia o comparte la lista.", "Guardar permanece al pie del editor. Mis mazos muestra portada, energías y copias disponibles; pulsa Editar para reabrirlo. Eliminar pide confirmación."), "Máximo dos copias por nombre, incluso con arte distinto. Se pueden guardar borradores incompletos. Crear un mazo nunca descuenta cartas de la colección."),
-    "ia" to HelpTopic("Conectar tu asistente IA", listOf("Abre Ajustes → Conexiones IA para seleccionar un perfil, cambiar modelo o añadir Gemini, OpenAI u otra API compatible.", "Obtén tu propia clave en la página del proveedor, introduce clave y modelo y pulsa Guardar conexión. ChatGPT Plus no incluye crédito API.", "Desde Crear con IA escribe tu objetivo y elige un tipo. En el editor puedes usar Hablar con IA, Completar faltantes o Mejorar con IA.", "Completar faltantes conserva las cartas disponibles del borrador. Mejorar con IA usa el mazo abierto como referencia. Ver cambios muestra una propuesta antes de modificar el borrador.", "Envía la consulta, revisa Ver cambios y pulsa Aplicar cambios solo si te sirve. Guarda el mazo en el editor. Si falla, Reintentar consulta conserva la solicitud; no necesitas escribirla otra vez."), "Los errores temporales pueden tener hasta dos reintentos automáticos. La cuota gratuita depende de tu cuenta y modelo; si falla no se cambia a otro proveedor. Cada conexión conserva su clave cifrada y modelo. Cambia entre perfiles sin eliminarlos. Fuera de respaldos y diagnósticos. No envía perfil ni Friend ID. No hay pruebas reales del proveedor sin tu clave."),
-    "respaldo" to HelpTopic("CSV y respaldos", listOf("CSV sirve para cantidades y Deseos. En Ajustes pulsa Importar CSV o Pegar CSV para el archivo de Pokémon Zone.", "Exportar colección CSV guarda esas cantidades. Abre el archivo para revisar que tenga filas.", "Guardar respaldo completo guarda también mazos y ajustes en JSON.", "Restaurar respaldo completo muestra una confirmación antes de aplicar los registros."), "Las cartas ausentes se conservan. Las cantidades incluidas se reemplazan; los mazos idénticos no se duplican. CSV y respaldo JSON son archivos diferentes."),
-    "qr" to HelpTopic("Pasar un mazo al juego", listOf("Abre un mazo con exactamente 20 cartas y revisa sus energías.", "Pulsa Exportar QR para el juego → Guardar PNG.", "En Pokémon TCG Pocket abre la opción de escanear código de mazo y selecciona el PNG original. Si solo ofrece cámara, muestra el QR en otra pantalla.", "Si falla, prueba QR alternativo y guarda esa imagen. No uses una captura recortada o comprimida."), "El juego decide disponibilidad y reglas. No se garantiza que todos los códigos sean aceptados. No transfiere cartas y las variantes de arte pueden cambiar."),
-    "sandbox" to HelpTopic("Tapete de práctica", listOf("Abre un mazo de 20 cartas y ve a Notas → Tapete de práctica. También está en Juego.", "Pulsa Iniciar con el mazo abierto. Mueve cartas de la mano a Activo o Banca.", "Usa Robar, Siguiente turno, Energía y Daño para practicar manualmente.", "Deshacer recupera el estado anterior. Nueva práctica reinicia solo el tablero."), "La mano inicial intercambia una carta para garantizar un básico si hace falta; es una aproximación. No ejecuta ataques ni todas las reglas. No modifica la colección ni los mazos guardados."),
-    "canjes" to HelpTopic("Organizar intercambios", listOf("Abre Juego → Intercambios y elige un mazo o una expansión como objetivo.", "Recomendados muestra qué ofrecer y qué conseguir; protege las copias necesarias de tus mazos. Protección permite bloquear cartas adicionales.", "Comparar CSV de otra persona propone opciones compatibles por rareza con las cantidades declaradas. Copiar propuesta prepara el texto para compartir."), "No realiza canjes ni descuenta cartas. Comprueba requisitos y costes dentro del juego."),
-    "analisis" to HelpTopic("Análisis, sobres y efectos", listOf("Sobres ordena opciones por faltantes, Deseos y objetivos, sin inventar tasas de apertura.", "En Calculadora introduce la tasa total por sobre que muestra el juego, no la tasa de una sola ranura, y el número de intentos. Para robar cartas usa Notas → Probabilidad de robo.", "Colección → Buscar por efectos consulta los datos descargados. Puedes cargar los datos de una búsqueda y cancelar la descarga.", "Crear mazo → Empezar con una plantilla ofrece puntos de partida históricos, no el meta actual."), "Sobres suma 1 punto por faltante, 3 adicionales por Deseo y 5 por objetivo. Excluye promociones. La cobertura no garantiza una carta. Datos incompletos limitan las sugerencias; las etiquetas por efectos son estimadas."),
-    "diagnostico" to HelpTopic("Enviar diagnóstico sin adjuntos", listOf("Abre Ajustes → Diagnóstico y ayuda.", "Pulsa Copiar resumen y pégalo como mensaje aquí. Añade pantalla, acción y qué ocurrió.", "Compartir texto sin archivo envía el mismo resumen a una aplicación que elijas.", "Guardar o Compartir diagnóstico ZIP incluye el registro completo y el resumen, sin comprimirlo manualmente. Guardar resumen TXT crea un archivo breve. Guardar/Compartir diagnóstico TXT mantiene el registro completo si lo necesitas."), "El resumen tiene como máximo 6000 caracteres, versión y fallos agrupados por servicio y categoría, sin consultas IA, URLs ni mensajes privados. El ZIP conserva las trazas y las causas, los cambios de pantalla y las etapas de las consultas. Un bloqueo superior a 8 segundos en primer plano deja una muestra de la pila, sin asegurar que Android lo declare ANR. Android 11 o posterior también aporta motivos de cierres anteriores cuando están disponibles. No incluye todos los eventos ni prueba que un flujo funcione. Las consultas SQL internas ya no se registran una por una. No puede corregir el envío de adjuntos de ChatGPT ni registrar errores internos del juego."),
-    "temas" to HelpTopic("Tema de la app", listOf("Abre Ajustes → Apariencia y datos para elegir un tema y uno de los cinco diseños. Inicio → Diseño muestra miniaturas de las distribuciones.", "Automático sigue el tema del teléfono. La elección se conserva al volver a abrir la app."), "La interfaz está en español fijo.")
+    "inicio" to HelpTopic("Pantalla principal", listOf(
+      "TCG Lab reúne el resumen de tu colección, cartas destacadas, mazos recientes y el acceso a ChatGPT.",
+      "Sincronizar importa o actualiza datos disponibles en Pokémon Zone. Las misiones aparecen cuando esa fuente las incluye.",
+      "Abre Ajustes para conectar tu cuenta de ChatGPT y elegir un modelo.",
+      "Las secciones se abren desde la pantalla principal; usa la flecha superior para volver a TCG Lab."
+    ), "La colección y los mazos se guardan en este dispositivo."),
+    "coleccion" to HelpTopic("Colección y filtros", listOf(
+      "Abre Colección desde el resumen de TCG Lab o desde sus cartas destacadas.",
+      "Sincronizar importa o actualiza las cantidades disponibles de Pokémon Zone.",
+      "Busca por nombre o código y filtra por expansión, rareza, cartas que tienes, faltantes o Deseos.",
+      "Abre una carta para cambiar su cantidad o marcarla como Deseo."
+    ), "Los filtros solo cambian lo que ves; no eliminan cartas."),
+    "mazos" to HelpTopic("Crear y editar mazos", listOf(
+      "En TCG Lab toca Crear un mazo o abre Mazos para ver los guardados.",
+      "Puedes crear a mano o pedir a ChatGPT una propuesta basada en las cartas registradas.",
+      "Revisa las cartas y energías, y completa el mazo con 20 cartas.",
+      "Guarda el mazo cuando esté listo. Editarlo no descuenta cartas de tu colección."
+    ), "Las propuestas de ChatGPT son sugerencias: revisa las reglas y disponibilidad dentro del juego."),
+    "ia" to HelpTopic("Conectar ChatGPT", listOf(
+      "Abre Ajustes → Conexión ChatGPT e inicia sesión con tu cuenta de ChatGPT.",
+      "Carga la lista de modelos y selecciona el que quieras usar.",
+      "Vuelve a TCG Lab y crea un mazo con ChatGPT. Puedes revisar y editar la propuesta antes de guardarla."
+    ), "La app usa los límites y condiciones de tu cuenta ChatGPT. No necesitas una clave API para esta conexión."),
+    "respaldo" to HelpTopic("CSV y respaldos", listOf(
+      "En Ajustes → Apariencia y datos puedes importar o exportar la colección en CSV.",
+      "El respaldo completo guarda también mazos y ajustes.",
+      "Restaurar un respaldo solicita confirmación antes de aplicar los datos."
+    ), "CSV y respaldo completo son formatos distintos. Revisa el archivo antes de restaurar."),
+    "qr" to HelpTopic("Pasar un mazo al juego", listOf(
+      "Abre un mazo de 20 cartas y revisa sus energías.",
+      "Usa Exportar QR para el juego y guarda la imagen.",
+      "En Pokémon TCG Pocket escanea el QR o abre la imagen desde el juego."
+    ), "El juego decide disponibilidad y reglas. El QR no transfiere cartas."),
+    "sandbox" to HelpTopic("Tapete de práctica", listOf(
+      "Abre Herramientas del juego → Tapete de práctica.",
+      "Elige un mazo y mueve cartas manualmente entre mano, Activo y Banca.",
+      "Usa Robar, Siguiente turno, Energía y Daño para practicar."
+    ), "Es una herramienta manual; no ejecuta todas las reglas y no modifica colección ni mazos guardados."),
+    "canjes" to HelpTopic("Organizar intercambios", listOf(
+      "Abre Herramientas del juego → Intercambios.",
+      "Revisa sugerencias según tus copias y cartas marcadas como Deseo.",
+      "Puedes comparar un CSV y copiar una propuesta para compartirla."
+    ), "La app no realiza canjes ni descuenta cartas. Comprueba requisitos y costes dentro del juego."),
+    "analisis" to HelpTopic("Sobres, probabilidades y efectos", listOf(
+      "Herramientas del juego reúne el recomendador de sobres, la calculadora y los filtros por efectos.",
+      "Para calcular probabilidades, introduce las tasas que muestra el juego.",
+      "Las sugerencias dependen de los datos disponibles y no garantizan una carta."
+    ), "Comprueba las tasas y reglas actuales en Pokémon TCG Pocket."),
+    "diagnostico" to HelpTopic("Diagnóstico y ayuda", listOf(
+      "En Ajustes abre Diagnóstico y ayuda.",
+      "Copia el resumen y compártelo junto con la pantalla y los pasos que causaron el problema."
+    ), "El diagnóstico ayuda a describir fallos; no garantiza que una función esté operativa."),
+    "temas" to HelpTopic("Tema de la app", listOf(
+      "Abre Ajustes → Apariencia y datos para cambiar entre tema claro, oscuro o automático.",
+      "La selección se conserva al volver a abrir la app."
+    ), "TCG Lab usa una sola distribución de pantalla.")
   )
 }
 

@@ -22,7 +22,7 @@ public final class Preview {
         output.put("url", input.getString("url"));
         output.put("pageTitle", limited(input.optString("pageTitle"), 180));
         output.put("visibleHeading", limited(input.optString("visibleHeading"), 180));
-        output.put("visibleSummary", limited(input.optString("visibleSummary"), 6000));
+        output.put("visibleSummary", limited(input.optString("visibleSummary"), 40000));
         // No inferimos un nombre de jugador o estadísticas a partir del título de la página.
         JSONArray fields = input.optJSONArray("visibleFields");
         JSONArray cleanFields = new JSONArray();
@@ -34,6 +34,13 @@ public final class Preview {
             if (!label.isEmpty() && !value.isEmpty()) cleanFields.put(new JSONObject().put("label", label).put("value", value));
         }
         output.put("visibleFields", cleanFields);
+        JSONArray missions = input.optJSONArray("visibleMissions");
+        JSONArray cleanMissions = new JSONArray();
+        if (missions != null) for (int i = 0; i < Math.min(missions.length(), 50); i++) {
+            String mission = limited(missions.optString(i), 240);
+            if (!mission.isEmpty()) cleanMissions.put(mission);
+        }
+        output.put("visibleMissions", cleanMissions);
         output.put("collectionComplete", false);
         JSONArray cards = input.optJSONArray("visibleCards");
         JSONArray cleanCards = new JSONArray();

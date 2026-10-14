@@ -17,14 +17,45 @@
   if (/just a moment|checking your browser|verify you are human|attention required/i.test(document.title)) {
     return JSON.stringify({error: 'blocked'});
   }
-  const fields = [];
-  for (const dt of fast ? [] : root.querySelectorAll('dl dt')) {
-    const dd = dt.nextElementSibling;
-    if (dd?.tagName === 'DD') {
-      const label = text(dt, 60), value = text(dd, 120);
-      if (label && value && fields.length < 30) fields.push({label, value});
+
+  const readProfileData = () => {
+    const fields = [];
+    const seenFields = new Set();
+    const addField = (label, value) => {
+      label = (label || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      value = (value || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const key = label + '\u0000' + value;
+      if (label && value && !seenFields.has(key) && fields.length < 30) {
+        seenFields.add(key);
+        fields.push({label, value});
+      }
+    };
+    for (const dt of root.querySelectorAll('dl dt')) {
+      const dd = dt.nextElementSibling;
+      if (dd?.tagName === 'DD') addField(text(dt, 60), text(dd, 120));
     }
-  }
+    for (const row of root.querySelectorAll('table tr, [role="row"]')) {
+      const cells = [...row.querySelectorAll('th,td,[role="cell"],[role="gridcell"],[role="rowheader"]')];
+      if (cells.length === 2) addField(text(cells[0], 60), text(cells[1], 120));
+    }
+
+    const lines = [];
+    let total = 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node && total < 6000; node = walker.nextNode()) {
+      if (!visible(node.parentElement)) continue;
+      const line = (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      if (!line || line === lines[lines.length - 1]) continue;
+      lines.push(line.slice(0, 6000 - total));
+      total += line.length + 1;
+    }
+    const missionPattern = /missions?|misiones|quests?|tareas|daily|weekly|diari[ao]s?|semanales?|completed|completadas?|progress|progreso/i;
+    const missions = lines.filter(line => missionPattern.test(line)).slice(0, 50);
+    return {fields, lines, missions};
+  };
+  const metadata = fast && scan?.metadata ? scan.metadata : readProfileData();
+  if (fast && scan && !scan.metadata) scan.metadata = metadata;
+
   // Solo lee filas ya cargadas, sin pulsar botones, ni sincronizar con Nintendo.
   const cards = [];
   const seen = new Set();
@@ -41,16 +72,6 @@
     seen.add(url.pathname);
     cards.push({cardPath: url.pathname, quantity: Number(count), name: text(el.querySelector('.player-expansion-collection-card__name-text'), 120)});
   }
-  const lines = [];
-  let total = 0;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = fast ? null : walker.nextNode(); node && total < 6000; node = walker.nextNode()) {
-    if (!visible(node.parentElement)) continue;
-    const line = (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200);
-    if (!line || line === lines[lines.length - 1]) continue;
-    lines.push(line.slice(0, 6000 - total));
-    total += line.length + 1;
-  }
   return JSON.stringify({
     schemaVersion: 1,
     source: 'pokemon-zone',
@@ -58,8 +79,9 @@
     url: 'https://www.pokemon-zone.com' + location.pathname,
     pageTitle: (document.title || '').slice(0, 180),
     visibleHeading: text(root.querySelector('h1'), 180),
-    visibleFields: fields,
-    visibleSummary: lines.join('\n').slice(0, 6000),
+    visibleFields: metadata.fields,
+    visibleMissions: metadata.missions,
+    visibleSummary: fast ? '' : metadata.lines.join('\n').slice(0, 6000),
     visibleCards: cards,
     collectionComplete: false
   });

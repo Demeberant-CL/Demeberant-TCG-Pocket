@@ -5,9 +5,9 @@ Implementación independiente de la API de generación. El servidor no llama a O
 ## Flujo disponible
 
 1. Más → Rotom AI · Conector: guardar origen HTTPS y clave del dispositivo.
-2. Sincronizar: comparte catálogo, cantidades, lista de deseos, efectos ya descargados, mazos guardados y borrador. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior y se conserva el buzón de propuestas y se rechazan instrucciones pendientes de la revisión anterior.
+2. Sincronizar: comparte catálogo, cantidades, wishlist, efectos descargados, mazos, borrador y la última lectura guardada de Pokémon Zone (perfil visible, misiones y texto/cobertura de las secciones). La lectura Zone omite el ID de jugador y la URL de origen. Los efectos sin verificar se identifican con `effectsKnown=false`. Se sustituye la copia anterior; las propuestas se conservan y los comandos pendientes de la revisión anterior se rechazan.
 3. En un cliente MCP configurar `https://TU-SERVIDOR/mcp` con OAuth. El propietario autoriza utilizando la clave del propietario, diferente de la clave Android. Esta clave no debe colocarse en la app ni enviarse en el chat.
-4. El chat puede consultar `collection_summary`, `search_cards` (100 filas por página) y `read_deck`.
+4. ChatGPT puede usar `app_overview`, `read_zone_sections`, `collection_summary`, `search_cards` (100 filas por página), `read_deck` y `app_diagnostics`. `diagnose_app` comprueba qué datos faltan, antigüedad y cobertura de las once secciones solicitadas, y devuelve acciones sugeridas. El resumen técnico enviado desde Android es allowlisted: no contiene mensajes privados, URLs, cuerpos de peticiones, credenciales ni trazas.
 5. `submit_deck_proposal` deposita una propuesta de 20 cartas ligada a la revisión consultada. No altera inventario ni mazos guardados. El servidor comprueba IDs, cantidades, energías y máximo dos por nombre; Android valida también estructura y evoluciones.
 6. Recibir propuestas → revisar lista y estrategia → Abrir como borrador → Mazos. La colección actual se comprueba nuevamente al abrir.
 

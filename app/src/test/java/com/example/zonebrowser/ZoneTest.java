@@ -42,6 +42,14 @@ public class ZoneTest {
     }
     @Test public void navigationStaysOnSameProfile() {
         assertTrue(ZoneUrl.belongsTo(URL + "cards/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "#stats", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "stats/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "tools/what-to-open/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "tools/play-sets/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "theme-collections/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "themed-collections/", URL));
+        assertTrue(ZoneUrl.belongsTo(URL + "wishlist/", URL));
+        assertFalse(ZoneUrl.belongsTo(URL + "accounts/", URL));
         assertFalse(ZoneUrl.belongsTo("https://www.pokemon-zone.com/players/1234567890123456/", URL));
         assertFalse(ZoneUrl.belongsTo(URL + "?token=private", URL));
         assertFalse(ZoneUrl.belongsTo("https://accounts.google.com/", URL));
@@ -75,9 +83,9 @@ public class ZoneTest {
     }
     @Test public void rejectsForeignCardUrlsAndBoundsPreview() throws Exception {
         JSONArray cards = new JSONArray().put(new JSONObject().put("quantity", 2).put("cardPath", "https://evil.test/cards/a1-1/"));
-        JSONObject clean = Preview.validate(fixture().put("visibleCards", cards).put("visibleSummary", "x".repeat(7000)).toString(), URL);
+        JSONObject clean = Preview.validate(fixture().put("visibleCards", cards).put("visibleSummary", "x".repeat(50000)).toString(), URL);
         assertEquals(0, clean.getJSONArray("visibleCards").length());
-        assertEquals(6000, clean.getString("visibleSummary").length());
+        assertEquals(40000, clean.getString("visibleSummary").length());
     }
     @Test public void acceptsMoreThanTwoHundredCardsWithoutClaimingCompleteness() throws Exception {
         JSONArray cards = new JSONArray();

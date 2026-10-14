@@ -269,7 +269,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       .appendQueryParameter("code_challenge", challenge)
       .appendQueryParameter("ext_agent_host_id", store.hostId())
       .apply {
-        if (knownClientId == null) appendQueryParameter("agent_name_hint", "Rotom AI TCG Pocket")
+        if (knownClientId == null) appendQueryParameter("agent_name_hint", "TCG Lab")
         else if (existing != null) {
           appendQueryParameter("id_token_hint", existing.idToken)
           if (existing.email.isNotBlank()) appendQueryParameter("login_hint", existing.email)
@@ -294,7 +294,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
         val target = requestLine.split(' ').getOrNull(1) ?: error("Retorno de inicio de sesión no válido.")
         val uri = Uri.parse("http://127.0.0.1$target")
         require(uri.path == "/auth/callback") { "Ruta de retorno no válida." }
-        val html = "<!doctype html><meta charset=utf-8><title>Rotom</title><p>Puedes volver a Rotom AI TCG Pocket.</p>"
+        val html = "<!doctype html><meta charset=utf-8><title>TCG Lab</title><p>Puedes volver a TCG Lab.</p>"
         val response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\nContent-Length: ${html.toByteArray().size}\r\n\r\n$html"
         socket.getOutputStream().write(response.toByteArray(Charsets.UTF_8))
         socket.getOutputStream().flush()
@@ -304,7 +304,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
         val code = uri.getQueryParameter("code") ?: error("OpenAI no devolvió un código de autorización.")
         val returnedClient = uri.getQueryParameter("client_id")
         val clientId = knownClientId ?: returnedClient
-          ?: error("No se completó el registro de Rotom en OpenAI.")
+          ?: error("No se completó el registro de TCG Lab en OpenAI.")
         require(clientId != "dynamic_agent_client")
         if (knownClientId != null && returnedClient != null) require(returnedClient == knownClientId)
         code to clientId
@@ -327,7 +327,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
     val tokens = tokenRequest(form)
     val claims = validateIdToken(tokens.idToken, clientId, nonce)
     require(ChatGptPlanProtocol.grantsPlanUsage(tokens.scopes.joinToString(" "))) {
-      "La cuenta inició sesión, pero no autorizó el uso del plan ChatGPT en Rotom."
+      "La cuenta inició sesión, pero no autorizó el uso del plan ChatGPT en TCG Lab."
     }
     val account = ChatGptPlanAccount(
       email = claims.getStringClaim("email") ?: "",
@@ -409,7 +409,7 @@ class ChatGptPlanRepository(context: Context, private val client: OkHttpClient =
       scopes = rotated.scopes,
       expiresAtMillis = rotated.expiresAtMillis,
     )
-    require(updated.canUsePlan) { "El plan ChatGPT ya no está autorizado para Rotom." }
+    require(updated.canUsePlan) { "El plan ChatGPT ya no está autorizado para TCG Lab." }
     withContext(Dispatchers.IO) { store.write(updated) }
     updated
   }
