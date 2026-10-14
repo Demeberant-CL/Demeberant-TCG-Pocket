@@ -446,7 +446,8 @@ public final class ZoneSyncActivity extends Activity {
         sectionPageGeneration = 0; sectionInjectedGeneration = -1;
         try { browser.evaluateJavascript("try{sessionStorage.removeItem('__tcgLabZoneSectionsState')}catch(e){}", null); }
         catch (Exception ignored) { }
-        syncDeadline = android.os.SystemClock.elapsedRealtime() + 120000;
+        // La lectura secuencial puede recorrer once secciones con hasta 15 s de espera cada una.
+        syncDeadline = android.os.SystemClock.elapsedRealtime() + 4 * 60 * 1000L;
         final int token = syncFlowId;
         try {
             ScanService.begin(this, () -> {
@@ -470,7 +471,7 @@ public final class ZoneSyncActivity extends Activity {
     private final Runnable syncPoll = new Runnable() {
         @Override public void run() {
             if (syncPhase == 0 || syncBrowser != browser) return;
-            if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en dos minutos. La colección no se ha leído."); return; }
+            if (android.os.SystemClock.elapsedRealtime() >= syncDeadline) { cancelSync("No se confirmó el final de Sync en cuatro minutos. La colección no se ha leído."); return; }
             if (syncPhase == 2 && !syncEvaluationPending) {
                 if (!ZoneUrl.belongsTo(browser.getUrl(), syncProfile)) { cancelSync("La página cambió durante Sync."); return; }
                 if (!profileCaptureDone) {
