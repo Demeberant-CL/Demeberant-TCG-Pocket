@@ -59,6 +59,73 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     }
     message.value = "Resultados actualizados desde Limitless."
   }
+  private val connectorStore = AiConnectionStore(application, fileName = "pocket-connector.enc")
+  private val pocketConnector = PocketConnector()
+  val connectorConfig = MutableStateFlow<AiConnection?>(null)
+  val connectorProposals = MutableStateFlow<List<AiProposal>>(emptyList())
+  fun loadConnector() = task("CONNECTOR_CONFIG") {
+    connectorConfig.value = withContext(Dispatchers.IO) { connectorStore.load() }
+  }
+  fun saveConnector(url: String, key: String) = task("CONNECTOR_CONFIG") {
+    PocketConnector.validate(url.trim(), key.trim())
+    val config = AiConnection(AiProvider.COMPATIBLE, "connector", key.trim(), url.trim(), "connector", "Pocket Atlas")
+    withContext(Dispatchers.IO) { connectorStore.save(config) }
+    connectorConfig.value = config
+    connectorProposals.value = emptyList()
+    message.value = "Conector guardado. Sincroniza la colección para compartirla con el chat."
+  }
+  fun syncConnector(draft: GeneratedDeck?) = task("CONNECTOR_SYNC") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val inventory = repository.inventoryFlow.first()
+    require(inventory.isNotEmpty()) { "Espera a que se cargue la colección." }
+    val rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+    val cards = org.json.JSONArray()
+    inventory.forEach { row ->
+      val rule = rules[row.card.id]
+      val c = hydrate(row.card, rule)
+      cards.put(org.json.JSONObject().put("id", c.id).put("name", c.name).put("rulesName", c.rulesName)
+        .put("expansion", c.id.substringBeforeLast("-")).put("owned", row.ownedCount).put("wishlist", row.isWishlist)
+        .put("type", c.type).put("category", c.category).put("stage", c.stage).put("evolvesFrom", c.evolvesFrom)
+        .put("effects", rule?.rulesText.orEmpty().take(10000)).put("effectsKnown", !rule?.rulesText.isNullOrBlank()))
+    }
+    val decks = org.json.JSONArray()
+    repository.savedDecksFlow.first().forEach { d -> decks.put(org.json.JSONObject().put("id", d.id.toString())
+      .put("name", d.name).put("data", d.cardListSerialized)) }
+    val snapshot = org.json.JSONObject().put("format", 1).put("cards", cards).put("decks", decks)
+    draft?.let { snapshot.put("draft", org.json.JSONObject().put("id", "draft").put("name", it.name)
+      .put("data", com.example.data.util.DeckCodec.encode(it.cards, it.energyTypes))) }
+    pocketConnector.request(config.endpoint, config.apiKey, "/app/snapshot", "PUT", snapshot)
+    connectorProposals.value = emptyList()
+    message.value = "Colección y mazos sincronizados. El chat puede consultar esta copia."
+  }
+  fun receiveConnector() = task("CONNECTOR_RECEIVE") {
+    connectorProposals.value = emptyList()
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    val response = pocketConnector.request(config.endpoint, config.apiKey, "/app/proposals", "GET")
+    val inventory = repository.inventoryFlow.first()
+    val rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+    val candidates = inventory.map { AiCandidate(hydrate(it.card, rules[it.card.id]), it.ownedCount, rules[it.card.id]?.rulesText.orEmpty()) }
+    val rows = response.getJSONArray("proposals")
+    require(rows.length() <= 20)
+    var rejected = 0
+    val accepted = (0 until rows.length()).mapNotNull { i ->
+      try {
+        val row = rows.getJSONObject(i)
+        require(row.getString("revision") == response.getString("revision"))
+        val proposal = AiValidator.parse(row.getJSONObject("deck").toString(), candidates)
+        com.example.domain.DeckChat.parse(org.json.JSONObject().put("message", "Propuesta del conector").put("proposal", row.getJSONObject("deck")).toString(), candidates)
+        proposal
+      } catch (_: Exception) { rejected++; null }
+    }
+    connectorProposals.value = accepted
+    message.value = "${accepted.size} propuestas válidas para revisar" + if (rejected > 0) ". $rejected rechazadas por cartas, cantidades o estructura." else "."
+  }
+  fun deleteConnectorData() = task("CONNECTOR_DELETE") {
+    val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
+    pocketConnector.request(config.endpoint, config.apiKey, "/app/data", "DELETE")
+    connectorProposals.value = emptyList()
+    message.value = "Copia de colección y propuestas eliminadas del servidor."
+  }
   private val connectionStore = AiConnectionStore(application)
   val connection = MutableStateFlow(AiConnection())
   val profiles = MutableStateFlow(AiProfiles())
@@ -118,7 +185,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
       // Provider bodies and network exception messages may contain private content.
       val safe = e.message?.takeIf { it.startsWith("Cuota") || it.startsWith("La API") ||
         it.startsWith("Modelo o") || it.startsWith("Hay demasiadas") || it.startsWith("Necesitas al menos") ||
-        it.startsWith("La respuesta quedó") || it.startsWith("Introduce tu") || it.startsWith("Revisa el identificador") }
+        it.startsWith("La respuesta quedó") || it.startsWith("Cartas obligatorias fuera") || it.startsWith("El borrador contiene") || it.startsWith("Fuera de los criterios") || it.startsWith("Revisa los códigos") || it.startsWith("Una carta no puede") || it.startsWith("Las cartas obligatorias") || it.startsWith("La propuesta") || it.startsWith("Faltan cartas obligatorias") || it.startsWith("Introduce tu") || it.startsWith("Revisa el identificador") }
       message.value = safe ?: "No se pudo obtener un mazo válido. Revisa conexión, cartas disponibles y modelo. No se guardó ninguna propuesta."
       val category = com.example.data.ai.AiFailure.category(e)
       ErrorLogManager.event("AI_CONNECTED", "category=$category status=${(e as? com.example.data.ai.AiHttpFailure)?.status ?: 0}", e)
@@ -131,7 +198,7 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   val deckChatSuggestion = MutableStateFlow<DeckChatSuggestion?>(null)
   val deckChatStatus = MutableStateFlow<String?>(null)
   val deckChatRetryAvailable = MutableStateFlow(false)
-  private data class PendingChat(val deck: GeneratedDeck, val text: String, val action: String, val element: String)
+  private data class PendingChat(val deck: GeneratedDeck, val text: String, val action: String, val element: String, val criteria: DeckCriteria)
   private var pendingChat: PendingChat? = null
   private var deckChatBase: GeneratedDeck? = null
   private var deckChatSession = 0L
@@ -146,18 +213,18 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     deckChatSuggestion.value = null
     deckChatStatus.value = null
   }
-  fun discardDeckChatSuggestion() { deckChatSuggestion.value = null }
+  fun discardDeckChatSuggestion() { deckChatSuggestion.value = null; pendingChat = null; deckChatRetryAvailable.value = false; deckChatStatus.value = null }
   fun retryDeckChat(deck: GeneratedDeck) {
     val request = pendingChat ?: return
     if (request.deck != deck) { deckChatStatus.value = "El mazo cambió. Envía una nueva consulta."; return }
-    sendDeckChat(request.deck, request.text, request.action, request.element, retry = true)
+    sendDeckChat(request.deck, request.text, request.action, request.element, retry = true, criteria = request.criteria)
   }
-  fun sendDeckChat(deck: GeneratedDeck, text: String, action: String = "chat", element: String = "", retry: Boolean = false) {
+  fun sendDeckChat(deck: GeneratedDeck, text: String, action: String = "chat", element: String = "", retry: Boolean = false, criteria: DeckCriteria = DeckCriteria()) {
     if (busy.value || text.isBlank()) return
     startDeckChat(deck)
     val question = text.trim().take(2000)
     if (!retry) deckChatMessages.value = (deckChatMessages.value + DeckChatMessage(true, question)).takeLast(20)
-    pendingChat = PendingChat(deck, question, action, element)
+    pendingChat = PendingChat(deck, question, action, element, criteria)
     deckChatRetryAvailable.value = true
     deckChatSuggestion.value = null
     deckChatStatus.value = null
@@ -173,33 +240,51 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         var rules = db.cardRulesDao().all("es").associateBy { it.cardId }
         val referenceIds = deck.cards.map { it.card.id }.toSet()
         val types = element.takeIf { it.isNotBlank() }?.let { setOf(it) } ?: deck.energyTypes.toSet()
-        val pool = inventory.filter { it.ownedCount > 0 && (types.isEmpty() || it.card.type in types ||
+        val pool = criteria.pool(inventory).filter { (types.isEmpty() || it.card.type in types ||
           it.card.type in setOf("Entrenador", "Incoloro") || it.card.id in referenceIds) }
           .sortedWith(compareByDescending<CardWithInventory> { it.card.id in referenceIds }
-            .thenByDescending { it.card.type == "Entrenador" }.thenBy { it.card.id })
-        val selectedPool = (pool.filter { it.card.id in referenceIds } + pool.filter { it.card.type == "Entrenador" }.take(16) + pool.filter { it.card.type != "Entrenador" }).distinctBy { it.card.id }.take(60)
+            .thenByDescending { it.card.id in criteria.required }.thenByDescending { it.card.type == "Entrenador" }.thenByDescending { item -> question.contains(item.card.id, true) || question.contains(item.card.name, true) }.thenBy { it.card.id })
+        require(pool.map { it.card.id }.containsAll(criteria.required)) { "Cartas obligatorias fuera de la energía seleccionada. Revisa Energía." }
+        if (action == "complete") require(pool.map { it.card.id }.containsAll(deck.cards.filter { it.count > 0 }.map { it.card.id })) { "El borrador contiene cartas fuera de estos criterios. Amplía las expansiones o crea otra lista." }
+        val priorityIds = referenceIds + criteria.required
+        val priorities = pool.filter { it.card.id in priorityIds || question.contains(it.card.id, true) || question.contains(it.card.name, true) }
+        val parents = priorities.map { it.card.evolvesFrom }.filter { it.isNotBlank() }.toSet()
+        val ancestors = pool.filter { it.card.rulesName in parents }
+        val grandparents = ancestors.map { it.card.evolvesFrom }.filter { it.isNotBlank() }.toSet()
+        val selectedPool = (priorities + ancestors + pool.filter { it.card.rulesName in grandparents } +
+          pool.filter { it.card.type == "Entrenador" }.take(16) + pool.filter { it.card.type != "Entrenador" })
+          .distinctBy { it.card.id }.take(80)
+        ErrorLogManager.event("AI_CONTEXT", "id=$requestId pool=${pool.size} selected=${selectedPool.size} expansions=${criteria.expansions.size} required=${criteria.required.size} excluded=${criteria.excluded.size} ownedOnly=${criteria.ownedOnly}")
         loadMissingRules(selectedPool.map { it.card.id }, "es") { deckChatStatus.value = it }
         rules = db.cardRulesDao().all("es").associateBy { it.cardId }
+        val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
         val candidates = mutableListOf<AiCandidate>()
         // Keep the complete context below the provider's 60 KB request limit.
-        var size = DeckChat.prompt(deck, emptyList(), history, action).toByteArray(Charsets.UTF_8).size
-        val overhead = DeckChat.prompt(deck, emptyList(), emptyList(), action).toByteArray(Charsets.UTF_8).size
+        var size = DeckChat.prompt(deck, emptyList(), history, action, criteria).toByteArray(Charsets.UTF_8).size
+        val overhead = DeckChat.prompt(deck, emptyList(), emptyList(), action, criteria).toByteArray(Charsets.UTF_8).size
         for (item in selectedPool) {
-          val candidate = AiCandidate(hydrate(item.card, rules[item.card.id]), item.ownedCount, rules[item.card.id]?.rulesText ?: "")
-          val cost = (DeckChat.prompt(deck, listOf(candidate), emptyList(), action).toByteArray(Charsets.UTF_8).size -
+          val rule = rules[item.card.id]
+          val local = facts[item.card.id]
+          val effectText = rule?.rulesText?.takeIf { it.isNotBlank() } ?: local?.let { value ->
+            (listOf(value.text) + value.attacks.map { a -> listOf(a.name, "Daño: ${a.damage}", a.cost?.joinToString(prefix = "Coste: ") ?: "Coste desconocido", a.effect).joinToString(" · ") }).filter(String::isNotBlank).joinToString("\n")
+          }.orEmpty()
+          val candidate = AiCandidate(hydrate(item.card, rule), item.ownedCount, effectText.take(3000))
+          val cost = (DeckChat.prompt(deck, listOf(candidate), emptyList(), action, criteria).toByteArray(Charsets.UTF_8).size -
             overhead) + 2
           if (size + cost > 57000) continue
           candidates.add(candidate); size += cost
         }
+        require(candidates.map { it.card.id }.containsAll(criteria.required)) { "Las cartas obligatorias no caben en la consulta. Reduce los criterios." }
         deckChatStatus.value = "Consultando ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con efectos completos…"
         stage = "REQUEST"
         ErrorLogManager.event("AI_REQUEST", "id=$requestId stage=REQUEST")
-        val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action)) { status ->
+        val result = connectedAssistant.request(connection.value, DeckChat.prompt(deck, candidates, history, action, criteria)) { status ->
           if (deckChatSession == session) deckChatStatus.value = status
         }
         val current = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
         stage = "VALIDATE"
-        val answer = withContext(Dispatchers.Default) { DeckChat.parse(result, candidates.map { it.copy(owned = current[it.card.id] ?: 0) }) }
+        val answer = withContext(Dispatchers.Default) { DeckChat.parse(result, candidates.map { it.copy(owned = if (criteria.ownedOnly) current[it.card.id] ?: 0 else 2) }) }
+        answer.proposal?.let { criteria.validate(it.deck) }
         if (action == "complete" && answer.proposal != null) {
           val counts = answer.proposal.deck.cards.associate { it.card.id to it.count }
           require(deck.cards.all { (counts[it.card.id] ?: 0) >= minOf(it.count, current[it.card.id] ?: 0) })
@@ -209,13 +294,13 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         pendingChat = null; deckChatRetryAvailable.value = false
         deckChatStatus.value = null
         deckChatMessages.value = (history + DeckChatMessage(false, answer.text)).takeLast(20)
-        deckChatSuggestion.value = answer.proposal?.let { DeckChatSuggestion(deck, it) }
-        deckChatStatus.value = "Consulta: ${candidates.size} cartas · ${candidates.count { it.text.isNotBlank() }} con datos de efectos · ${pool.size - candidates.size} fuera del contexto. Acota por energía si necesitas otras."
+        deckChatSuggestion.value = answer.proposal?.let { DeckChatSuggestion(deck, it, criteria) }
+        if (answer.proposal == null && pool.size > candidates.size) deckChatStatus.value = "La consulta incluyó ${candidates.size} de ${pool.size} cartas. Selecciona expansiones o cartas obligatorias para priorizar las que necesitas."
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         if (deckChatBase == deck && deckChatSession == session) {
           val safe = e.message?.takeIf { it.startsWith("Cuota") || it.startsWith("La API") || it.startsWith("Modelo o") ||
-            it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
+            it.startsWith("Cartas obligatorias fuera") || it.startsWith("El borrador contiene") || it.startsWith("Fuera de los criterios") || it.startsWith("Revisa los códigos") || it.startsWith("Una carta no puede") || it.startsWith("Las cartas obligatorias") || it.startsWith("La propuesta") || it.startsWith("Faltan cartas obligatorias") || it.startsWith("Introduce tu") || it.startsWith("La respuesta quedó") }
           deckChatStatus.value = safe ?: "No se obtuvo una respuesta válida. Revisa tu conexión y vuelve a intentarlo. Tu mazo se conserva."
         }
         ErrorLogManager.event("DECK_CHAT", "id=$requestId stage=$stage category=${com.example.data.ai.AiFailure.category(e, stage)} status=${(e as? com.example.data.ai.AiHttpFailure)?.status ?: 0}", e)

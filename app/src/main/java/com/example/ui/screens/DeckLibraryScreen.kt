@@ -37,9 +37,10 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Pocket Atlas", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        Text("Mazos", style = MaterialTheme.typography.displayLarge)
-        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("+ Crear mazo") }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          Text("Mazos", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+          Button(onClick = onCreate, shape = MaterialTheme.shapes.medium) { Text("+ Crear mazo") }
+        }
         if (draft?.cards?.isNotEmpty() == true) OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Continuar borrador · ${draft?.totalCardCount}/20") }
         OutlinedTextField(search, { search = it }, modifier = Modifier.fillMaxWidth(),
           label = { Text("Buscar mazo") }, singleLine = true)
@@ -64,12 +65,12 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().testTag("saved_deck_${saved.id}")) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual == com.example.data.preferences.VisualStyle.COMPACT) 10.dp else 18.dp)) {
-          val stacked = visual == com.example.data.preferences.VisualStyle.EDITORIAL || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(if (visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) 10.dp else 14.dp)) {
+          val stacked = visual in listOf(com.example.data.preferences.VisualStyle.EDITORIAL, com.example.data.preferences.VisualStyle.ALBUM, com.example.data.preferences.VisualStyle.GALLERY) || LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
           Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
               Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(saved.name, style = if (visual == com.example.data.preferences.VisualStyle.COMPACT) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineMedium, maxLines = 2,
+                Text(saved.name, style = if (visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, maxLines = 2,
                   overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text("$total/20 cartas", style = MaterialTheme.typography.bodyMedium)
                 if (energies.isNotEmpty()) com.example.ui.components.EnergyBadges(energies)
@@ -78,9 +79,9 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
               }
-              if (!stacked) Box(Modifier.padding(top = 36.dp)) { DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT) }
+              if (!stacked) Box(Modifier.padding(top = 20.dp)) { DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS)) }
             }
-            if (stacked) DeckCoverPair(covers, visual == com.example.data.preferences.VisualStyle.COMPACT)
+            if (stacked) DeckCoverPair(covers, visual in listOf(com.example.data.preferences.VisualStyle.COMPACT, com.example.data.preferences.VisualStyle.DECISIONS), gallery = visual == com.example.data.preferences.VisualStyle.GALLERY)
             if (available != null) Text(if (available < total) "Faltan ${total - available} copias · $available/$total disponibles" else "Todas las copias disponibles",
               style = MaterialTheme.typography.bodySmall,
               color = if (available < total) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -104,11 +105,11 @@ fun DeckLibraryScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier, on
 }
 
 @Composable
-private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>, compact: Boolean = false) {
+private fun DeckCoverPair(covers: List<com.example.data.repository.DeckCardEntry>, compact: Boolean = false, gallery: Boolean = false) {
   Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
     covers.forEach { entry ->
       com.example.ui.components.PocketCardImage(entry.card.id, entry.card.name,
-        modifier = Modifier.width(if (compact) 44.dp else 76.dp).height(if (compact) 62.dp else 108.dp).clip(MaterialTheme.shapes.small))
+        modifier = Modifier.width(if (compact) 44.dp else if (gallery) 108.dp else 76.dp).height(if (compact) 62.dp else if (gallery) 152.dp else 108.dp).clip(MaterialTheme.shapes.small))
     }
   }
 }

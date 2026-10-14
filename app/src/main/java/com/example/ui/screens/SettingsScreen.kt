@@ -83,13 +83,8 @@ fun SettingsScreen(
                 Column(Modifier.weight(1f)) {
                   Text(style.label, style = MaterialTheme.typography.titleMedium)
                   Text(style.description, style = MaterialTheme.typography.bodySmall)
-                  Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    repeat(if (style == com.example.data.preferences.VisualStyle.COMPACT) 5 else 3) {
-                      Surface(color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(if (style == com.example.data.preferences.VisualStyle.EDITORIAL) 2.dp else 10.dp),
-                        modifier = Modifier.width(if (style == com.example.data.preferences.VisualStyle.COMPACT) 28.dp else 40.dp).height(if (style == com.example.data.preferences.VisualStyle.GALLERY) 52.dp else 24.dp)) {}
-                    }
-                  }
+                  Spacer(Modifier.height(8.dp))
+                  DesignMiniature(style)
                 }
               }
             }

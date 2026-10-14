@@ -30,41 +30,45 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
   var style by rememberSaveable { mutableStateOf(DeckStyle.BALANCED.name) }
   var query by rememberSaveable { mutableStateOf("") }
   var anchorId by rememberSaveable { mutableStateOf<String?>(null) }
+  var criteria by remember { mutableStateOf(DeckCriteria()) }
+  var variant by rememberSaveable { mutableIntStateOf(0) }
   var pending by remember { mutableStateOf<DeckPlan?>(null) }
+  LaunchedEffect(type, style, anchorId, criteria) { main.clearLocalDeckPlans(); variant = 0 }
   val anchor = inventory.firstOrNull { it.card.id == anchorId }?.card
-  val found = remember(inventory, query) {
-    if (query.trim().length < 2) emptyList() else inventory.filter { it.ownedCount > 0 &&
+  val found = remember(inventory, query, criteria) {
+    if (query.trim().length < 2) emptyList() else inventory.filter { (!criteria.ownedOnly || it.ownedCount > 0) &&
       it.card.type != "Entrenador" && (it.card.name.contains(query.trim(), true) || it.card.id.contains(query.trim(), true)) }
       .sortedBy { it.card.id }.take(6)
   }
   LazyColumn(modifier.fillMaxSize().testTag("local_planner_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     item {
       Text("Constructor de mazos", style = MaterialTheme.typography.headlineSmall)
-      Text("Con tus cartas · Sin conexión ni cuotas", style = MaterialTheme.typography.labelMedium,
+      Text(if (criteria.ownedOnly) "Mi colección" else "Catálogo", style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary)
     }
     item {
       Text("Energía", style = MaterialTheme.typography.titleMedium)
       LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { FilterChip(selected = type == null, onClick = { type = null }, label = { Text("Automática") }) }
-        items(DeckCodec.energyNames) { name -> FilterChip(selected = type == name, onClick = { type = name }, label = { Text(name) }) }
+        item { FilterChip(enabled = !busy, selected = type == null, onClick = { type = null }, label = { Text("Automática") }) }
+        items(DeckCodec.energyNames) { name -> FilterChip(enabled = !busy, selected = type == name, onClick = { type = name }, label = { Text(name) }) }
       }
       Text("Estilo", style = MaterialTheme.typography.titleMedium)
       LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(DeckStyle.entries) { value -> FilterChip(selected = style == value.name,
+        items(DeckStyle.entries) { value -> FilterChip(enabled = !busy, selected = style == value.name,
           onClick = { style = value.name }, label = { Text(value.label) }) }
       }
     }
     item {
-      OutlinedTextField(query, { query = it; anchorId = null }, modifier = Modifier.fillMaxWidth(),
+      DeckCriteriaFields(inventory.map { com.example.data.util.CardId.split(it.card.id).first }.distinct().sorted(), enabled = !busy, initial = criteria) { criteria = it; variant = 0 }
+      OutlinedTextField(enabled = !busy, value = query, onValueChange = { query = it; anchorId = null }, modifier = Modifier.fillMaxWidth(),
         label = { Text("Pokémon principal (opcional)") }, singleLine = true)
       anchor?.let { Text("Elegido: ${it.name} · ${it.id}", style = MaterialTheme.typography.labelMedium) }
-      found.forEach { item -> TextButton(onClick = { anchorId = item.card.id; query = "" }, modifier = Modifier.fillMaxWidth()) {
+      found.forEach { item -> TextButton(enabled = !busy, onClick = { anchorId = item.card.id; query = "" }, modifier = Modifier.fillMaxWidth()) {
         Text("${item.card.name} · ${item.card.id} · ${item.ownedCount} copias")
       } }
-      Button(onClick = { main.recommendLocalDecks(PlannerOptions(type, DeckStyle.valueOf(style), anchorId)) },
+      Button(onClick = { main.recommendLocalDecks(PlannerOptions(type, DeckStyle.valueOf(style), anchorId, criteria, variant++, plans.map { LocalDeckPlanner.signature(it.deck) }.toSet())) },
         enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-        Text(if (busy) "Analizando colección…" else "Crear propuestas")
+        Text(if (busy) "Analizando colección…" else if (plans.isEmpty()) "Crear propuestas" else "Buscar otras propuestas")
       }
       if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
       message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -77,9 +81,9 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
           com.example.ui.components.EnergyBadges(plan.deck.energyTypes)
           Text("${plan.deck.totalCardCount}/20 cartas · ${plan.basics} básicos · ${plan.trainers} entrenadores",
             style = MaterialTheme.typography.labelMedium)
-          Text("Datos de combate: ${plan.knownCopies}/${plan.deck.totalCardCount}", style = MaterialTheme.typography.bodySmall)
+          if (!plan.ownedOnly) Text("Catálogo · faltan ${plan.deck.cards.sumOf { e -> (e.count - (inventory.firstOrNull { it.card.id == e.card.id }?.ownedCount ?: 0)).coerceAtLeast(0) }} copias en tu colección", style = MaterialTheme.typography.bodySmall)
           Text(plan.reasons.first(), style = MaterialTheme.typography.bodyMedium)
-          plan.cautions.forEach { Text(it, style = MaterialTheme.typography.bodySmall,
+          plan.cautions.filterNot { "valoración parcial" in it || "competitivo" in it }.take(2).forEach { Text(it, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant) }
           if (reference != null) {
             val changes = com.example.domain.DeckChat.changes(reference, plan.deck)
@@ -107,7 +111,7 @@ fun LocalDeckPlannerScreen(main: TcgViewModel, onOpen: () -> Unit, modifier: Mod
       }
     }
     if (plans.isNotEmpty()) item {
-      Text("Valoración por reglas y datos disponibles. No es una predicción de victorias.",
+      Text("Revisa las cartas y la estrategia antes de guardar.",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }

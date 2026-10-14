@@ -137,6 +137,8 @@ fun PocketAppTheme(
     com.example.data.preferences.VisualStyle.GALLERY -> 24
     com.example.data.preferences.VisualStyle.EDITORIAL -> 6
     com.example.data.preferences.VisualStyle.COMPACT -> 12
+    com.example.data.preferences.VisualStyle.DECISIONS -> 16
+    com.example.data.preferences.VisualStyle.ALBUM -> 8
   }
   androidx.compose.runtime.CompositionLocalProvider(LocalVisualStyle provides visualStyle) {
     MaterialTheme(colorScheme = colorScheme, typography = Typography,

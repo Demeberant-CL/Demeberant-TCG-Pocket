@@ -15,7 +15,7 @@ class DiagnosticInterceptor(private val sink: (String, String, Throwable?) -> Un
     val id = UUID.randomUUID().toString().take(8)
     val started = System.nanoTime()
     val source = when (request.url.host) {
-      "assets.tcgdex.net" -> "IMAGES"; "api.tcgdex.net" -> "CARD_DATA"; else -> "OTHER"
+      "assets.tcgdex.net", "ptcgp-assets.centropkmn.com" -> "IMAGES"; "api.tcgdex.net" -> "CARD_DATA"; else -> "OTHER"
     }
     val route = "source=$source ${request.method} ${request.url.host}${request.url.encodedPath}"
     sink("HTTP_START", "$id $route bytes=${request.body?.contentLength() ?: 0}", null)

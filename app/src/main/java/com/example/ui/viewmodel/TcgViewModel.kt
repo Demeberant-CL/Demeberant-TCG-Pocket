@@ -201,6 +201,13 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun setTradeSettings(value: com.example.data.util.TradeSettings) {
+    viewModelScope.launch {
+      try { preferencesRepository.setTrade(value) }
+      catch (e: Exception) { _csvStatusMessage.value = "No se pudieron guardar los objetivos de intercambio." }
+    }
+  }
+
   fun setVisualStyle(style: com.example.data.preferences.VisualStyle) {
     viewModelScope.launch {
       try { preferencesRepository.setVisualStyle(style) }
@@ -314,6 +321,8 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
   private val _localPlannerMessage = MutableStateFlow<String?>(null)
   val localPlannerMessage = _localPlannerMessage.asStateFlow()
 
+  fun clearLocalDeckPlans() { if (!_isGeneratingDeck.value) { _localDeckPlans.value = emptyList(); _localPlannerMessage.value = null } }
+
   fun recommendLocalDecks(options: com.example.domain.PlannerOptions = com.example.domain.PlannerOptions()) {
     if (_isGeneratingDeck.value) return
     _isGeneratingDeck.value = true
@@ -326,8 +335,10 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
         val facts = withContext(Dispatchers.IO) { com.example.data.repository.LocalCombatRepository.snapshot(getApplication()) }
         val started = android.os.SystemClock.elapsedRealtime()
         val plans = withContext(Dispatchers.Default) { com.example.domain.LocalDeckPlanner.recommend(inventory, facts, options) }
-        ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size}")
+        ErrorLogManager.event("DECK_PLAN_OK", "elapsedMs=${android.os.SystemClock.elapsedRealtime() - started} candidates=${plans.size} pool=${inventory.size} expansions=${options.criteria.expansions.size} required=${options.criteria.required.size} excluded=${options.criteria.excluded.size} ownedOnly=${options.criteria.ownedOnly} variant=${options.variant}")
         _localDeckPlans.value = plans
+        if (options.previous.isNotEmpty() && plans.all { com.example.domain.LocalDeckPlanner.signature(it.deck) in options.previous })
+          _localPlannerMessage.value = "No se encontraron otras listas con estos criterios. Prueba otra energía, estilo o expansión."
       } catch (e: CancellationException) { throw e }
       catch (e: Exception) {
         ErrorLogManager.event("DECK_PLAN", "Local recommendations failed", e)
@@ -340,7 +351,7 @@ class TcgViewModel(application: Application) : AndroidViewModel(application) {
       initialization.await()
       val owned = repository.inventoryFlow.first().associate { it.card.id to it.ownedCount }
       val deck = plan.deck
-      require(deck.cards.all { it.count in 1..2 && it.count <= (owned[it.card.id] ?: 0) })
+      require(deck.cards.all { it.count in 1..2 && (!plan.ownedOnly || it.count <= (owned[it.card.id] ?: 0)) })
       require(deck.cards.sumOf { it.count } <= 20)
       require(DeckBuilderEngine.validate(deck.cards).none { !it.startsWith("Mazo incompleto:") })
       editingDeckId = 0; _automaticEnergies.value = false; _generatedDeck.value = deck

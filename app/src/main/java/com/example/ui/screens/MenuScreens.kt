@@ -54,11 +54,11 @@ private fun MenuChoices(labels: List<String>, selected: Int, onSelect: (Int) -> 
 
 @Composable
 fun DeckMenuScreen(viewModel: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier, onAskAi: () -> Unit = {}, editorRequest: Int = 0, onDetailChange: (Boolean) -> Unit = {}) {
-  var section by rememberSaveable { mutableIntStateOf(if (editorRequest > 0) 1 else 0) }
+  var section by rememberSaveable { mutableIntStateOf(when { editorRequest < 0 -> 3; editorRequest > 0 -> 1; else -> 0 }) }
   var appliedEditorRequest by rememberSaveable { mutableIntStateOf(editorRequest) }
   LaunchedEffect(editorRequest) {
     if (appliedEditorRequest != editorRequest) {
-      section = if (editorRequest > 0) 1 else 0
+      section = when { editorRequest < 0 -> 3; editorRequest > 0 -> 1; else -> 0 }
       appliedEditorRequest = editorRequest
     }
   }
@@ -181,7 +181,7 @@ fun TradeMenuScreen(viewModel: TcgViewModel, modifier: Modifier = Modifier) {
 
 @Composable
 fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedViewModel, modifier: Modifier = Modifier,
-  initialSection: Int = -1, onMeta: () -> Unit = {}) {
+  initialSection: Int = -1, onMeta: () -> Unit = {}, settingsMenu: Boolean = false) {
   var section by rememberSaveable { mutableIntStateOf(initialSection) }
   var appliedInitialSection by rememberSaveable { mutableIntStateOf(initialSection) }
   LaunchedEffect(initialSection) {
@@ -202,15 +202,16 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
     return
   }
   if (showDiagnostic) DiagnosticReportDialog { showDiagnostic = false }
-  val labels = listOf("Tutoriales", "Sobres", "Canjes", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Ajustes", "Conexiones IA")
-  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Organiza intercambios", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Datos, respaldos y sincronización", "Configura tu proveedor y modelo")
+  val labels = listOf("Tutoriales", "Sobres", "Intercambios", "Tapete de práctica", "Calculadora", "Filtros por efectos", "Meta de torneos", "Diagnóstico", "Apariencia y datos", "Conexiones IA", "Cartas sin conexión", "Conector de chat")
+  val descriptions = listOf("Aprende paso a paso", "Busca tus cartas faltantes", "Descubre qué ofrecer y qué conseguir", "Organiza cartas en un tablero manual", "Calcula probabilidades", "Busca mecánicas", "Consulta la muestra pública", "Copia el resumen o envía un ZIP", "Diseños, colores, colección, respaldos y sincronización", "Configura tu proveedor y modelo", "Descarga imágenes en español", "Comparte tu colección y recibe propuestas")
   val icons = listOf(Icons.AutoMirrored.Filled.MenuBook, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz,
-    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings)
+    Icons.Filled.SportsEsports, Icons.Filled.Calculate, Icons.Filled.FilterAlt, Icons.Filled.Insights, Icons.Filled.BugReport, androidx.compose.material.icons.Icons.Filled.Settings, androidx.compose.material.icons.Icons.Filled.Settings, Icons.Filled.CardGiftcard, Icons.Filled.SwapHoriz)
   Column(modifier.fillMaxSize()) {
     if (section < 0) LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      item { Text("Herramientas", style = MaterialTheme.typography.headlineSmall) }
-      listOf("Mi app" to listOf(8, 9, 7), "Colección" to listOf(1, 2, 5),
-        "Aprender y practicar" to listOf(0, 3, 4), "Competición" to listOf(6)).forEach { (group, indices) ->
+      item { Text(if (settingsMenu) "Ajustes" else "Herramientas del juego", style = MaterialTheme.typography.headlineMedium) }
+      item { Text(if (settingsMenu) "Personaliza la app y administra tus datos." else "Todo para coleccionar, construir y practicar.", style = MaterialTheme.typography.bodyMedium) }
+      (if (settingsMenu) listOf("Personalización y datos" to listOf(8), "Servicios y almacenamiento" to listOf(9, 11, 10), "Soporte" to listOf(7))
+        else listOf("Colección e intercambios" to listOf(2, 1, 5), "Partidas y aprendizaje" to listOf(3, 4, 0), "Competición" to listOf(6))).forEach { (group, indices) ->
         item(key = group) {
           com.example.ui.components.DexPanel(Modifier.fillMaxWidth()) {
             Column {
@@ -238,16 +239,18 @@ fun MoreScreen(main: TcgViewModel, advanced: com.example.ui.viewmodel.AdvancedVi
       }
       item { com.example.ui.components.AppVersionLabel(Modifier.padding(vertical = 8.dp)) }
     } else {
-      TextButton(onClick = { section = -1 }) { Text("← Más herramientas") }
+      TextButton(onClick = { section = -1 }) { Text(if (settingsMenu) "← Ajustes" else "← Herramientas del juego") }
       when (section) {
         0 -> HelpScreen(Modifier.weight(1f))
-        1 -> PackRecommenderScreen(main, Modifier.weight(1f))
-        2 -> TradeMenuScreen(main, Modifier.weight(1f))
+        1 -> PackRecommenderScreen(main, Modifier.weight(1f), onTrade = { section = 2 })
+        2 -> TradeAdvisorScreen(main, Modifier.weight(1f))
         3 -> SandboxScreen(main, advanced, Modifier.weight(1f))
         4 -> Column(Modifier.weight(1f)) {
           MenuChoices(listOf("Sobres", "Robo del mazo"), calculation) { calculation = it }
           ProbabilityCalculatorScreen(Modifier.weight(1f), deckOnly = calculation == 1, packsOnly = calculation == 0)
         }
+        11 -> PocketConnectorScreen(main, advanced, Modifier.weight(1f))
+        10 -> OfflineImagesScreen(Modifier.weight(1f))
         9 -> AIAssistantScreen(main, advanced, {}, Modifier.weight(1f), initialConfigure = true, configurationOnly = true)
         else -> EffectFiltersScreen(main, advanced, Modifier.weight(1f))
       }

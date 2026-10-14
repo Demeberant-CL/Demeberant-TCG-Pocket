@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
         val selectedTabIndex = navigation.last()
         LaunchedEffect(selectedTabIndex) {
           com.example.data.util.AppDiagnostics.screen(when (selectedTabIndex) {
-            0 -> "HOME"; 1 -> "COLLECTION"; 2 -> "DECKS"; 3 -> "AI_CONNECTIONS"; 4 -> "MORE"; else -> "META"
+            0 -> "HOME"; 1 -> "COLLECTION"; 2 -> "DECKS"; 3 -> "AI_CONNECTIONS"; 4 -> "GAME_TOOLS"; 6 -> "SETTINGS"; else -> "META"
           })
         }
         val screenStates = rememberSaveableStateHolder()
@@ -99,18 +100,19 @@ class MainActivity : ComponentActivity() {
           dismissButton = { androidx.compose.material3.TextButton(onClick = { showExitConfirmation = false }) { Text("Continuar") } }
         )
 
-        val destinations = listOf(0, 1, 2, 4)
-        val labels = listOf("Inicio", "Colección", "Mazos", "Más")
+        val destinations = listOf(0, 1, 2, 4, 6)
+        val labels = listOf("Inicio", "Cartas", "Mazos", "Juego", "Ajustes")
         val icons = listOf(Icons.Filled.Home, Icons.Filled.Collections, Icons.Filled.Style,
-          Icons.Filled.Menu)
+          Icons.Filled.Menu, Icons.Filled.Settings)
         Scaffold(
           modifier = Modifier.fillMaxSize(),
           bottomBar = {
             if (!(selectedTabIndex == 2 && deckDetail)) BoxWithConstraints {
             val density = LocalDensity.current
+            val displayLabels = if (density.fontScale >= 1.3f) listOf("Inicio", "Cartas", "Mazos", "Juego", "Ajustes") else labels
             val textMeasurer = rememberTextMeasurer()
-            val widestLabel = labels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelLarge).size.width }
-            val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 24.dp)
+            val widestLabel = displayLabels.maxOf { textMeasurer.measure(it, androidx.compose.material3.MaterialTheme.typography.labelMedium).size.width }
+            val itemWidth = maxOf(maxWidth / labels.size, with(density) { widestLabel.toDp() } + 12.dp)
             val navigationScroll = rememberScrollState()
             val activeIndex = destinations.indexOf(if (selectedTabIndex == 5) metaReturnTab else selectedTabIndex).coerceAtLeast(0)
             LaunchedEffect(activeIndex, itemWidth, maxWidth) {
@@ -131,8 +133,8 @@ class MainActivity : ComponentActivity() {
                       navigateTo(index)
                     }
                   },
-                  icon = { Icon(icons[position], contentDescription = label, modifier = Modifier.size(28.dp)) },
-                  label = { Text(label, style = androidx.compose.material3.MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                  icon = { Icon(icons[position], contentDescription = label, modifier = Modifier.size(24.dp)) },
+                  label = { Text(displayLabels[position], style = androidx.compose.material3.MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                   colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                     selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
@@ -152,15 +154,20 @@ class MainActivity : ComponentActivity() {
           when (selectedTabIndex) {
             0 -> com.example.ui.screens.HomeScreen(viewModel, advancedViewModel, screenModifier,
               onDecks = { screenStates.removeState(2); deckEditorRequest = 0; navigateTo(2) },
-              onEditor = { deckEditorRequest++; navigateTo(2) },
-              onMeta = { metaReturnTab = 0; navigateTo(5) })
+              onEditor = { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) },
+              onCreate = { deckEditorRequest = -kotlin.math.abs(deckEditorRequest) - 1; navigateTo(2) },
+              onMeta = { metaReturnTab = 0; navigateTo(5) },
+              onTrade = { screenStates.removeState(4); moreSection = 2; navigateTo(4) },
+              onTools = { screenStates.removeState(4); moreSection = -1; navigateTo(4) },
+              onCollection = { expansion -> viewModel.setExpansionFilter(expansion); screenStates.removeState(1); navigateTo(1) })
             1 -> CollectionScreen(viewModel, screenModifier, onAiConnections = { navigateTo(3) }, advanced = advancedViewModel)
             2 -> com.example.ui.screens.DeckMenuScreen(viewModel, advancedViewModel, screenModifier, onAskAi = { navigateTo(3) }, editorRequest = deckEditorRequest, onDetailChange = { deckDetail = it })
-            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
+            3 -> com.example.ui.screens.AIAssistantScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, screenModifier, initialConfigure = true, configurationOnly = true)
             5 -> androidx.compose.foundation.layout.Column(screenModifier.fillMaxSize()) {
-              androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Más herramientas" else "← Inicio") }
-              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { deckEditorRequest++; navigateTo(2) }, Modifier.weight(1f))
+              androidx.compose.material3.TextButton(onClick = { navigateTo(metaReturnTab) }) { Text(if (metaReturnTab == 4) "← Herramientas del juego" else "← Inicio") }
+              com.example.ui.screens.LiveMetaScreen(viewModel, advancedViewModel, { deckEditorRequest = kotlin.math.abs(deckEditorRequest) + 1; navigateTo(2) }, Modifier.weight(1f))
             }
+            6 -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier, settingsMenu = true)
             else -> com.example.ui.screens.MoreScreen(viewModel, advancedViewModel, screenModifier,
               initialSection = moreSection, onMeta = { moreSection = -1; metaReturnTab = 4; navigateTo(5) })
 

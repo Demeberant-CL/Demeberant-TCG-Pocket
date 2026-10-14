@@ -30,7 +30,7 @@ class DexVisualTest {
     val db = AppDatabase.getDatabase(context)
     val catalog = CardCatalog.ALL_CARDS
     db.inventoryDao().insertCards(catalog.take(1343).mapIndexed { index, card ->
-      InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 1097) 2 else 1,false)
+      InventoryCardEntity(card.id,card.name,card.pack.name,card.rarity.symbol,if (index < 5) 4 else if (index < 1097) 2 else 1,false)
     })
     val sample = listOf("Pikachu", "Charizard").map { name ->
       catalog.first { it.name.startsWith(name,true) && it.isEx && it.isFullArt }
@@ -41,7 +41,7 @@ class DexVisualTest {
         cardListSerialized=DeckCodec.encode(listOf(com.example.data.repository.DeckCardEntry(card,2),
           com.example.data.repository.DeckCardEntry(partner,2)),listOf(card.type))))
     }
-    compose.waitUntil(20_000) { compose.onAllNodesWithText("POCKET ATLAS").fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(20_000) { compose.onAllNodesWithText("Pocket Atlas").fetchSemanticsNodes().isNotEmpty() }
     val connectionsModel = ViewModelProvider(compose.activity)[AdvancedViewModel::class.java]
     compose.waitUntil(20_000) { connectionsModel.connectionReady.value && !connectionsModel.busy.value }
     compose.runOnIdle { connectionsModel.saveConnection(com.example.data.ai.AiConnection(apiKey="fixture-only", id="fixture-gemini", label="Gemini prueba")) }
@@ -51,6 +51,49 @@ class DexVisualTest {
     compose.onNodeWithText("Sincronizar colección").assertDoesNotExist()
     Thread.sleep(6000) // Wait for real card artwork on a fresh emulator installation.
     capture("inicio")
+    val homeModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
+    compose.runOnIdle { homeModel.setTradeSettings(com.example.data.util.TradeSettings()) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.trade == com.example.data.util.TradeSettings() }
+    compose.onNodeWithTag("home_list").performScrollToNode(hasText("Elegir objetivo e intercambios"))
+    compose.onNodeWithText("Elegir objetivo e intercambios").performClick()
+    compose.onNodeWithText("Asesor de intercambios").assertIsDisplayed()
+    capture("intercambios-objetivos")
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Copiar propuesta"))
+    compose.onAllNodesWithText("Copiar propuesta").onFirst().performClick()
+    compose.onAllNodesWithText("Propuesta copiada").onFirst().assertExists()
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Protección"))
+    compose.onNodeWithText("Protección").performClick()
+    compose.waitForIdle()
+    compose.onNodeWithTag("trade_advisor_list").performScrollToIndex(0)
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Buscar nombre o código"))
+    compose.onNodeWithText("Buscar nombre o código").performTextInput(catalog.first().id)
+    compose.onNodeWithTag("trade_advisor_list").performScrollToNode(hasText("Bloquear para intercambio"))
+    compose.onAllNodesWithText("Bloquear para intercambio").onFirst().performClick()
+    compose.waitUntil(10_000) { catalog.first().id in homeModel.userPreferences.value.trade.blocked }
+    capture("intercambios-proteccion")
+    compose.onNodeWithTag("nav_item_0").performClick()
+    for (style in com.example.data.preferences.VisualStyle.entries) {
+      compose.runOnIdle { homeModel.setVisualStyle(style) }
+      compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == style }
+      compose.onNodeWithTag("home_list").performScrollToIndex(0)
+      capture("inicio-${style.storedValue}")
+      compose.onNodeWithTag("nav_item_1").performClick()
+      capture("coleccion-${style.storedValue}")
+      compose.onNodeWithTag("nav_item_0").performClick()
+    }
+    compose.runOnIdle { homeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
+
+    compose.onNodeWithTag("home_list").performScrollToIndex(0)
+    compose.onNodeWithText("Diseño").performClick()
+    capture("selector-disenos")
+    compose.onNodeWithTag("design_picker").performScrollToNode(hasText("Compacto"))
+    compose.onNodeWithText("Compacto").performClick()
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.COMPACT }
+    compose.onNodeWithText("Panel rápido").assertIsDisplayed()
+    compose.runOnIdle { homeModel.setVisualStyle(com.example.data.preferences.VisualStyle.GALLERY) }
+    compose.waitUntil(10_000) { homeModel.userPreferences.value.visualStyle == com.example.data.preferences.VisualStyle.GALLERY }
+
     compose.onNodeWithTag("home_list").performScrollToNode(hasText("Mazos recientes"))
     compose.waitForIdle()
     Thread.sleep(5000) // Let the real catalog artwork load before the screenshot.
@@ -60,6 +103,8 @@ class DexVisualTest {
       compose.waitForIdle()
       capture(name)
       if (index == 1) {
+        compose.onNodeWithTag("nav_item_6").assertIsDisplayed()
+        compose.onNodeWithText("Vista").performClick()
         compose.onNodeWithText("Lista").performClick()
         capture("coleccion-lista")
         compose.onNodeWithText("Cuadrícula").performScrollTo().performClick()
@@ -69,10 +114,7 @@ class DexVisualTest {
         compose.onNodeWithText("Filtros avanzados").assertIsDisplayed()
         capture("coleccion-filtros")
         compose.onNodeWithText("Ver cartas").performClick()
-        compose.onNodeWithContentDescription("Ajustes").performClick()
-        compose.onNodeWithText("Listo").assertIsDisplayed()
-        capture("ajustes-dialogo")
-        compose.onNodeWithText("Listo").performClick()
+
       }
       if (index == 3) {
         compose.waitUntil(20_000) { compose.onNodeWithText("Conexiones").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled).not() }
@@ -88,9 +130,10 @@ class DexVisualTest {
         compose.onNodeWithText("Paso 1").assertIsDisplayed()
         capture("tutorial-mazos")
         compose.onNodeWithText("← Tutoriales").performClick()
-        compose.onNodeWithText("← Más herramientas").performClick()
-        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Ajustes"))
-        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithText("← Herramientas del juego").performClick()
+        compose.onNodeWithTag("nav_item_6").performClick()
+        capture("ajustes-menu")
+        compose.onNodeWithText("Apariencia y datos").performClick()
         compose.onNodeWithText("Sincronizar colección").assertIsDisplayed()
         capture("mas-ajustes")
         compose.onNodeWithText("Listo").performClick()
@@ -98,13 +141,22 @@ class DexVisualTest {
         compose.onNodeWithText("Conexiones IA").performClick()
         capture("ia-conexiones")
         compose.onNodeWithText("Cerrar").performClick()
-        compose.onNodeWithText("← Más herramientas").performClick()
-        for ((label, file) in listOf("Sobres" to "sobres", "Canjes" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
+        compose.onNodeWithText("← Ajustes").performClick()
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Conector de chat"))
+        compose.onNodeWithText("Conector de chat").performClick()
+        compose.onNodeWithText("Servidor HTTPS").assertExists()
+        compose.onNodeWithText("Clave del dispositivo").assertExists()
+        capture("conector-chat")
+        compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText("Guardar conector"))
+        compose.onNodeWithText("Guardar conector").assertIsDisplayed()
+        compose.onNodeWithText("← Ajustes").performClick()
+        compose.onNodeWithTag("nav_item_4").performClick()
+        for ((label, file) in listOf("Sobres" to "sobres", "Intercambios" to "canjes", "Tapete de práctica" to "simulador", "Calculadora" to "calculadora")) {
           compose.onNode(hasScrollAction() and !hasTestTag("main_bottom_nav")).performScrollToNode(hasText(label))
           compose.onNodeWithText(label).performClick()
           compose.waitForIdle()
           capture(file)
-          compose.onNodeWithText("← Más herramientas").performClick()
+          compose.onNodeWithText("← Herramientas del juego").performClick()
         }
       }
       if (index == 2) {
@@ -132,9 +184,15 @@ class DexVisualTest {
         compose.waitForIdle()
         capture("mazos-crear")
         compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
+        compose.onNodeWithText("Expansiones y cartas").performScrollTo().performClick()
+        compose.onNodeWithText("A1").performScrollTo().performClick()
+        capture("constructor-criterios")
+        val plannerStarted = android.os.SystemClock.elapsedRealtime()
         compose.onNodeWithText("Crear propuestas").performScrollTo().performClick()
         val plannerModel = ViewModelProvider(compose.activity)[TcgViewModel::class.java]
         compose.waitUntil(45_000) { !plannerModel.isGeneratingDeck.value }
+        println("LOCAL_PLANNER_MS=" + (android.os.SystemClock.elapsedRealtime() - plannerStarted))
+        check(plannerModel.localDeckPlans.value.all { plan -> plan.deck.cards.all { it.card.id.startsWith("A1-") } })
         check(plannerModel.localDeckPlans.value.isNotEmpty()) { plannerModel.localPlannerMessage.value ?: "No local proposals" }
         compose.onNodeWithTag("local_planner_list").performScrollToNode(hasText("Abrir en editor"))
         capture("constructor-local")
@@ -178,7 +236,7 @@ class DexVisualTest {
         compose.onAllNodesWithText("Leer carta").onFirst().performClick()
         compose.onNodeWithTag("card_reader").assertIsDisplayed()
         capture("carta-lectura")
-        compose.onNodeWithText("Ampliar imagen · zoom con dos dedos").performScrollTo().performClick()
+        compose.onNodeWithText("Ampliar").performScrollTo().performClick()
         compose.onNodeWithText("Restablecer zoom").assertIsDisplayed()
         capture("carta-ampliada")
         compose.onNodeWithText("Volver a la carta").performClick()

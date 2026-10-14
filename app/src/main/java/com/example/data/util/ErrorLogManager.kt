@@ -17,6 +17,7 @@ object ErrorLogManager {
   private val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
   private val fileLock = Any()
   private var appContext: Context? = null
+  @Volatile private var eventVersion = "desconocida"
   private const val MAX_BYTES = 1_048_576
   private val dropped = java.util.concurrent.atomic.AtomicLong(0)
   private val writer = ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
@@ -34,6 +35,7 @@ object ErrorLogManager {
 
   fun init(context: Context) {
     appContext = context.applicationContext
+    eventVersion = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "desconocida" }.getOrDefault("desconocida")
     if (!initialized.compareAndSet(false, true)) return
     val previous = Thread.getDefaultUncaughtExceptionHandler()
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -72,7 +74,7 @@ object ErrorLogManager {
       synchronized(fileLock) {
         val directory = File(context.filesDir, "diagnostics").apply { mkdirs() }
         val file = File(directory, "error_log_${LocalDate.now()}.txt")
-        val entry = "[${Instant.now()}] [${tag.take(80)}] ${redact(message).take(12_000)}\n"
+        val entry = "[${Instant.now()}] [${tag.take(80)}] version=$eventVersion ${redact(message).take(12_000)}\n"
         if (file.length() + entry.toByteArray().size > MAX_BYTES) {
           val rotated = File(directory, file.name + ".previous")
           rotated.delete(); file.renameTo(rotated)

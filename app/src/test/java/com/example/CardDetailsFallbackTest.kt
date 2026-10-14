@@ -64,4 +64,13 @@ class CardDetailsFallbackTest {
       assertEquals(1, server.requestCount)
     } finally { server.shutdown(); cache.delete() }
   }
+
+  @Test fun serviceFailureWithoutCacheTriesEnglish() {
+    val server=MockWebServer();server.start()
+    try {
+      server.enqueue(MockResponse().setResponseCode(503)); server.enqueue(MockResponse().setBody(body))
+      val result=CardDetailsClient.load(context,"A1-001","es",OkHttpClient(),server.url("/v2/").toString())
+      assertEquals(70,result.hp);assertTrue(result.source.contains("inglés"));assertEquals(2,server.requestCount)
+    } finally { server.shutdown();cache.delete() }
+  }
 }

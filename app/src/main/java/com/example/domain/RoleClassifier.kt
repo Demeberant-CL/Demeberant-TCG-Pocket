@@ -12,7 +12,10 @@ object RoleClassifier {
     .replace(Regex("\\p{M}"), "")
   /** Text heuristic; role tags are never treated as official rulings. */
   fun classify(text: String): Set<CardRole> {
-    val value = normalize(text)
+    // Effects applying only to the opponent must not be credited as our own draw/acceleration.
+    val value = normalize(text).split(Regex("[.\n]"))
+      .filterNot { clause -> Regex("^(your opponent|tu rival|el rival)\\b").containsMatchIn(clause.trim()) }
+      .joinToString(". ")
     return buildSet {
       if (Regex("\\b(draw|roba|robar|robe)\\b").containsMatchIn(value)) add(CardRole.DRAW)
       val deckToHand = Regex("\\b(put|pon|anade|add)\\b").containsMatchIn(value) &&
@@ -20,7 +23,7 @@ object RoleClassifier {
       if (deckToHand || ((value.contains("search") || value.contains("busca") || value.contains("buscar")) &&
           (value.contains("deck") || value.contains("baraja") || value.contains("mazo")))) add(CardRole.SEARCH)
       if (Regex("\\b(heal|cura|curar|curate|soigne|heals)\\b").containsMatchIn(value)) add(CardRole.HEAL)
-      if ((value.contains("attach") || value.contains("une") || value.contains("unir") || value.contains("unida")) &&
+      if (Regex("\\b(attach|attaches|une|unir)\\b").containsMatchIn(value) &&
           (value.contains("energy") || value.contains("energia"))) add(CardRole.ENERGY)
       if ((value.contains("opponent") || value.contains("rival")) &&
           (value.contains("deck") || value.contains("baraja") || value.contains("mazo")) &&

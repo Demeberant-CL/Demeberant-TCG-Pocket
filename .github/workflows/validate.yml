@@ -100,7 +100,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - name: Assistant backend regression tests
-        run: node --test backend/assistant.test.mjs
+        run: node --test backend/*.test.mjs
       - run: npm run build
       - name: Browser regression checks
         run: |
@@ -132,7 +132,7 @@ jobs:
         run: node --test experiments/zone-import/browser.test.cjs
 
   design-preview:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-polished'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
             large-test.log
 
   delivery:
-    if: github.ref == 'refs/heads/fix/pocket-atlas-polished'
+    if: github.ref == 'refs/heads/fix/pocket-atlas-renewal'
     needs: [android, web, zone-browser, design-preview]
     runs-on: ubuntu-latest
     steps:

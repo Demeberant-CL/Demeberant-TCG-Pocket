@@ -39,8 +39,8 @@ data class AiProfiles(val entries: List<AiConnection> = emptyList(), val activeI
 }
 
 /** Encrypted by Android Keystore and excluded from Android backup and collection exports. */
-class AiConnectionStore(context: Context, private val keyProvider: () -> SecretKey = ::deviceKey) {
-  private val file = AtomicFile(File(context.noBackupFilesDir, "ai-connection.enc"))
+class AiConnectionStore(context: Context, fileName: String = "ai-connection.enc", private val keyProvider: () -> SecretKey = ::deviceKey) {
+  private val file = AtomicFile(File(context.noBackupFilesDir, fileName))
   @Synchronized fun save(connection: AiConnection) {
     val old = loadProfiles()
     val entries = old.entries.filterNot { it.id == connection.id } + connection

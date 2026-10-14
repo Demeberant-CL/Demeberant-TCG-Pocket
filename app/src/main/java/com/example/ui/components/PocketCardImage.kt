@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
+import androidx.compose.ui.platform.LocalContext
 import coil.network.HttpException
 import com.example.data.util.TcgdexHelper
 import com.example.data.util.ImageAvailability
@@ -20,11 +23,19 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
   highResolution: Boolean = false, modifier: Modifier = Modifier,
   contentScale: ContentScale = ContentScale.Fit,
   unavailable: @Composable () -> Unit = { Text(name, style = MaterialTheme.typography.labelSmall) }) {
-  val allCandidates = remember(id, language, highResolution) { TcgdexHelper.imageCandidates(id, language, highResolution) }
+  val context = LocalContext.current
+  val allCandidates = remember(id, language, highResolution) {
+    val saved = if (language == "es") com.example.data.util.SpanishImageStore.file(context, id).takeIf { it.exists() }?.toURI()?.toString() else null
+    val remote = TcgdexHelper.imageCandidates(id, language, highResolution)
+    if (highResolution && remote.firstOrNull()?.endsWith("/high.webp") == true)
+      remote.take(1) + listOfNotNull(saved) + remote.drop(1)
+    else listOfNotNull(saved) + remote
+  }
   var candidates by remember(allCandidates) { mutableStateOf(ImageAvailability.session.candidates(allCandidates, preferSuccessful = !highResolution)) }
   var index by remember(candidates) { mutableStateOf(0) }
   var failed by remember(candidates) { mutableStateOf(candidates.isEmpty()) }
   var loading by remember(candidates) { mutableStateOf(true) }
+  var limitedResolution by remember(candidates) { mutableStateOf(false) }
   var retry by remember(candidates) { mutableStateOf(0) }
   BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
     val compact = maxWidth < 100.dp || maxHeight < 120.dp
@@ -41,9 +52,17 @@ fun PocketCardImage(id: String, name: String, language: String = "es",
         Text("Reintentar", style = MaterialTheme.typography.labelSmall)
       }
     } else key(retry) {
-      AsyncImage(model = candidates[index], contentDescription = name, contentScale = contentScale,
+      val request = ImageRequest.Builder(LocalContext.current).data(candidates[index]).apply {
+        // Decode original pixels for the reader: graphicsLayer zoom must not magnify a thumbnail.
+        if (highResolution) size(Size.ORIGINAL)
+      }.build()
+      AsyncImage(model = request, contentDescription = name, contentScale = contentScale,
         modifier = Modifier.fillMaxSize(), onLoading = { loading = true },
-        onSuccess = { loading = false; ImageAvailability.session.recordSuccess(candidates[index]) }, onError = { state ->
+        onSuccess = { state ->
+          loading = false
+          limitedResolution = highResolution && state.result.drawable.intrinsicWidth < 700
+          ImageAvailability.session.recordSuccess(candidates[index])
+        }, onError = { state ->
           if ((state.result.throwable as? HttpException)?.response?.code == 404) {
             ImageAvailability.session.recordMissing(candidates[index])
             if (index < candidates.lastIndex) index++ else { failed = true; loading = false }

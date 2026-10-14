@@ -1,0 +1,8 @@
+FROM node:22-alpine
+WORKDIR /app
+COPY backend/connector.mjs /app/connector.mjs
+RUN mkdir /app/data && chown node:node /app/data
+USER node
+ENV HOST=0.0.0.0 PORT=8080 POCKET_STATE_FILE=/app/data/pocket.json
+EXPOSE 8080
+CMD ["node", "connector.mjs"]

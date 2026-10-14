@@ -32,12 +32,20 @@ object ProfileAvatars {
 }
 
 enum class VisualStyle(val storedValue: String, val label: String, val description: String) {
-  GALLERY("gallery", "Galería", "Portadas grandes, paneles suaves y espacio para las cartas"),
-  EDITORIAL("editorial", "Editorial", "Títulos destacados, líneas rectas y portadas apiladas"),
-  COMPACT("compact", "Compacto", "Filas breves y más información en cada pantalla");
+  GALLERY("gallery", "Galería", "Vitrina horizontal de cartas y acceso directo a tu colección"),
+  EDITORIAL("editorial", "Editorial", "Portada de revista, títulos grandes y secciones numeradas"),
+  COMPACT("compact", "Compacto", "Panel de filas con accesos rápidos y mínima separación"),
+  DECISIONS("decisions", "Centro de decisiones", "Cuatro acciones en mosaico, objetivos y propuestas de intercambio"),
+  ALBUM("album", "Álbum de colección", "Álbum en dos columnas con portadas y progreso por expansión");
   companion object { fun fromStored(value: String?) = entries.firstOrNull { it.storedValue == value } ?: GALLERY }
 }
-data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first(), val visualStyle: VisualStyle = VisualStyle.GALLERY)
+data class UserPreferences(val themeMode: ThemeMode = ThemeMode.SYSTEM, val avatarId: String = ProfileAvatars.ids.first(), val visualStyle: VisualStyle = VisualStyle.GALLERY, val trade: com.example.data.util.TradeSettings = com.example.data.util.TradeSettings())
+
+private val reserveKey = intPreferencesKey("trade_reserve")
+private val blockedKey = stringSetPreferencesKey("trade_blocked")
+private val expansionKey = stringPreferencesKey("trade_expansion")
+private val targetNameKey = stringPreferencesKey("trade_target_name")
+private val targetKey = stringPreferencesKey("trade_target")
 
 private val styleKey = stringPreferencesKey("visual_style")
 private val avatarKey = stringPreferencesKey("profile_avatar")
@@ -67,13 +75,26 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 class UserPreferencesRepository(private val context: Context) {
   val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.catch { error ->
     if (error is IOException) emit(emptyPreferences()) else throw error
-  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey]), VisualStyle.fromStored(it[styleKey])) }
+  }.map { UserPreferences(ThemeMode.fromStored(it[themeKey]), ProfileAvatars.normalize(it[avatarKey]), VisualStyle.fromStored(it[styleKey]), com.example.data.util.TradeSettings((it[reserveKey] ?: 2).coerceIn(1, 2), it[blockedKey] ?: emptySet(), it[expansionKey].orEmpty(), it[targetKey].orEmpty(), it[targetNameKey].orEmpty())) }
 
   suspend fun restore(value: UserPreferences, restoreAvatar: Boolean = true) {
     context.dataStore.edit {
       it[themeKey] = value.themeMode.storedValue
       it[styleKey] = value.visualStyle.storedValue
+      it[reserveKey] = value.trade.reserve
+      it[blockedKey] = value.trade.blocked
+      it[expansionKey] = value.trade.expansion
+      it[targetKey] = value.trade.targetDeck
+      it[targetNameKey] = value.trade.targetName
       if (restoreAvatar) it[avatarKey] = ProfileAvatars.normalize(value.avatarId)
+    }
+  }
+
+  suspend fun setTrade(value: com.example.data.util.TradeSettings) {
+    require(value.reserve in 1..2)
+    context.dataStore.edit {
+      it[reserveKey] = value.reserve; it[blockedKey] = value.blocked
+      it[expansionKey] = value.expansion; it[targetKey] = value.targetDeck; it[targetNameKey] = value.targetName
     }
   }
 

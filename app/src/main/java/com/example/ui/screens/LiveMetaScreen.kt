@@ -23,6 +23,8 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
   val busy by model.busy.collectAsStateWithLifecycle()
   val message by model.message.collectAsStateWithLifecycle()
   val inventory by main.inventoryList.collectAsStateWithLifecycle()
+  val prefs by main.userPreferences.collectAsStateWithLifecycle()
+  var prioritizeOwned by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
   val cards = inventory.associateBy { it.card.id }
   var selected by remember { mutableStateOf<com.example.data.meta.MetaDeck?>(null) }
   LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -43,7 +45,16 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
         Text("${it.skipped} torneos o listas excluidos por reglas especiales o datos incompletos.", style = MaterialTheme.typography.bodySmall)
       }
     }
-    items(snapshot?.decks ?: emptyList()) { d ->
+    item {
+      Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Text("Priorizar mazos cercanos a mi colección", Modifier.weight(1f))
+        Switch(prioritizeOwned, onCheckedChange = { prioritizeOwned = it })
+      }
+    }
+    items((snapshot?.decks ?: emptyList()).let { rows -> if (!prioritizeOwned) rows else rows.sortedWith(
+      compareBy<com.example.data.meta.MetaDeck> { d -> d.cards.keys.any { it !in cards } }
+        .thenBy { d -> d.cards.entries.sumOf { (id, n) -> (n - (cards[id]?.ownedCount ?: 0)).coerceAtLeast(0) } }
+        .thenByDescending { it.count }) }) { d ->
       val unknown = d.cards.keys.filter { it !in cards }
       val missing = d.cards.entries.sumOf { (id, count) -> (count - (cards[id]?.ownedCount ?: 0)).coerceAtLeast(0) }
       Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -55,6 +66,10 @@ fun LiveMetaScreen(main: TcgViewModel, model: AdvancedViewModel, onAi: () -> Uni
           if (decisive > 0) " · ${"%.1f".format(d.wins * 100.0 / decisive)}% sin empates" else "")
         Text("Lista de ejemplo · Energías: ${d.energies.joinToString()} · $missing copias faltantes")
         if (unknown.isNotEmpty()) Text("${unknown.size} IDs fuera del catálogo: actualiza el catálogo antes de adaptar este mazo.")
+        TextButton(enabled = unknown.isEmpty(), onClick = {
+          val encoded = com.example.data.util.DeckCodec.encode(d.cards.map { (id, n) -> DeckCardEntry(cards.getValue(id).card, n) }, d.energies)
+          main.setTradeSettings(prefs.trade.copy(targetDeck = encoded, targetName = d.name))
+        }) { Text(if (prefs.trade.targetName == d.name && prefs.trade.targetDeck.isNotBlank()) "Mazo objetivo seleccionado" else "Buscar faltantes por intercambio") }
         OutlinedButton(onClick = { selected = d }, enabled = unknown.isEmpty(), shape = MaterialTheme.shapes.medium) { Text("Adaptar a mi colección") }
       } }
     }

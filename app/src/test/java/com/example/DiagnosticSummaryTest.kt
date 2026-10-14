@@ -94,4 +94,13 @@ class DiagnosticSummaryTest {
     assertTrue(runCatching { AiValidator.requireAvailable(deck,current) }.isFailure)
     assertEquals(before,current)
   }
+
+  @Test fun versionedEventsAreSeparatedFromHistoricalEvents() {
+    val text=DiagnosticSummary.create(sequenceOf(
+      "[2026-10-12T01:00:00Z] [HTTP_END] version=1.0.1309 status=404 source=CARD_DATA",
+      "[2026-10-12T01:01:00Z] [HTTP_END] version=1.0.1311 status=503 source=CARD_DATA",
+      "[2026-10-12T01:02:00Z] [HTTP_END] status=404 source=CARD_DATA"),"1.0.1311",34)
+    assertTrue(text.contains("Eventos con versión actual: 1"));assertTrue(text.contains("otras versiones: 1"))
+    assertTrue(text.contains("sin versión identificable: 1"));assertTrue(text.contains("v1.0.1311"))
+  }
 }

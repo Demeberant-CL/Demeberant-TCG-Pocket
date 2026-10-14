@@ -12,6 +12,21 @@ class LocalDeckPlannerTest {
       70,type,"","",rulesName=name,category=if(type=="Entrenador") "item" else "pokemon",stage=stage,evolvesFrom=parent)
   private fun owned(card: PokemonCard, count: Int = 2) = CardWithInventory(card,count,false)
   private fun attack(cost: List<String>, damage: String = "60") = CombatData(100,1,listOf(CombatAttack(cost,damage)))
+  @Test fun descriptiveAttachedEnergyAndOpponentDrawAreNotOurAcceleration() {
+    assertFalse(CardRole.ENERGY in RoleClassifier.classify("This attack does 20 damage for each energy attached to this Pokémon."))
+    assertFalse(CardRole.DRAW in RoleClassifier.classify("Your opponent draws 2 cards."))
+    assertTrue(CardRole.ENERGY in RoleClassifier.classify("Attach a Water Energy to your Pokémon."))
+    assertTrue(CardRole.DRAW in RoleClassifier.classify("Draw 2 cards."))
+  }
+  @Test fun lostAttackTurnReducesRankingAgainstOtherwiseIdenticalAttacker() {
+    val hero = card(1, "Hero")
+    val pool = listOf(owned(hero)) + (2..18).map { owned(card(it, type = "Entrenador")) }
+    val normal = CombatData(100, 1, listOf(CombatAttack(listOf("Water"), "100")))
+    val delayed = normal.copy(attacks = listOf(normal.attacks.single().copy(effect = "During your next turn, this Pokémon cannot attack.")))
+    fun plan(data: CombatData) = LocalDeckPlanner.recommend(pool, mapOf(hero.id to data), PlannerOptions(type = "Agua", anchorId = hero.id)).first()
+    assertTrue(plan(normal).score > plan(delayed).score)
+    assertTrue(plan(delayed).cautions.any { "no mide rendimiento competitivo" in it })
+  }
   @Test fun completeDeckPreservesInventoryAndNameLimitsAcrossPrintings() {
     val base = card(1,"Core")
     val pool = listOf(owned(base,1),owned(base.copy(id="B1-999"),1)) + (2..18).map { owned(card(it)) }
@@ -92,5 +107,36 @@ class LocalDeckPlannerTest {
     val p=LocalDeckPlanner.recommend(pool,options=PlannerOptions(type="Agua"))
     assertEquals(p,LocalDeckPlanner.recommend(pool.reversed(),options=PlannerOptions(type="Agua")))
     assertTrue(p.size in 1..3)
+  }
+
+  @Test fun expansionCatalogAndMandatoryRestrictionsAreRespected() {
+    val basic = card(1)
+    val trainer = card(2, "Trainer", "Entrenador")
+    val outside = card(3).copy(id = "A2-003")
+    val inventory = listOf(owned(basic,0),owned(trainer,0),owned(outside,2))
+    val criteria = DeckCriteria(setOf("A1"), setOf(basic.id), setOf(trainer.id), ownedOnly=false)
+    val plans = LocalDeckPlanner.recommend(inventory, options=PlannerOptions(type="Agua", criteria=criteria))
+    assertTrue(plans.all { p -> p.deck.cards.all { it.card.id.startsWith("A1-") && it.card.id != trainer.id } })
+    assertTrue(plans.all { it.deck.cards.any { e -> e.card.id == basic.id } })
+    assertTrue(plans.all { !it.ownedOnly })
+    assertTrue(runCatching { criteria.copy(ownedOnly=true).pool(inventory) }.isFailure)
+    assertTrue(runCatching { criteria.copy(excluded=setOf(basic.id)).pool(inventory) }.isFailure)
+  }
+
+  @Test fun requiredVariantsKeepTheirExactIds() {
+    val first=card(1,"Same"); val second=card(2,"Same")
+    val pool=listOf(owned(first),owned(second))+(3..15).map { owned(card(it,type="Entrenador")) }
+    val plans=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua", criteria=DeckCriteria(required=setOf(first.id,second.id))))
+    assertTrue(plans.all { it.deck.cards.map { e -> e.card.id }.containsAll(setOf(first.id,second.id)) })
+    assertTrue(plans.all { it.deck.cards.filter { e -> e.card.rulesName=="Same" }.sumOf { e -> e.count }==2 })
+  }
+
+  @Test fun alternativeSearchAvoidsThePreviousExactLists() {
+    val pool=(1..24).map { owned(card(it)) }+(25..38).map { owned(card(it,type="Entrenador")) }
+    val first=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua"))
+    val signatures=first.map { LocalDeckPlanner.signature(it.deck) }.toSet()
+    val next=LocalDeckPlanner.recommend(pool, options=PlannerOptions(type="Agua",variant=1,previous=signatures))
+    assertTrue(next.all { LocalDeckPlanner.signature(it.deck) !in signatures })
+    assertTrue(next.all { it.deck.totalCardCount==20 })
   }
 }
