@@ -109,8 +109,17 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
         .put("collectionComplete", zone.optBoolean("collectionComplete", false)))
     }
     pocketConnector.request(config.endpoint, config.apiKey, "/app/snapshot", "PUT", snapshot)
+    val diagnosticSent = runCatching {
+      val version = getApplication<Application>().packageManager.getPackageInfo(getApplication<Application>().packageName, 0).versionName ?: "unknown"
+      val report = ErrorLogManager.briefReport(getApplication())
+      val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
+        .put("report", report.take(com.example.data.util.DiagnosticSummary.MAX_CHARS))
+        .put("collectionCards", inventory.size).put("deckCount", repository.savedDecksFlow.first().size)
+      pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
+    }.isSuccess
     connectorProposals.value = emptyList()
-    message.value = "Colección y mazos sincronizados. El chat puede consultar esta copia."
+    message.value = if (diagnosticSent) "Colección, mazos, lectura de Pokémon Zone y diagnóstico sincronizados. ChatGPT ya puede consultarlos."
+      else "Colección, mazos y lectura de Pokémon Zone sincronizados; el informe técnico no se pudo enviar. Reintenta Enviar diagnóstico."
   }
   fun receiveConnector() = task("CONNECTOR_RECEIVE") {
     connectorProposals.value = emptyList()
