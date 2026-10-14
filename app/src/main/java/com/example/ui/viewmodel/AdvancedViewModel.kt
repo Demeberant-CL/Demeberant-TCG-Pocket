@@ -100,23 +100,22 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     if (zone != null) {
       val zoneCards = zone.optJSONArray("visibleCards")
       val fields = org.json.JSONArray()
+      val sourceFields = zone.optJSONArray("visibleFields")
       val summary = zone.optString("visibleSummary")
-      zone.optJSONArray("visibleFields")?.let { source ->
-        for (i in 0 until minOf(source.length(), 30)) {
-          val field = source.optJSONObject(i) ?: continue
+      if (sourceFields != null) {
+        for (i in 0 until minOf(sourceFields.length(), 30)) {
+          val field = sourceFields.optJSONObject(i) ?: continue
           val label = field.optString("label")
           val normalized = label.trim().lowercase(java.util.Locale.ROOT)
-          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
-            continue
-          }
+          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) continue
           fields.put(field)
         }
       }
       // Remove known friend/player IDs from the free-text section summary too.
       var safeSummary = summary
-      zone.optJSONArray("visibleFields")?.let { source ->
-        for (i in 0 until minOf(source.length(), 30)) {
-          val field = source.optJSONObject(i) ?: continue
+      if (sourceFields != null) {
+        for (i in 0 until minOf(sourceFields.length(), 30)) {
+          val field = sourceFields.optJSONObject(i) ?: continue
           val normalized = field.optString("label").trim().lowercase(java.util.Locale.ROOT)
           if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
             val privateValue = field.optString("value")
