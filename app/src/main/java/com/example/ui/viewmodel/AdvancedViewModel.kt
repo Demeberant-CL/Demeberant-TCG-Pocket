@@ -99,12 +99,39 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val zone = runCatching { if (zoneFile.isFile && zoneFile.length() <= 3_000_000L) org.json.JSONObject(zoneFile.readText()) else null }.getOrNull()
     if (zone != null) {
       val zoneCards = zone.optJSONArray("visibleCards")
+      val fields = org.json.JSONArray()
+      val summary = zone.optString("visibleSummary")
+      zone.optJSONArray("visibleFields")?.let { source ->
+        for (i in 0 until minOf(source.length(), 30)) {
+          val field = source.optJSONObject(i) ?: continue
+          val label = field.optString("label")
+          val normalized = label.trim().lowercase(java.util.Locale.ROOT)
+          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
+            val privateValue = field.optString("value")
+            if (privateValue.isNotBlank()) summary.replace(privateValue, "[ID oculto]")
+            continue
+          }
+          fields.put(field)
+        }
+      }
+      // Remove known friend/player IDs from the free-text section summary too.
+      var safeSummary = summary
+      zone.optJSONArray("visibleFields")?.let { source ->
+        for (i in 0 until minOf(source.length(), 30)) {
+          val field = source.optJSONObject(i) ?: continue
+          val normalized = field.optString("label").trim().lowercase(java.util.Locale.ROOT)
+          if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
+            val privateValue = field.optString("value")
+            if (privateValue.isNotBlank()) safeSummary = safeSummary.replace(privateValue, "[ID oculto]")
+          }
+        }
+      }
       snapshot.put("zoneData", org.json.JSONObject()
         .put("readAt", zone.optString("readAt").take(80))
         .put("heading", zone.optString("visibleHeading").take(500))
-        .put("fields", zone.optJSONArray("visibleFields") ?: org.json.JSONArray())
+        .put("fields", fields)
         .put("missions", zone.optJSONArray("visibleMissions") ?: org.json.JSONArray())
-        .put("summary", zone.optString("visibleSummary").take(40000))
+        .put("summary", safeSummary.take(40000))
         .put("scannedCardCount", zoneCards?.length() ?: 0)
         .put("collectionComplete", zone.optBoolean("collectionComplete", false)))
     }
