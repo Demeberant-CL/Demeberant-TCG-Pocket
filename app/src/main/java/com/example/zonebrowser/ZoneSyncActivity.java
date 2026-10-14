@@ -554,6 +554,7 @@ public final class ZoneSyncActivity extends Activity {
                                         String readStatus = section.optString("status", "unavailable");
                                         summary.append("[Sección: ").append(name).append(" · ").append(readStatus).append("]\n");
                                         String body = section.optString("text", "");
+                                        if (body.length() > 2500) body = body.substring(0, 2500) + "\n[… sección recortada para incluir las 11 secciones]";
                                         if (!body.isEmpty()) summary.append(body).append("\n");
                                     }
                                     profileSectionsSummary = summary.toString().trim();
@@ -623,6 +624,8 @@ public final class ZoneSyncActivity extends Activity {
                 if (profileSnapshot != null) {
                     String profileSummary = profileSnapshot.optString("visibleSummary", "");
                     String cardsSummary = value.optString("visibleSummary", "");
+                    if (profileSummary.length() > 4000) profileSummary = profileSummary.substring(0, 4000) + "\n[… resumen de perfil recortado]";
+                    if (cardsSummary.length() > 6000) cardsSummary = cardsSummary.substring(0, 6000) + "\n[… resumen de cartas recortado]";
                     String combinedSummary = (profileSummary + "\n" + profileSectionsSummary + "\n" + cardsSummary).trim();
                     if (!combinedSummary.isEmpty()) value.put("visibleSummary", combinedSummary.substring(0, Math.min(40000, combinedSummary.length())));
                     JSONArray profileFields = profileSnapshot.optJSONArray("visibleFields");
