@@ -107,8 +107,6 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
           val label = field.optString("label")
           val normalized = label.trim().lowercase(java.util.Locale.ROOT)
           if (normalized == "id" || normalized.contains("friend id") || normalized.contains("player id")) {
-            val privateValue = field.optString("value")
-            if (privateValue.isNotBlank()) summary.replace(privateValue, "[ID oculto]")
             continue
           }
           fields.put(field)
