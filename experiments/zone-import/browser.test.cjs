@@ -237,3 +237,29 @@ test('post-sync readiness waits for actual card rows on the collection route', a
   assert.equal(await page.evaluate(syncControl), 'blocked');
   await page.close();
 });
+
+const sectionReader = fs.readFileSync(__dirname + '/../../app/src/main/assets/zone/read-sections.js', 'utf8');
+test('mobile profile reader visits and captures each anchor section independently', async () => {
+  const names = ['Home','Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'];
+  const ids = ['home','stats','cards','sets','decks','what-to-open','play-sets','binders','display-boards','theme-collections','wishlist'];
+  const headings = ['Demeberant','Card Stats','Cards','Sets','Decks','What to Open','Play Sets','Binders','Display Boards','Theme Collections','Wishlist'];
+  const sections = ids.map((id,i) => '<section id="' + id + '"><h2>' + headings[i] + '</h2><p>SECTION_DATA_' + i + '</p></section>').join('');
+  const links = names.map((name,i) => '<button onclick="location.hash=\'#' + ids[i] + '\';document.querySelector(\'dialog\').close();window.visited.push(\'' + name + '\')">' + name + '</button>').join('');
+  const html = '<button id="go" onclick="document.querySelector(\'dialog\').showModal()">Go to</button><dialog><p>Jump to a section of this player\'s profile.</p>' + links + '<button onclick="this.closest(\'dialog\').close()">Close</button></dialog><main><h1>Demeberant</h1>' + sections + '</main>';
+  const context = await browser.newContext({ viewport:{width:390,height:844}, deviceScaleFactor:3, isMobile:true, hasTouch:true });
+  const page = await context.newPage();
+  await page.route('**/*', route => route.fulfill({contentType:'text/html; charset=utf-8',body:html}));
+  await page.goto('https://www.pokemon-zone.com/players/3778164033299021/');
+  await page.evaluate(() => { window.visited=[]; });
+  await page.evaluate(sectionReader);
+  await page.waitForFunction(() => window.__tcgLabZoneSections && window.__tcgLabZoneSections.status === 'complete', null, {timeout:20000});
+  const state = await page.evaluate(() => window.__tcgLabZoneSections);
+  assert.deepEqual(state.sections.map(section => section.name), names);
+  assert.ok(state.sections.every(section => section.status === 'read'));
+  for (let i=0; i<names.length; i++) {
+    assert.ok(state.sections[i].text.includes('SECTION_DATA_' + i), names[i] + ' must contain its own section data');
+    if (i !== 0) assert.equal(state.sections[i].text.includes('SECTION_DATA_' + (i-1)), false, names[i] + ' must not capture the previous section');
+  }
+  assert.deepEqual(await page.evaluate(() => window.visited), [...names.slice(1),'Home']);
+  await context.close();
+});
