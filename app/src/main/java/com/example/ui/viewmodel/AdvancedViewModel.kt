@@ -94,6 +94,20 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
     val snapshot = org.json.JSONObject().put("format", 1).put("cards", cards).put("decks", decks)
     draft?.let { snapshot.put("draft", org.json.JSONObject().put("id", "draft").put("name", it.name)
       .put("data", com.example.data.util.DeckCodec.encode(it.cards, it.energyTypes))) }
+    // Share the already-saved, validated Zone reading without its player ID or source URL.
+    val zoneFile = java.io.File(getApplication<Application>().filesDir, "zone-preview.json")
+    val zone = runCatching { if (zoneFile.isFile && zoneFile.length() <= 3_000_000L) org.json.JSONObject(zoneFile.readText()) else null }.getOrNull()
+    if (zone != null) {
+      val zoneCards = zone.optJSONArray("visibleCards")
+      snapshot.put("zoneData", org.json.JSONObject()
+        .put("readAt", zone.optString("readAt").take(80))
+        .put("heading", zone.optString("visibleHeading").take(500))
+        .put("fields", zone.optJSONArray("visibleFields") ?: org.json.JSONArray())
+        .put("missions", zone.optJSONArray("visibleMissions") ?: org.json.JSONArray())
+        .put("summary", zone.optString("visibleSummary").take(40000))
+        .put("scannedCardCount", zoneCards?.length() ?: 0)
+        .put("collectionComplete", zone.optBoolean("collectionComplete", false)))
+    }
     pocketConnector.request(config.endpoint, config.apiKey, "/app/snapshot", "PUT", snapshot)
     connectorProposals.value = emptyList()
     message.value = "Colección y mazos sincronizados. El chat puede consultar esta copia."
@@ -132,10 +146,15 @@ class AdvancedViewModel(application: Application) : AndroidViewModel(application
   fun sendConnectorDiagnostics() = task("CONNECTOR_DIAGNOSTICS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
     val version = getApplication<android.app.Application>().packageManager.getPackageInfo(getApplication<android.app.Application>().packageName, 0).versionName ?: "unknown"
-    // Deliberately exclude logs, tokens, device identifiers and exception traces.
+    // This allowlisted report omits messages, URLs, request bodies, credentials and stack traces.
+    val report = ErrorLogManager.briefReport(getApplication())
+    val inventoryCount = repository.inventoryFlow.first().size
+    val deckCount = repository.savedDecksFlow.first().size
     val payload = org.json.JSONObject().put("version", version).put("errors", org.json.JSONArray())
+      .put("report", report.take(com.example.data.util.DiagnosticSummary.MAX_CHARS))
+      .put("collectionCards", inventoryCount).put("deckCount", deckCount)
     pocketConnector.request(config.endpoint, config.apiKey, "/app/diagnostics", "PUT", payload)
-    message.value = "Estado básico enviado. No se compartieron registros ni datos sensibles."
+    message.value = "Diagnóstico técnico redactado enviado junto con los conteos de colección y mazos."
   }
   fun runSafeConnectorCommands() = task("CONNECTOR_COMMANDS") {
     val config = connectorConfig.value ?: error("Configura primero el servidor del conector.")
